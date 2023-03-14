@@ -139,6 +139,10 @@ int main()
     float mh = 125.0;
 
     TH1F* w_mass = new TH1F("w_mass", "W mass from lepton and corrected met", 31, 0.0, 150.0);
+    // TH2F* met_vs_nu_px_corr = new TH2F("met_vs_nu_px_corr", "MET corrected px vs nu px", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
+    // TH2F* met_vs_nu_py_corr = new TH2F("met_vs_nu_py_corr", "MET corrected py vs nu py", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
+    // TH2F* met_vs_nu_px = new TH2F("met_vs_nu_px", "MET px vs nu px", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
+    // TH2F* met_vs_nu_py = new TH2F("met_vs_nu_py", "MET py vs nu py", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
 
     for (size_t i = 0; i < nEvents; ++i)
     {
@@ -152,8 +156,11 @@ int main()
         l.SetPtEtaPhiM(genl_pt, genl_eta, genl_phi, genl_mass);
         nu.SetPtEtaPhiM(gennu_pt, gennu_eta, gennu_phi, gennu_mass);
 
+        TLorentzVector met_corr;
+
         TH1F* w_from_lmet = new TH1F("w_from_lmet", "W mass from lepton and corrected met", nbins, 0.0, 1700.0);
 
+        rg.SetSeed(0);
         for (size_t j = 0; j < nIter; ++j)
         {
             float nu_eta = rg.Uniform(-6, 6);
@@ -182,7 +189,6 @@ int main()
             float met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
             float met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - (c3 - 1)*j1.Py() - (c4 - 1)*j2.Py();
 
-            TLorentzVector met_corr;
             met_corr.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
 
             TLorentzVector nu_corr;
@@ -190,20 +196,37 @@ int main()
             w_from_lmet->Fill((l+nu_corr).M());
             // std::cout << (l+nu_corr).M() << std::endl;
         }
+
+        // met_vs_nu_px_corr->Fill(met_corr.Px(), nu.Px());
+        // met_vs_nu_py_corr->Fill(met_corr.Py(), nu.Py());
+
+        // met_vs_nu_px->Fill(met.Px(), nu.Px());
+        // met_vs_nu_py->Fill(met.Py(), nu.Py());
+
+        if (i % 1000 == 0)
+        {
+            std::string evt_dist_name = "iter_plots/w_mass/w_from_lmet_" + std::to_string(i);
+            // save::save_1d_dist(w_from_lmet, evt_dist_name.c_str(), "W mass from lepton and corrected met");
+        }
         // save::save_1d_dist(w_from_lmet, "w_from_lmet", "W mass from lepton and corrected met");
-        // std::cout << w_from_lmet->GetBinContent(w_from_lmet->GetMaximumBin()) << std::endl;
-        // for (size_t i = 0; i < nbins; ++i)
-        // {
-        //     std::cout << w_from_lmet->GetBinContent(i) << std::endl;
-        // }
-        // std::cout << w_from_lmet->GetNbinsX() << std::endl;
         int binmax = w_from_lmet->GetMaximumBin(); 
         float x = w_from_lmet->GetXaxis()->GetBinCenter(binmax);
         w_mass->Fill(x);
-        std::cout << "w_mass = " << x << std::endl;
+        if (i % 1000 == 0)
+        {
+            std::cout << "Event #" << i << ": w_mass = " << x << std::endl;
+        }
+        // std::cout << "w_mass = " << x << std::endl;
         delete w_from_lmet;
         // break;
     }
+
+    // save::save_2d_dist(met_vs_nu_px_corr, "corr_met_vs_nu_px", "MET px corr [GeV]", "nu px [GeV]");
+    // save::save_2d_dist(met_vs_nu_py_corr, "corr_met_vs_nu_py", "MET py corr [GeV]", "nu py [GeV]");
+
+    // save::save_2d_dist(met_vs_nu_px, "met_vs_nu_px", "MET px [GeV]", "nu px [GeV]");
+    // save::save_2d_dist(met_vs_nu_py, "met_vs_nu_py", "MET py [GeV]", "nu py [GeV]");
+
 
     save::save_1d_dist(w_mass, "w_mass", "W mass from lepton and corrected met");
 

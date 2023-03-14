@@ -94,13 +94,13 @@ std::pair<float, float> jet::compute_resc_factors(TLorentzVector& p1,
 {
     jet::pt_order(p1, p2);
     
-    float mass;
+    float mass = mass_pdf->GetRandom();
 
     for (size_t i = 0; i < 1000; ++i)
     {
         float lead_rescale_factor = lead_jet_pdf->GetRandom();
         
-        mass = mass_pdf->GetRandom(); 
+        // mass = mass_pdf->GetRandom(); 
 
         float x1 = p2.M2();
         float x2 = 2*lead_rescale_factor*(p1*p2);
@@ -124,8 +124,6 @@ std::pair<float, float> jet::compute_resc_factors(TLorentzVector& p1,
 
         return std::make_pair(lead_rescale_factor, trail_rescale_factor);
     }
-
-    mass = mass_pdf->GetRandom();
 
     float universal_corr = mass/(p1+p2).M();
     return std::make_pair(universal_corr, universal_corr);
