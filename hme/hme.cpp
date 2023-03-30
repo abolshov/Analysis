@@ -1,10 +1,12 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #include "TFile.h"
 #include "TDirectory.h"
 #include "TTreeReader.h"
 #include "TRandom3.h"
+#include "TLine.h"
 
 #include "tools.hpp"
 
@@ -138,17 +140,16 @@ int main()
     TRandom3 rg;
     float mh = 125.0;
 
-    TH1F* w_mass = new TH1F("w_mass", "W mass from lepton and corrected met", 31, 0.0, 150.0);
-    // TH2F* met_vs_nu_px_corr = new TH2F("met_vs_nu_px_corr", "MET corrected px vs nu px", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
-    // TH2F* met_vs_nu_py_corr = new TH2F("met_vs_nu_py_corr", "MET corrected py vs nu py", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
-    // TH2F* met_vs_nu_px = new TH2F("met_vs_nu_px", "MET px vs nu px", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
-    // TH2F* met_vs_nu_py = new TH2F("met_vs_nu_py", "MET py vs nu py", nbins, -200.0, 200.0, nbins, -200.0, 200.0);
+    // TH1F* w_mass = new TH1F("w_mass", "W mass from lepton and corrected met", 101, 0.0, 100.0);
+    TH1F* hh_mass_final = new TH1F("hh_mass", "HME prediction", nbins, 0.0, 1500.0);
+
+    auto start = std::chrono::high_resolution_clock::now();
 
     for (size_t i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
 
-        TLorentzVector b1, b2, j1, j2, l, nu, met;
+        TLorentzVector b1, b2, j1, j2, l, nu, met, bq1, bq2;
         b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
         b2.SetPtEtaPhiM(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
         j1.SetPtEtaPhiM(genqjet1_pt, genqjet1_eta, genqjet1_phi, genqjet1_mass);
@@ -156,15 +157,32 @@ int main()
         l.SetPtEtaPhiM(genl_pt, genl_eta, genl_phi, genl_mass);
         nu.SetPtEtaPhiM(gennu_pt, gennu_eta, gennu_phi, gennu_mass);
 
-        TLorentzVector met_corr;
+        bq1.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
+        bq2.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
 
-        TH1F* w_from_lmet = new TH1F("w_from_lmet", "W mass from lepton and corrected met", nbins, 0.0, 1700.0);
+        jet::pt_order(bq1, bq2);
+
+        TLorentzVector met_corr;
+        // TH1F* met_px_iter;
+        // TH1F* met_py_iter;
+
+        // std::string x_name("met_px_");
+        // std::string y_name("met_px_");
+        // if (i % 1000 == 0)
+        // {
+        //     x_name += std::to_string(i);
+        //     y_name += std::to_string(i);
+        //     met_px_iter = new TH1F(x_name.c_str(), (x_name /* + ", without light jet corr" */).c_str(), 101, -200.0, 200.0);
+        //     met_py_iter = new TH1F(y_name.c_str(), (y_name /* + ", without light jet corr" */).c_str(), 101, -200.0, 200.0);
+        // }
+
+        TH1F* hh_mass = new TH1F(("hh_mass_" + std::to_string(i)).c_str(), ("hh_mass_" + std::to_string(i)).c_str(), nbins, 0.0, 1500.0);
+        TH1F* lead_b_jet_cmp = new TH1F("lead_bj_vs_bq", "leading b jet pt vs b quark pt", nbins, -100.0, 100.0);
 
         rg.SetSeed(0);
         for (size_t j = 0; j < nIter; ++j)
         {
             float nu_eta = rg.Uniform(-6, 6);
-            // std::cout << "nu_eta = " << nu_eta << std::endl;
             met.SetPtEtaPhiM(genMET_pT, 0.0, genMET_phi, 0.0);
             std::pair<float, float> light_jet_resc;
             if (jet::is_offshell(j1, j2, l, nu))
@@ -193,42 +211,97 @@ int main()
 
             TLorentzVector nu_corr;
             nu_corr.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
-            w_from_lmet->Fill((l+nu_corr).M());
-            // std::cout << (l+nu_corr).M() << std::endl;
+
+            if (i % 1000 == 0)
+            {
+                // met_px_iter->Fill(met_corr.Px());
+                // met_py_iter->Fill(met_corr.Py());
+                lead_b_jet_cmp->Fill(c1*b1.Pt());
+            }    
+
+            float tmp_hh_mass = (c1*b1 + c2*b2 + c3*j1 + c4*j2 + nu_corr + l).M();
+            hh_mass->Fill(tmp_hh_mass);
         }
 
-        // met_vs_nu_px_corr->Fill(met_corr.Px(), nu.Px());
-        // met_vs_nu_py_corr->Fill(met_corr.Py(), nu.Py());
+        TCanvas* c1 = new TCanvas("c1", "c1");
 
-        // met_vs_nu_px->Fill(met.Px(), nu.Px());
-        // met_vs_nu_py->Fill(met.Py(), nu.Py());
+        lead_b_jet_cmp->GetXaxis()->SetTitle("[GeV]");
+        lead_b_jet_cmp->SetLineWidth(3);
+        lead_b_jet_cmp->Draw();
+        TLine *line = new TLine(bq1.Pt(), 0.0, bq1.Pt(), lead_b_jet_cmp->GetMaximum());
+        line->SetLineColor(2);
+        line->SetLineWidth(3);
+        line->Draw();
+        c1->SaveAs(("iter_plots/bj_vs_bq/" + std::to_string(i) + ".png").c_str());
+
+        delete lead_b_jet_cmp;
+        delete line;
+        delete c1;
+
+        break;
 
         if (i % 1000 == 0)
         {
-            std::string evt_dist_name = "iter_plots/w_mass/w_from_lmet_" + std::to_string(i);
-            // save::save_1d_dist(w_from_lmet, evt_dist_name.c_str(), "W mass from lepton and corrected met");
+            hme_prediction.push_back(hh_mass);
+
+            // TCanvas* c1 = new TCanvas("c1", "c1");
+            // met_px_iter->GetXaxis()->SetTitle(x_name.c_str());
+            // met_px_iter->SetLineWidth(3);
+            // met_px_iter->Draw();
+            // TLine *line = new TLine(nu.Px(), 0.0, nu.Px(), met_px_iter->GetMaximum());
+            // line->SetLineColor(2);
+            // line->SetLineWidth(3);
+            // line->Draw();
+            // c1->SaveAs(("iter_plots/met_corr_x/" + x_name + ".png").c_str());
+
+            // met_py_iter->GetXaxis()->SetTitle(y_name.c_str());
+            // met_py_iter->SetLineWidth(3);
+            // met_py_iter->Draw();
+            // line->SetX1(nu.Py());
+            // line->SetX2(nu.Py());
+            // line->SetY2(met_py_iter->GetMaximum());
+            // line->SetLineColor(2);
+            // line->SetLineWidth(3);
+            // line->Draw();
+            // c1->SaveAs(("iter_plots/met_corr_y/" + y_name + ".png").c_str());
+
+            // delete met_px_iter;
+            // delete met_py_iter;
+
+            // lead_b_jet_cmp->GetXaxis()->SetTitle("[GeV]");
+            // lead_b_jet_cmp->SetLineWidth(3);
+            // lead_b_jet_cmp->Draw();
+            // TLine *line = new TLine(lead_bq.Pt(), 0.0, lead_bq.Pt(), lead_b_jet_cmp->GetMaximum());
+            // line->SetLineColor(2);
+            // line->SetLineWidth(3);
+            // line->Draw();
+            // c1->SaveAs(("iter_plots/bj_vs_bq/" + std::to_string(i) + ".png").c_str());
+
+            // delete lead_b_jet_cmp;
+            // delete line;
+            // delete c1;
         }
-        // save::save_1d_dist(w_from_lmet, "w_from_lmet", "W mass from lepton and corrected met");
-        int binmax = w_from_lmet->GetMaximumBin(); 
-        float x = w_from_lmet->GetXaxis()->GetBinCenter(binmax);
-        w_mass->Fill(x);
-        if (i % 1000 == 0)
-        {
-            std::cout << "Event #" << i << ": w_mass = " << x << std::endl;
-        }
-        // std::cout << "w_mass = " << x << std::endl;
-        delete w_from_lmet;
-        // break;
+
+        int binmax = hh_mass->GetMaximumBin(); 
+        float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
+        hh_mass_final->Fill(evt_hh_mass);
+
+        delete hh_mass;
     }
 
-    // save::save_2d_dist(met_vs_nu_px_corr, "corr_met_vs_nu_px", "MET px corr [GeV]", "nu px [GeV]");
-    // save::save_2d_dist(met_vs_nu_py_corr, "corr_met_vs_nu_py", "MET py corr [GeV]", "nu py [GeV]");
+    auto stop = std::chrono::high_resolution_clock::now();
 
-    // save::save_2d_dist(met_vs_nu_px, "met_vs_nu_px", "MET px [GeV]", "nu px [GeV]");
-    // save::save_2d_dist(met_vs_nu_py, "met_vs_nu_py", "MET py [GeV]", "nu py [GeV]");
+    // for (size_t i = 0; i < hme_prediction.size(); ++i)
+    // {   
+    //     std::string name = "hh_mass_" + std::to_string(i*1000);
+    //     save::save_1d_dist(hme_prediction[i], name.c_str(), name.c_str());
+    // }
 
+    auto duration = duration_cast<std::chrono::seconds>(stop - start);
+ 
+    std::cout << "Time taken by HME event loop: " << duration.count() << " seconds" << std::endl;
 
-    save::save_1d_dist(w_mass, "w_mass", "W mass from lepton and corrected met");
+    save::save_1d_dist(hh_mass_final, "hh_mass", "HME prediction");
 
     return 0;
 }
