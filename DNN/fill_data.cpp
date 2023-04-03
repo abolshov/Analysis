@@ -40,15 +40,14 @@
 
 float min_func(std::vector<TLorentzVector> const& parts, std::function<float(TLorentzVector const& p1, TLorentzVector const& p2)> func)
 {
-	if (std::count_if(parts.begin(), parts.end(), [](TLorentzVector const& p) { return p == TLorentzVector(0.0, 0.0, 0.0, 0.0); }) != 0)
+	TLorentzVector const zero(0.0, 0.0, 0.0, 0.0);
+
+	for (auto& particle: parts)
 	{
-		throw std::invalid_argument("input data contains zero vectors");
+		assert(particle != zero);
 	}
 
-	if (parts.size() <= 1)
-	{
-		throw std::invalid_argument("input data size is not sufficient to perform calculation");
-	}
+	assert(parts.size() > 1);
 
 	std::vector<float> tmp_v;
 	for (size_t i = 0; i < parts.size(); ++i)
@@ -63,15 +62,16 @@ float min_func(std::vector<TLorentzVector> const& parts, std::function<float(TLo
 
 float min_func(TLorentzVector const& part, std::vector<TLorentzVector> const& others, std::function<float(TLorentzVector const& p1, TLorentzVector const& p2)> func)
 {
-	if (std::count_if(others.begin(), others.end(), [](TLorentzVector const& p) { return p == TLorentzVector(0.0, 0.0, 0.0, 0.0); }) != 0 || part == TLorentzVector(0.0, 0.0, 0.0, 0.0))
+	TLorentzVector const zero(0.0, 0.0, 0.0, 0.0);
+
+	assert(part != zero);
+
+	for (auto& particle: others)
 	{
-		throw std::invalid_argument("input data contains zero vectors");
+		assert(particle != zero);
 	}
 
-	if (others.size() <= 1)
-	{
-		throw std::invalid_argument("input data size is not sufficient to perform calculation");
-	}
+	assert(others.size() > 1);
 
 	std::vector<float> tmp_v;
 	for (auto const& other: others)
@@ -118,6 +118,11 @@ std::pair<TLorentzVector, TLorentzVector> select_bjets(std::multimap<float, TLor
 			{
 				for (auto second_jet_it = jet_data.cbegin(); second_jet_it != jet_data.cend(); ++second_jet_it)
 				{
+					if (second_jet_it == med_btag_it)
+					{
+						continue;
+					}
+
 					float cur_mass_diff = abs((med_btag_it->second + second_jet_it->second).M() - 125.0);
 					if (cur_mass_diff < min_mass_diff)
 					{
@@ -148,9 +153,21 @@ std::pair<TLorentzVector, TLorentzVector> select_bjets(std::multimap<float, TLor
 	return std::make_pair(jet1, jet2);
 }
 
+std::vector<int> to_one_hot(int pdgId)
+{
+	assert(abs(pdgId) == 13 || abs(pdgId) == 11);
+
+	std::vector<int> one_hot;
+	std::map<int, int> tmp{{-13, 0}, {-11, 0}, {11, 0}, {13, 0}};
+	tmp[pdgId] += 1;
+
+	std::transform(tmp.begin(), tmp.end(), std::back_inserter(one_hot), [](auto& pair){ return pair.second;});
+	return one_hot;
+}
+
 int main() {
-	TFile *myFile = TFile::Open("out_radion_2L_2016_m400.root");
-	// TFile *myFile = TFile::Open("out_ttbar_2L_2016.root");
+	// TFile *myFile = TFile::Open("out_radion_2L_2016_m400.root");
+	TFile *myFile = TFile::Open("out_ttbar_2L_2016.root");
 	TDirectory *dir = (TDirectory*)myFile;
 	TTree *myTree = (TTree*)dir->Get("Double_Tree");
 
@@ -244,6 +261,30 @@ int main() {
 	float ak8_jet0_pz;
 	myTree->SetBranchAddress("ak8_jet0_pz", &ak8_jet0_pz);
 
+	float ak8_jet0_subjet1_E;
+	myTree->SetBranchAddress("ak8_jet0_subjet1_E", &ak8_jet0_subjet1_E);
+
+	float ak8_jet0_subjet1_px;
+	myTree->SetBranchAddress("ak8_jet0_subjet1_px", &ak8_jet0_subjet1_px);
+
+	float ak8_jet0_subjet1_py;
+	myTree->SetBranchAddress("ak8_jet0_subjet1_py", &ak8_jet0_subjet1_py);
+
+	float ak8_jet0_subjet1_pz;
+	myTree->SetBranchAddress("ak8_jet0_subjet1_pz", &ak8_jet0_subjet1_pz);
+
+	float ak8_jet0_subjet2_E;
+	myTree->SetBranchAddress("ak8_jet0_subjet2_E", &ak8_jet0_subjet2_E);
+
+	float ak8_jet0_subjet2_px;
+	myTree->SetBranchAddress("ak8_jet0_subjet2_px", &ak8_jet0_subjet2_px);
+
+	float ak8_jet0_subjet2_py;
+	myTree->SetBranchAddress("ak8_jet0_subjet2_py", &ak8_jet0_subjet2_py);
+
+	float ak8_jet0_subjet2_pz;
+	myTree->SetBranchAddress("ak8_jet0_subjet2_pz", &ak8_jet0_subjet2_pz);
+
 	float lep0_E;
 	myTree->SetBranchAddress("lep0_E", &lep0_E);
 
@@ -319,13 +360,27 @@ int main() {
 	float ak4_jet3_btagDeepFlavB;
 	myTree->SetBranchAddress("ak4_jet3_btagDeepFlavB", &ak4_jet3_btagDeepFlavB);
 
+	float ak8_jet0_tau1;
+	myTree->SetBranchAddress("ak8_jet0_tau1", &ak8_jet0_tau1);
+
+	float ak8_jet0_tau2;
+	myTree->SetBranchAddress("ak8_jet0_tau2", &ak8_jet0_tau2);
+
+	float ak8_jet0_tau3;
+	myTree->SetBranchAddress("ak8_jet0_tau3", &ak8_jet0_tau3);
+
+	float ak8_jet0_tau4;
+	myTree->SetBranchAddress("ak8_jet0_tau4", &ak8_jet0_tau4);
+
+	float ak8_jet0_msoftdrop;
+	myTree->SetBranchAddress("ak8_jet0_msoftdrop", &ak8_jet0_msoftdrop);
 
 	int nEvents = myTree->GetEntries();
     auto branches = myTree->GetListOfBranches();
     int nBranches = myTree->GetNbranches();
 	std::vector<std::string> branch_names;
 	
-	std::regex pat_jet("_jet[0-9]_[pE]");
+	std::regex pat_jet("_jet[0-9]_[pEtm]");
     std::regex pat_met("met_[pE]");
     std::regex pat_lep("lep[0-9]_[pE]");
 
@@ -342,15 +397,72 @@ int main() {
 
 	std::cout << "# branches = " << branch_names.size() << std::endl;
 
-	// std::ofstream data;
-	// data.open("data_signal.csv");
-	// data.open("data_backgr.csv");
-	// for (auto const& bName: branch_names)
-	// {
-	// 	data << bName << ",";
-	// }
-	// data << "ll_dR,ll_dPhi,ll_mass,llmet_dPhi,leadl_ak4jet_mindR,subl_ak4jet_mindR,min_jet_dR,min_jet_dPhi,lmet_mass,";
-	// data << "dnn_truth_value" << "\n";
+	// std::copy(branch_names.begin(), branch_names.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
+
+	int same_bjets = 0;
+
+	// the following 8 lines are needed to sort names of branches according to output of to_one_hot
+	// map is ordered and sorted by key by default
+	std::map<int, std::string> l0_map{{-13, "l0_anti_muon"}, {11, "l0_ele"}, {13, "l0_muon"}, {-11, "l0_anti_ele"}};
+	std::map<int, std::string> l1_map{{-13, "l1_anti_muon"}, {11, "l1_ele"}, {13, "l1_muon"}, {-11, "l1_anti_ele"}};
+	std::vector<std::string> one_hot_l0_names;
+	std::vector<std::string> one_hot_l1_names;
+
+	std::transform(l0_map.begin(), l0_map.end(), std::back_inserter(one_hot_l0_names), [](auto& pair){ return pair.second;});
+	// std::copy(one_hot_l0_names.begin(), one_hot_l0_names.end(), std::ostream_iterator<std::string>(std::cout, ","));
+	std::transform(l1_map.begin(), l1_map.end(), std::back_inserter(one_hot_l1_names), [](auto& pair){ return pair.second;});
+	// std::copy(one_hot_l1_names.begin(), one_hot_l1_names.end(), std::ostream_iterator<std::string>(std::cout, ","));
+
+	// std::vector<std::string> one_hot_l0_names{"l0_anti_muon", "l0_anti_ele", "l0_ele", "l0_muon"};
+	// std::vector<std::string> one_hot_l1_names{"l1_anti_muon", "l1_anti_ele", "l1_ele", "l1_muon"};
+
+	bool write_to_file = true;
+	std::ofstream data;
+	if (write_to_file)
+	{
+		// data.open("data_signal.csv");
+		data.open("data_backgr.csv");
+
+		// basic kinematics
+		for (auto const& bName: branch_names)
+		{
+			if (bName == "lep0_pdgId" || bName == "lep1_pdgId")
+			{
+				continue;
+			}
+			data << bName << ",";
+		} 
+
+		// one-hot encoded leptons pdgId names
+		std::ostream_iterator<std::string> out_it(data, ",");
+		std::copy(one_hot_l0_names.begin(), one_hot_l0_names.end(), out_it);
+		std::copy(one_hot_l1_names.begin(), one_hot_l1_names.end(), out_it);
+
+		// high-level kinematics
+		data << "ll_dR,"
+			<< "ll_dPhi," 
+			<< "ll_mass," 
+			<< "llmet_dPhi,"
+			<< "leadl_ak4jet_mindR,"
+			<< "subl_ak4jet_mindR,"
+			<< "min_jet_dR,"
+			<< "min_jet_dPhi,"
+			<< "lmet_mass,"
+			<< "llmet_transverse_mass,"
+			<< "llbbmet_mass," 
+			<< "subj_l_mindR,"
+			<< "leadj_l_mindR," 
+			<< "llbb_dPhi,"
+			<< "llbb_dR,"
+			<< "bb_mass,"
+			<< "bbmet_dPhi," 
+			<< "bb_dPhi," 
+			<< "bb_dR," 
+			<< "lep0_conept," 
+			<< "lep1_conept,"
+			<< "n_btagged_ak4_jets,";
+		data << "dnn_truth_value" << "\n";
+	}
 
 	std::map<int, int> btag_counts;
 	btag_counts[0] = 0;
@@ -359,17 +471,28 @@ int main() {
 	btag_counts[3] = 0;
 	btag_counts[4] = 0;
 
-	std::map<int, int> zero_jet_couns;
-	zero_jet_couns[0] = 0;
-	zero_jet_couns[1] = 0;
-	zero_jet_couns[2] = 0;
-	zero_jet_couns[3] = 0;
-	zero_jet_couns[4] = 0;
+	std::map<int, int> zero_ak4jet_counts;
+	zero_ak4jet_counts[0] = 0;
+	zero_ak4jet_counts[1] = 0;
+	zero_ak4jet_counts[2] = 0;
+	zero_ak4jet_counts[3] = 0;
+	zero_ak4jet_counts[4] = 0;
+
+	std::map<int, int> nonzero_ak4jet_counts;
+	nonzero_ak4jet_counts[0] = 0;
+	nonzero_ak4jet_counts[1] = 0;
+	nonzero_ak4jet_counts[2] = 0;
+	nonzero_ak4jet_counts[3] = 0;
+	nonzero_ak4jet_counts[4] = 0;
 
 	std::map<int, int> zero_lep_couns;
 	zero_lep_couns[0] = 0;
 	zero_lep_couns[1] = 0;
 	zero_lep_couns[2] = 0;
+
+	std::map<std::string, int> jet_counts;
+	jet_counts["boosted"] = 0;
+	jet_counts["resolved"] = 0;
 
 	int bad_jet_event_count = 0;
 	int invalid_jet_event_count = 0;
@@ -386,11 +509,12 @@ int main() {
 	int n_equal_lep = 0;
 	int n_equal_jet = 0;
 	TLorentzVector const null(0.0, 0.0, 0.0, 0.0);
+	std::cout << "nEvents = " << nEvents << std::endl;
 	for (size_t i = 0; i < nEvents; ++i)
 	{
 		myTree->GetEntry(i);
 
-		TLorentzVector l0, l1, met, ak4jet0, ak4jet1, ak4jet2, ak4jet3;
+		TLorentzVector l0, l1, met, ak4jet0, ak4jet1, ak4jet2, ak4jet3, ak8jet0, ak8jet0_subjet1, ak8jet0_subjet2;
 		l0.SetPxPyPzE(lep0_px, lep0_py, lep0_pz, lep0_E);
 		l1.SetPxPyPzE(lep1_px, lep1_py, lep1_pz, lep1_E);
 		met.SetPxPyPzE(met_px, met_py, met_pz, met_E);
@@ -398,6 +522,10 @@ int main() {
 		ak4jet1.SetPxPyPzE(ak4_jet1_px, ak4_jet1_py, ak4_jet1_pz, ak4_jet1_E);
 		ak4jet2.SetPxPyPzE(ak4_jet2_px, ak4_jet2_py, ak4_jet2_pz, ak4_jet2_E);
 		ak4jet3.SetPxPyPzE(ak4_jet3_px, ak4_jet3_py, ak4_jet3_pz, ak4_jet3_E);
+
+		ak8jet0.SetPxPyPzE(ak8_jet0_px, ak8_jet0_py, ak8_jet0_pz, ak8_jet0_E);
+		ak8jet0_subjet1.SetPxPyPzE(ak8_jet0_subjet1_px, ak8_jet0_subjet1_py, ak8_jet0_subjet1_pz, ak8_jet0_subjet1_E);
+		ak8jet0_subjet2.SetPxPyPzE(ak8_jet0_subjet2_px, ak8_jet0_subjet2_py, ak8_jet0_subjet2_pz, ak8_jet0_subjet2_E);
 
 		std::vector<TLorentzVector> jets = {ak4jet0, ak4jet1, ak4jet2, ak4jet3};
 		std::vector<TLorentzVector> leptons = {l0, l1};
@@ -409,11 +537,30 @@ int main() {
 
 		std::function<bool(TLorentzVector const&)> is_null = [&null](TLorentzVector const& p) { return p == null; };
 
-		int n_zero_jets = std::count_if(jets.begin(), jets.end(), is_null);
-		zero_jet_couns[n_zero_jets] += 1;
+		int n_zero_ak4jets = std::count_if(jets.begin(), jets.end(), is_null);
+		zero_ak4jet_counts[n_zero_ak4jets] += 1;
+		nonzero_ak4jet_counts[4 - n_zero_ak4jets] += 1;
 
 		int n_zero_lep = std::count_if(leptons.begin(), leptons.end(), is_null);
 		zero_lep_couns[n_zero_lep] += 1;
+
+		bool resolved = (n_zero_ak4jets == 0 && n_zero_btags == 0);
+		bool boosted = ((n_zero_ak4jets == 1 || n_zero_ak4jets == 2) && ak8jet0 != null && ak8jet0_subjet1 != null && ak8jet0_subjet2 != null);
+
+		if (boosted)
+		{
+			jet_counts["boosted"] += 1;
+			jets.push_back(ak8jet0_subjet1);
+			jets.push_back(ak8jet0_subjet2);
+			// std::copy(btagScores.begin(), btagScores.end(), std::ostream_iterator<float>(std::cout, " "));
+			// std::cout << "\n";
+		}
+		
+
+		if (resolved)
+		{
+			jet_counts["resolved"] += 1;
+		}
 
 		if (n_zero_lep == 0)
 		{
@@ -421,7 +568,9 @@ int main() {
 				++n_equal_lep;
 		}
 
-		bool valid_event = (n_zero_jets < 3 && n_zero_btags < 3 && l0 != null && l1 != null);
+		// bool valid_event = (n_zero_jets < 3 && n_zero_btags < 3 && l0 != null && l1 != null);
+		// bool valid_event = (n_zero_ak4jets == 0 && n_zero_btags == 0 && l0 != null && l1 != null && ak8jet0 != null);
+		bool valid_event = (resolved || boosted) && l0 != null && l1 != null;
 
 		if (!valid_event)
 		{
@@ -440,14 +589,6 @@ int main() {
 			}
 		}
 
-		std::transform(btagScores.begin(), 
-					   btagScores.end(), 
-					   jets.begin(), 
-					   std::inserter(jet_data, jet_data.end()), 
-					   [](float a, TLorentzVector b) { return std::make_pair(a, b); });
-
-		jet_data.erase(0); // now it contains only jets with nonzero momentum and btagging score
-
 		std::function<void(std::pair<float, TLorentzVector> const&)> print_jet_data = [](std::pair<float, TLorentzVector> const& p) 
 		{ 
 			std::cout << p.first << ": (" << p.second.E() << ", " 
@@ -455,7 +596,55 @@ int main() {
 										  << p.second.Py() << ", "
 										  << p.second.Pz() << ")\n"; 
 		};
-		// std::for_each(jet_data.begin(), jet_data.end(), print_jet_data);
+
+		// insert ak4 jets into map with their btagging scores
+		std::transform(btagScores.begin(), 
+					   btagScores.end(), 
+					   jets.begin(), 
+					   std::inserter(jet_data, jet_data.end()), 
+					   [](float a, TLorentzVector b) { return std::make_pair(a, b); });
+
+		// in boosted event (2 or 3 ak4 jets and ak8 jet with 2 subjets) add subjets
+		// the're assigned btagging score 1 because I don't know their btagging score and I want to preserve the original selection rule:
+		// if there is a jet with medium btagging score, select the remaing jet so that invariant mass is closest to higgs mass
+		// if there are no jets with medium btagging score, select the best pair by invariant mass criterion
+		if (boosted)
+		{
+			jet_data.insert(std::make_pair(1.0, ak8jet0_subjet1));
+			jet_data.insert(std::make_pair(1.0, ak8jet0_subjet2));
+			// std::cout << "boosted:\n";
+			// std::for_each(jet_data.begin(), jet_data.end(), print_jet_data);
+			// std::cout << "-----------------------------------\n";
+		}
+
+		jet_data.erase(0); // now it contains only jets with nonzero momentum and btagging score
+
+		std::vector<int> l0_one_hot = to_one_hot(lep0_pdgId);
+		// std::cout << "event #" << i << ", lep0_pdgId = " << lep0_pdgId << "; l0_one_hot = ( ";
+		// std::copy(l0_one_hot.begin(), l0_one_hot.end(), std::ostream_iterator<int>(std::cout, " "));
+		// std::cout << ")" << std::endl;
+		std::vector<int> l1_one_hot = to_one_hot(lep1_pdgId);
+		// std::cout << "event #" << i << ", lep1_pdgId = " << lep1_pdgId << "; l1_one_hot = ( ";
+		// std::copy(l1_one_hot.begin(), l1_one_hot.end(), std::ostream_iterator<int>(std::cout, " "));
+		// std::cout << ")" << std::endl;
+		// std::cout << "-------------------------------------------------\n";
+
+
+		// for (auto const& jet: jet_data)
+		// {
+		// 	if (is_null(jet.second))
+		// 	{
+		// 		std::for_each(jet_data.begin(), jet_data.end(), print_jet_data);
+		// 		std::cout << "-------------------------------------------------\n";
+		// 	}
+		// 	break;
+		// }
+
+		// if (std::find_if(jet_data.begin(), jet_data.end(), is_null))
+		// {
+		// 	std::for_each(jet_data.begin(), jet_data.end(), print_jet_data);
+		// 	std::cout << "-------------------------------------------------\n";
+		// }
 
 		std::pair<TLorentzVector, TLorentzVector> jets_from_h;
 		try 
@@ -492,8 +681,26 @@ int main() {
 			}
 		}
 
+		// if (is_null(lead_j) || is_null(sub_j))
+		// {
+		// 	std::cout << "jet from h is null in event " << i << std::endl;
+		// }
+
 		float bb_dR = lead_j.DeltaR(sub_j);
 		float bb_dPhi = lead_j.DeltaPhi(sub_j);
+		if (bb_dR == 0.0 || bb_dPhi == 0.0)
+		{
+
+			std::cout << "Event #" << i << ":" << std::endl;
+			std::cout << "lead_j: ";
+			print_4vector(lead_j);
+			std::cout << "sub_j: ";
+			print_4vector(sub_j);
+			std::for_each(jet_data.begin(), jet_data.end(), print_jet_data);
+			// std::for_each(jets.begin(), jets.end(), print_4vector);
+			++same_bjets;
+			std::cout << "---------------------------------------\n";
+		}
 		float bbmet_dPhi = met.DeltaPhi(lead_j + sub_j);
 		float bb_mass = (lead_j + sub_j).M();
 
@@ -527,6 +734,29 @@ int main() {
 
 		// just in case, remove all zero vectors from jet collection
 		jets.erase(std::remove_if(jets.begin(), jets.end(), is_null), jets.end());
+		
+		// if (std::count_if(jets.begin(), jets.end(), [](TLorentzVector const& p) { return p == TLorentzVector(0.0, 0.0, 0.0, 0.0); }) != 0)
+		// {
+		// 	std::cout << "Event " << i << " contains zero vectors:\n";
+		// 	std::for_each(jets.begin(), jets.end(), print_4vector);
+		// 	std::cout << "---------------------------------------\n";
+		// }
+
+		// for (auto const& jet: jets)
+		// {
+		// 	if (is_null(jet))
+		// 	{
+		// 		std::for_each(jets.begin(), jets.end(), print_4vector);
+		// 		std::cout << "---------------------------------------\n";
+		// 		break;
+		// 	}
+		// }
+
+		// if (boosted)
+		// {
+		// 	std::for_each(jets.begin(), jets.end(), print_4vector);
+		// 	std::cout << "---------------------------------------\n";
+		// }
 
 		float leadl_ak4jet_mindR = min_func(lead_l, jets, dR);
 		float subl_ak4jet_mindR = min_func(sub_l, jets, dR);
@@ -544,9 +774,24 @@ int main() {
 		float dphi_llmet = TVector2::Phi_mpi_pi((l0 + l1).Phi() - met.Phi());
 		llmet_transverse_mass = sqrt(2.0*(l0 + l1).Pt()*met.Pt()*(1 - cos(dphi_llmet)));
 
+		int n_btagged_ak4_jets;
+		if (resolved)
+		{
+			n_btagged_ak4_jets = jet_data.size();
+		}
+		if (boosted)
+		{
+			n_btagged_ak4_jets = jet_data.size() - 2;
+		}
+		if (n_btagged_ak4_jets <= 0)
+		{
+			std::cout << "Event #" << i << ": n_btagged_ak4_jets <= 0\n";
+		}
+
 		// std::cout << "llmet_transverse_mass = " << llmet_transverse_mass << std::endl;
 
-		// std::cout << "ll_dR = " << ll_dR << "\n" 
+		// std::cout << "Event: " << i << std::endl
+		// 		  << "ll_dR = " << ll_dR << "\n" 
 		// 		  << "ll_dPhi = " << ll_dPhi << "\n"
 		// 		  << "ll_mass = " << ll_mass << "\n"
 		// 		  << "llmet_dPhi = " << llmet_dPhi << "\n"
@@ -571,80 +816,114 @@ int main() {
 	
 		// break;
 
-		// data << ak4_jet0_E << ","
-		// 	 << ak4_jet0_phi << ","
-		// 	 << ak4_jet0_pt << ","
-		// 	 << ak4_jet0_px << ","
-		// 	 << ak4_jet0_py << ","
-		// 	 << ak4_jet0_pz << ","
-		// 	 << ak4_jet1_E << ","
-		// 	 << ak4_jet1_phi << ","
-		// 	 << ak4_jet1_pt << ","
-		// 	 << ak4_jet1_px << ","
-		// 	 << ak4_jet1_py << ","
-		// 	 << ak4_jet1_pz << ","
-		// 	 << ak4_jet2_E << ","
-		// 	 << ak4_jet2_phi << ","
-		// 	 << ak4_jet2_pt << ","
-		// 	 << ak4_jet2_px << ","
-		// 	 << ak4_jet2_py << ","
-		// 	 << ak4_jet2_pz << ","
-		// 	 << ak4_jet3_E << ","
-		// 	 << ak4_jet3_phi << ","
-		// 	 << ak4_jet3_pt << ","
-		// 	 << ak4_jet3_px << ","
-		// 	 << ak4_jet3_py << ","
-		// 	 << ak4_jet3_pz << ","
-		// 	 << ak8_jet0_E << ","
-		// 	 << ak8_jet0_phi << ","
-		// 	 << ak8_jet0_pt << ","
-		// 	 << ak8_jet0_px << ","
-		// 	 << ak8_jet0_py << ","
-		// 	 << ak8_jet0_pz << ","
-		// 	 << lep0_E << ","
-		// 	 << lep0_pdgId << ","
-		// 	 << lep0_phi << ","
-		// 	 << lep0_pt << ","
-		// 	 << lep0_px << ","
-		// 	 << lep0_py << ","
-		// 	 << lep0_pz << ","
-		// 	 << lep1_E << ","
-		// 	 << lep1_pdgId << ","
-		// 	 << lep1_phi << ","
-		// 	 << lep1_pt << ","
-		// 	 << lep1_px << ","
-		// 	 << lep1_py << ","
-		// 	 << lep1_pz << ","
-		// 	 << met_E << ","
-		// 	 << met_px << ","
-		// 	 << met_py << ","
-		// 	 << met_pz << ","
-		//   << ll_dR << ","
-		// 	 << ll_dPhi << ","
-		// 	 << ll_mass << ","
-		// 	 << llmet_dPhi << ","
-		// 	 << leadl_ak4jet_mindR << ","
-		// 	 << subl_ak4jet_mindR << ","
-		// 	 << min_jet_dR << ","
-		// 	 << min_jet_dPhi << ","
-		// 	 << lmet_mass << ","
-		// 	 << dnn_truth_value << "\n";
+		if (write_to_file)
+		{
+			// basic kinematics
+			data << ak4_jet0_E << ","
+				 << ak4_jet0_phi << ","
+				 << ak4_jet0_pt << ","
+				 << ak4_jet0_px << ","
+				 << ak4_jet0_py << ","
+				 << ak4_jet0_pz << ","
+				 << ak4_jet1_E << ","
+				 << ak4_jet1_phi << ","
+				 << ak4_jet1_pt << ","
+				 << ak4_jet1_px << ","
+				 << ak4_jet1_py << ","
+				 << ak4_jet1_pz << ","
+				 << ak4_jet2_E << ","
+				 << ak4_jet2_phi << ","
+				 << ak4_jet2_pt << ","
+				 << ak4_jet2_px << ","
+				 << ak4_jet2_py << ","
+				 << ak4_jet2_pz << ","
+				 << ak4_jet3_E << ","
+				 << ak4_jet3_phi << ","
+				 << ak4_jet3_pt << ","
+				 << ak4_jet3_px << ","
+				 << ak4_jet3_py << ","
+				 << ak4_jet3_pz << ","
+				 << ak8_jet0_E << ","
+				 << ak8_jet0_msoftdrop << ","
+				 << ak8_jet0_phi << ","
+				 << ak8_jet0_pt << ","
+				 << ak8_jet0_px << ","
+				 << ak8_jet0_py << ","
+				 << ak8_jet0_pz << ","
+				 << ak8_jet0_tau1 << ","
+				 << ak8_jet0_tau2 << ","
+				 << ak8_jet0_tau3 << ","
+				 << ak8_jet0_tau4 << ","
+				 << lep0_E << ","
+				 << lep0_phi << ","
+				 << lep0_pt << ","
+				 << lep0_px << ","
+				 << lep0_py << ","
+				 << lep0_pz << ","
+				 << lep1_E << ","
+				 << lep1_phi << ","
+				 << lep1_pt << ","
+				 << lep1_px << ","
+				 << lep1_py << ","
+				 << lep1_pz << ","
+				 << met_E << ","
+				 << met_px << ","
+				 << met_py << ","
+				 << met_pz << ",";
+
+			// one-hot encoded leptons pdgId
+			std::copy(l0_one_hot.begin(), l0_one_hot.end(), std::ostream_iterator<int>(data, ","));
+			std::copy(l1_one_hot.begin(), l1_one_hot.end(), std::ostream_iterator<int>(data, ","));
+
+			// high-level kinematics
+			data << ll_dR << "," 
+				 << ll_dPhi << ","
+				 << ll_mass << ","
+				 << llmet_dPhi << ","
+				 << leadl_ak4jet_mindR << ","
+				 << subl_ak4jet_mindR << ","
+				 << min_jet_dR << ","
+				 << min_jet_dPhi << ","
+				 << lmet_mass << ","
+				 << llmet_transverse_mass << ","
+				 << llbbmet_mass << ","
+				 << subj_l_mindR << ","
+				 << leadj_l_mindR << ","
+				 << llbb_dPhi << ","
+				 << llbb_dR << ","
+				 << bb_mass << ","
+				 << bbmet_dPhi << ","
+			 	 << bb_dPhi << ","
+				 << bb_dR << ","
+				 << lep0_conept << ","
+				 << lep1_conept << ","
+				 << n_btagged_ak4_jets << ","
+				 << dnn_truth_value << "\n";
+		}
 		// break;
 	}
 
 	std::cout << "---------------------------\n";
 	std::for_each(btag_counts.begin(), btag_counts.end(), [](std::pair<int, int> const& p) { std::cout << p.first << " b-tagged jet(s): " << p.second << std::endl; });
 	std::cout << "---------------------------\n";
-	std::for_each(zero_jet_couns.begin(), zero_jet_couns.end(), [](std::pair<int, int> const& p) { std::cout << p.first << " zero jet(s): " << p.second << std::endl; });
+	std::for_each(zero_ak4jet_counts.begin(), zero_ak4jet_counts.end(), [](std::pair<int, int> const& p) { std::cout << p.first << " zero jet(s): " << p.second << std::endl; });
 	std::cout << "---------------------------\n";
 	std::for_each(zero_lep_couns.begin(), zero_lep_couns.end(), [](std::pair<int, int> const& p) { std::cout << p.first << " zero lepton(s): " << p.second << std::endl; });
+	std::cout << "---------------------------\n";
+	std::for_each(jet_counts.begin(), jet_counts.end(), [](std::pair<std::string, int> const& p) { std::cout << p.first << ": " << p.second << std::endl; });
 	std::cout << "---------------------------\n";
 	std::cout << "b jets not selected: invalid_jet_event_count = " << invalid_jet_event_count << std::endl;
 	std::cout << "higgs from bb mass wrong: bad_jet_event_count = " << bad_jet_event_count << std::endl;
 	std::cout << "Total events skipped n_skipped = " << n_skipped << std::endl;
+	std::cout << "Total events with same b jets = " << same_bjets << std::endl;
 	std::cout << "Total events with equal leptons n_equal_lep = " << n_equal_lep << std::endl;
 	std::cout << "Total events with equal jets n_equal_jet = " << n_equal_jet << std::endl;
 	std::cout << "---------------------------\n";
-	// data.close();
+	
+	if (write_to_file)
+	{
+		data.close();
+	}
+
 	return 0;
 }
