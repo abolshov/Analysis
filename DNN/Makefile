@@ -32,6 +32,6 @@ fill: fill_data.cpp
 	g++ -g -O2 -std==c++17 `root-config --cflags --glibs ` -lSpectrum fill_data.cpp -o fill
 
 clean:
-	rm -f convert
-	rm -f prep
+	rm -f fill
+	rm -f gen
 	rm -f *~
