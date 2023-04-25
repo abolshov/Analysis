@@ -1,9 +1,11 @@
 #include "tools.hpp"
+
 #include <iostream>
+#include <memory>
 
 void save::save_1d_dist(TH1F* dist, 
-                         std::string const& name,
-                         std::string const& title)
+                        std::string const& name,
+                        std::string const& title)
 {
     TCanvas* c1 = new TCanvas("c1", "c1");
 
@@ -127,22 +129,179 @@ std::pair<float, float> jet::compute_resc_factors(TLorentzVector& p1,
 
     float universal_corr = mass/(p1+p2).M();
     return std::make_pair(universal_corr, universal_corr);
+}
 
-    // if (x2 < 0)
-    // {
-    //     std::cout << "No solution: negative scalar product of jet momenta" << std::endl; 
-    //     return std::make_pair(universal_corr, universal_corr);
-    // }
-    // if ((x2*x2 - 4*x1*x3) < 0 || x1 == 0)
-    // {
-    //     std::cout << "No solution: negative discriminiant" << std::endl;
-    //     return std::make_pair(universal_corr, universal_corr);
-    // }
-    // float trail_rescale_factor = (-x2 + sqrt(x2*x2 - 4*x1*x3))/(2*x1);
-    // if (trail_rescale_factor < 0)
-    // {
-    //     std::cout << "No solution: negative trailing jet rescaling factor" << std::endl;
-    //     return std::make_pair(universal_corr, universal_corr);
-    // }
-    // return std::make_pair(lead_rescale_factor, trail_rescale_factor);
+float hme::hme_simplified(std::vector<TLorentzVector> const& particles)
+{
+    float mass = -1.0;
+
+    float mh = 125.0;
+    TLorentzVector b1 = particles[0];
+    TLorentzVector b2 = particles[1];
+    TLorentzVector j1 = particles[2];
+    TLorentzVector j2 = particles[3];
+    TLorentzVector l = particles[4];
+    TLorentzVector met = particles[5];
+
+    // float universal_corr = mh/(b1+b2).M();
+
+    // b1 *= universal_corr;
+    // b2 *= universal_corr;
+
+    TLorentzVector vis = (l + j1 + j2);
+    float a = mh*mh - vis.M()*vis.M() + 2.0*vis.Px()*met.Px() + 2.0*vis.Py()*met.Py();
+    float A = 4.0*(vis.E()*vis.E() - vis.Pz()*vis.Pz());
+    float B = -4.0*a*vis.Pz();
+    float C = -4.0*vis.E()*vis.E()*(met.Px()*met.Px() + met.Py()*met.Py()) - a*a;
+    float delta = B*B - 4.0*A*C;
+
+    if (delta < 0.0f) return mass;
+
+    float pz_1 = (-B + sqrt(delta))/(2.0*A);
+    float pz_2 = (-B - sqrt(delta))/(2.0*A);
+
+    TLorentzVector nu1, nu2;
+    nu1.SetPxPyPzE(met.Px(), met.Py(), pz_1, met.E());
+    nu2.SetPxPyPzE(met.Px(), met.Py(), pz_2, met.E());
+
+    TLorentzVector h_nu1 = (l + nu1 + j1 + j2);
+    TLorentzVector h_nu2 = (l + nu2 + j1 + j2);
+
+    TLorentzVector nu;
+    if (abs(h_nu1.M() - 125.0) < abs(h_nu2.M() - 125.0))
+    {
+        nu = nu1;
+    }
+    else
+    {
+        nu = nu2;
+    }
+
+    float tmp_hh_mass = (l + nu + j1 + j2 + b1 + b2).M();
+    mass = tmp_hh_mass;
+    return mass;
+}
+
+float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg)
+{
+    TLorentzVector b1 = particles[0];
+    TLorentzVector b2 = particles[1];
+    TLorentzVector j1 = particles[2];
+    TLorentzVector j2 = particles[3];
+    TLorentzVector l = particles[4];
+    TLorentzVector nu = particles[5];
+    TLorentzVector met = particles[6];
+
+    TH1F* lead_bjet_pdf = pdfs[0];
+    TH1F* lead_on = pdfs[1];
+    TH1F* lead_off = pdfs[2];
+    TH1F* onshell_w_from_qq = pdfs[3];
+    TH1F* offshell_w_from_qq = pdfs[4];
+    TH1F* h_mass = pdfs[5];
+
+    float const met_sigma = 25.2;
+
+    std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", 80, 0.0, 2000.0);
+
+    rg.SetSeed(0);
+    for (size_t i = 0; i < nIter; ++i)
+    {
+        float nu_eta = rg.Uniform(-6, 6);
+        std::pair<float, float> light_jet_resc;
+
+        if (jet::is_offshell(j1, j2, l, nu))
+        {
+            light_jet_resc = jet::compute_resc_factors(j1, j2, lead_off, offshell_w_from_qq);
+        }
+        else
+        {
+            light_jet_resc = jet::compute_resc_factors(j1, j2, lead_on, onshell_w_from_qq);
+        }
+
+        std::pair<float, float> b_jet_resc = jet::compute_resc_factors(b1, b2, lead_bjet_pdf, h_mass);
+
+        float dpx = rg.Gaus(0, met_sigma);
+        float dpy = rg.Gaus(0, met_sigma);
+
+        float c1 = b_jet_resc.first;
+        float c2 = b_jet_resc.second;
+        float c3 = light_jet_resc.first;
+        float c4 = light_jet_resc.second;
+
+        TLorentzVector met_corr;
+
+        float met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
+        float met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - (c3 - 1)*j1.Py() - (c4 - 1)*j2.Py();
+
+        met_corr.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
+
+        TLorentzVector nu_corr;
+        nu_corr.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
+
+        float tmp_hh_mass = (c1*b1 + c2*b2 + c3*j1 + c4*j2 + nu_corr + l).M();
+        hh_mass->Fill(tmp_hh_mass);
+    }
+
+    int binmax = hh_mass->GetMaximumBin(); 
+    float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
+
+    return evt_hh_mass;
+}
+
+float hme::hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_mass, int nIter, TRandom3& rg)
+{
+    TLorentzVector b1 = particles[0];
+    TLorentzVector b2 = particles[1];
+    TLorentzVector j1 = particles[2];
+    TLorentzVector j2 = particles[3];
+    TLorentzVector l = particles[4];
+    TLorentzVector met = particles[5];
+
+    std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", 80, 0.0, 2000.0);
+
+    rg.SetSeed(0);
+    for (size_t i = 0; i < nIter; ++i)
+    {
+        float mh = h_mass->GetRandom();
+        float universal_corr = mh/(b1+b2).M();
+        b1 *= universal_corr;
+        b2 *= universal_corr;
+
+        TLorentzVector vis = (l + j1 + j2);
+        float a = mh*mh - vis.M()*vis.M() + 2.0*vis.Px()*met.Px() + 2.0*vis.Py()*met.Py();
+        float A = 4.0*(vis.E()*vis.E() - vis.Pz()*vis.Pz());
+        float B = -4.0*a*vis.Pz();
+        float C = -4.0*vis.E()*vis.E()*(met.Px()*met.Px() + met.Py()*met.Py()) - a*a;
+        float delta = B*B - 4.0*A*C;
+
+        if (delta < 0.0f) continue;
+
+        float pz_1 = (-B + sqrt(delta))/(2.0*A);
+        float pz_2 = (-B - sqrt(delta))/(2.0*A);
+
+        TLorentzVector nu1, nu2;
+        nu1.SetPxPyPzE(met.Px(), met.Py(), pz_1, met.E());
+        nu2.SetPxPyPzE(met.Px(), met.Py(), pz_2, met.E());
+
+        TLorentzVector h_nu1 = (l + nu1 + j1 + j2);
+        TLorentzVector h_nu2 = (l + nu2 + j1 + j2);
+
+        TLorentzVector nu;
+        if (abs(h_nu1.M() - 125.0) < abs(h_nu2.M() - 125.0))
+        {
+            nu = nu1;
+        }
+        else
+        {
+            nu = nu2;
+        }
+
+        float tmp_hh_mass = (l + nu + j1 + j2 + b1 + b2).M();
+        hh_mass->Fill(tmp_hh_mass);
+    }
+
+    int binmax = hh_mass->GetMaximumBin(); 
+    float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
+
+    return evt_hh_mass;
 }

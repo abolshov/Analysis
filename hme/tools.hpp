@@ -11,6 +11,7 @@
 #include "TLegend.h"
 #include "THStack.h"
 #include "TLorentzVector.h"
+#include "TRandom3.h"
 
 namespace save 
 {
@@ -33,5 +34,13 @@ namespace jet
 
     std::pair<float, float> compute_resc_factors(TLorentzVector& p1, TLorentzVector& p2, TH1F* lead_jet_pdf, TH1F* mass_pdf);
 }
+
+namespace hme
+{
+    float hme_simplified(std::vector<TLorentzVector> const& particles);
+    float hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_mass, int nIter, TRandom3& rg);
+    float hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg);
+}
+
 
 #endif

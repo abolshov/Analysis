@@ -143,16 +143,17 @@ int main()
     TRandom3 rg;
     float mh = 125.0;
 
-    TH1F* hh_mass_final = new TH1F("hh_mass", "HME prediction", nbins, 0.0, 1500.0);
+    TH1F* hh_mass_final = new TH1F("hh_mass", "Random Sampling HME HME", 30, 0.0, 1500.0);
+    TH1F* hme_mass_final_simplified = new TH1F("hh_mass", "simplified HME", 30, 0.0, 1500.0);
+    TH1F* hme_mass_final_simpl_impr = new TH1F("hh_mass", "Simplified Improved HME", 30, 0.0, 1500.0);
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    // int seed;
-    std::ofstream file;
-    file.open("debug.log");
+    // std::ofstream file;
+    // file.open("debug.log");
 
     TLorentzVector zero(0.0, 0.0, 0.0, 0.0);
-    std::vector<float> repetitions;
+    int fails = 0;
 
     for (size_t i = 2; i < nEvents; ++i)
     {
@@ -167,135 +168,143 @@ int main()
         nu.SetPtEtaPhiM(gennu_pt, gennu_eta, gennu_phi, gennu_mass);
         met.SetPtEtaPhiM(genMET_pT, 0.0, genMET_phi, 0.0);
 
-        TLorentzVector met_corr;
-
-        TH1F* hh_mass = new TH1F(("hh_mass_" + std::to_string(i)).c_str(), ("hh_mass_" + std::to_string(i)).c_str(), 2001, 0.0, 2000.0);
-
-        std::ofstream evt_file;
-        evt_file.open("log/debug_" + std::to_string(i) + ".txt");
-
-        if (i % 1000 == 0)
-        {
-            file << "Event #" << i << ":\n";
-
-            file << "-- b jet 1 = (" << b1.Px() << ", " << b1.Py() << ", " << b1.Pz() << ", " << b1.E() << ")\n"; 
-            file << "-- b jet 2 = (" << b2.Px() << ", " << b2.Py() << ", " << b2.Pz() << ", " << b2.E() << ")\n";
-
-            file << "-- W jet 1 = (" << j1.Px() << ", " << j1.Py() << ", " << j1.Pz() << ", " << j1.E() << ")\n"; 
-            file << "-- W jet 2 = (" << j2.Px() << ", " << j2.Py() << ", " << j2.Pz() << ", " << j2.E() << ")\n";
-
-            file << "-- lepton = (" << l.Px() << ", " << l.Py() << ", " << l.Pz() << ", " << l.E() << ")\n"; 
-            file << "-- nu = (" << nu.Px() << ", " << nu.Py() << ", " << nu.Pz() << ", " << nu.E() << ")\n";
-
-            file << "-- met = (" << met.Px() << ", " << met.Py() << ", " << met.Pz() << ", " << met.E() << ")\n";
-
-            evt_file << "-- b jet 1 = (" << b1.Px() << ", " << b1.Py() << ", " << b1.Pz() << ", " << b1.E() << ")\n"; 
-            evt_file << "-- b jet 2 = (" << b2.Px() << ", " << b2.Py() << ", " << b2.Pz() << ", " << b2.E() << ")\n";
-
-            evt_file << "-- W jet 1 = (" << j1.Px() << ", " << j1.Py() << ", " << j1.Pz() << ", " << j1.E() << ")\n"; 
-            evt_file << "-- W jet 2 = (" << j2.Px() << ", " << j2.Py() << ", " << j2.Pz() << ", " << j2.E() << ")\n";
-
-            evt_file << "-- lepton = (" << l.Px() << ", " << l.Py() << ", " << l.Pz() << ", " << l.E() << ")\n"; 
-            evt_file << "-- nu = (" << nu.Px() << ", " << nu.Py() << ", " << nu.Pz() << ", " << nu.E() << ")\n";
-
-            evt_file << "-- met = (" << met.Px() << ", " << met.Py() << ", " << met.Pz() << ", " << met.E() << ")\n";
-        }
-      
+        // Random Sampling HME
         rg.SetSeed(0);
-        // seed = time(NULL);
-        // rg.SetSeed(seed + i);
-        // loop over iterations
-        for (size_t j = 0; j < nIter; ++j)
-        {
-            // rg.SetSeed(j);
-            float nu_eta = rg.Uniform(-6, 6);
-            std::pair<float, float> light_jet_resc;
+        float evt_hh_mass = hme::hme_rand_sampl({b1, b2, j1, j2, l, nu, met}, {lead_bjet_pdf, lead_on, lead_off, onshell_w_from_qq, offshell_w_from_qq, h_mass}, nIter, rg);
+        hh_mass_final->Fill(evt_hh_mass);
 
-            if (jet::is_offshell(j1, j2, l, nu))
-            {
-                light_jet_resc = jet::compute_resc_factors(j1, j2, lead_off, offshell_w_from_qq);
-            }
-            else
-            {
-                light_jet_resc = jet::compute_resc_factors(j1, j2, lead_on, onshell_w_from_qq);
-            }
+        // Simplified improved hme
+        evt_hh_mass = hme::hme_simpl_impr({b1, b2, j1, j2, l, met}, h_mass, nIter, rg);
+        hme_mass_final_simpl_impr->Fill(evt_hh_mass);
 
-            std::pair<float, float> b_jet_resc = jet::compute_resc_factors(b1, b2, lead_bjet_pdf, h_mass);
+        // TLorentzVector met_corr;
 
-            float dpx = rg.Gaus(0, met_sigma);
-            float dpy = rg.Gaus(0, met_sigma);
+        // TH1F* hh_mass = new TH1F(("hh_mass_" + std::to_string(i)).c_str(), ("hh_mass_" + std::to_string(i)).c_str(), 80, 0.0, 2000.0);
 
-            float c1 = b_jet_resc.first;
-            float c2 = b_jet_resc.second;
-            float c3 = light_jet_resc.first;
-            float c4 = light_jet_resc.second;
+        // // std::ofstream evt_file;
+        // // evt_file.open("log/debug_" + std::to_string(i) + ".txt");
 
-            float met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
-            float met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - (c3 - 1)*j1.Py() - (c4 - 1)*j2.Py();
+        // // if (i % 1000 == 0)
+        // // {
+        // //     file << "Event #" << i << ":\n";
 
-            met_corr.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
+        // //     file << "-- b jet 1 = (" << b1.Px() << ", " << b1.Py() << ", " << b1.Pz() << ", " << b1.E() << ")\n"; 
+        // //     file << "-- b jet 2 = (" << b2.Px() << ", " << b2.Py() << ", " << b2.Pz() << ", " << b2.E() << ")\n";
 
-            TLorentzVector nu_corr;
-            nu_corr.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
+        // //     file << "-- W jet 1 = (" << j1.Px() << ", " << j1.Py() << ", " << j1.Pz() << ", " << j1.E() << ")\n"; 
+        // //     file << "-- W jet 2 = (" << j2.Px() << ", " << j2.Py() << ", " << j2.Pz() << ", " << j2.E() << ")\n";
 
-            float tmp_hh_mass = (c1*b1 + c2*b2 + c3*j1 + c4*j2 + nu_corr + l).M();
-            hh_mass->Fill(tmp_hh_mass);
+        // //     file << "-- lepton = (" << l.Px() << ", " << l.Py() << ", " << l.Pz() << ", " << l.E() << ")\n"; 
+        // //     file << "-- nu = (" << nu.Px() << ", " << nu.Py() << ", " << nu.Pz() << ", " << nu.E() << ")\n";
 
-            if (i % 1000 == 0)
-            {
-                file << "iteration #" << j << ":\n";
-                file << "---- randomly generated parameter nu_eta = " << nu_eta << std::endl;
+        // //     file << "-- met = (" << met.Px() << ", " << met.Py() << ", " << met.Pz() << ", " << met.E() << ")\n";
 
-                file << "---- c1 = " << c1 << std::endl;
-                file << "---- c2 = " << c2 << std::endl;
-                file << "---- c3 = " << c3 << std::endl;
-                file << "---- c4 = " << c4 << std::endl;
+        // //     evt_file << "-- b jet 1 = (" << b1.Px() << ", " << b1.Py() << ", " << b1.Pz() << ", " << b1.E() << ")\n"; 
+        // //     evt_file << "-- b jet 2 = (" << b2.Px() << ", " << b2.Py() << ", " << b2.Pz() << ", " << b2.E() << ")\n";
 
-                file << "-----------------------------------------------------------------------------------------\n";
+        // //     evt_file << "-- W jet 1 = (" << j1.Px() << ", " << j1.Py() << ", " << j1.Pz() << ", " << j1.E() << ")\n"; 
+        // //     evt_file << "-- W jet 2 = (" << j2.Px() << ", " << j2.Py() << ", " << j2.Pz() << ", " << j2.E() << ")\n";
 
-                evt_file << "iteration #" << j << ":\n";
-                evt_file << "---- randomly generated parameter nu_eta = " << nu_eta << std::endl;
+        // //     evt_file << "-- lepton = (" << l.Px() << ", " << l.Py() << ", " << l.Pz() << ", " << l.E() << ")\n"; 
+        // //     evt_file << "-- nu = (" << nu.Px() << ", " << nu.Py() << ", " << nu.Pz() << ", " << nu.E() << ")\n";
 
-                evt_file << "---- c1 = " << c1 << std::endl;
-                evt_file << "---- c2 = " << c2 << std::endl;
-                evt_file << "---- c3 = " << c3 << std::endl;
-                evt_file << "---- c4 = " << c4 << std::endl;
+        // //     evt_file << "-- met = (" << met.Px() << ", " << met.Py() << ", " << met.Pz() << ", " << met.E() << ")\n";
+        // // }
+      
+        // rg.SetSeed(0);
+        // // loop over iterations
+        // for (size_t j = 0; j < nIter; ++j)
+        // {
+        //     // rg.SetSeed(j);
+        //     float nu_eta = rg.Uniform(-6, 6);
+        //     std::pair<float, float> light_jet_resc;
 
-                evt_file << "-----------------------------------------------------------------------------------------\n";
-            }
-        }
+        //     if (jet::is_offshell(j1, j2, l, nu))
+        //     {
+        //         light_jet_resc = jet::compute_resc_factors(j1, j2, lead_off, offshell_w_from_qq);
+        //     }
+        //     else
+        //     {
+        //         light_jet_resc = jet::compute_resc_factors(j1, j2, lead_on, onshell_w_from_qq);
+        //     }
+
+        //     std::pair<float, float> b_jet_resc = jet::compute_resc_factors(b1, b2, lead_bjet_pdf, h_mass);
+
+        //     float dpx = rg.Gaus(0, met_sigma);
+        //     float dpy = rg.Gaus(0, met_sigma);
+
+        //     float c1 = b_jet_resc.first;
+        //     float c2 = b_jet_resc.second;
+        //     float c3 = light_jet_resc.first;
+        //     float c4 = light_jet_resc.second;
+
+        //     float met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
+        //     float met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - (c3 - 1)*j1.Py() - (c4 - 1)*j2.Py();
+
+        //     met_corr.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
+
+        //     TLorentzVector nu_corr;
+        //     nu_corr.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
+
+        //     float tmp_hh_mass = (c1*b1 + c2*b2 + c3*j1 + c4*j2 + nu_corr + l).M();
+        //     hh_mass->Fill(tmp_hh_mass);
+
+        //     // if (i % 1000 == 0)
+        //     // {
+        //     //     file << "iteration #" << j << ":\n";
+        //     //     file << "---- randomly generated parameter nu_eta = " << nu_eta << std::endl;
+
+        //     //     file << "---- c1 = " << c1 << std::endl;
+        //     //     file << "---- c2 = " << c2 << std::endl;
+        //     //     file << "---- c3 = " << c3 << std::endl;
+        //     //     file << "---- c4 = " << c4 << std::endl;
+
+        //     //     file << "-----------------------------------------------------------------------------------------\n";
+
+        //     //     evt_file << "iteration #" << j << ":\n";
+        //     //     evt_file << "---- randomly generated parameter nu_eta = " << nu_eta << std::endl;
+
+        //     //     evt_file << "---- c1 = " << c1 << std::endl;
+        //     //     evt_file << "---- c2 = " << c2 << std::endl;
+        //     //     evt_file << "---- c3 = " << c3 << std::endl;
+        //     //     evt_file << "---- c4 = " << c4 << std::endl;
+
+        //     //     evt_file << "-----------------------------------------------------------------------------------------\n";
+        //     // }
+        // }
 
         // break;
-        evt_file.close();
+        // evt_file.close();
 
-        int binmax = hh_mass->GetMaximumBin(); 
-        float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
-        if (i % 1000 == 0)
-        {
-            hme_prediction.push_back(hh_mass);
-            std::cout << "Event #" << i << ": hh_mass = " << evt_hh_mass << std::endl;
-        }
-        hh_mass_final->Fill(evt_hh_mass);
-        repetitions.push_back(evt_hh_mass);
+        // int binmax = hh_mass->GetMaximumBin(); 
+        // float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
+        // if (i % 1000 == 0)
+        // {
+        //     hme_prediction.push_back(hh_mass);
+        //     std::cout << "Event #" << i << ":\n---- hh_mass = " << evt_hh_mass << std::endl;
+        // }
+        // hh_mass_final->Fill(evt_hh_mass);
         // delete hh_mass;
+
+        // simplified hme starts here
+        evt_hh_mass = hme::hme_simplified({b1, b2, j1, j2, l, met});
+        if (evt_hh_mass == -1.0) 
+        {   
+            ++fails;
+            continue;
+        }
+        hme_mass_final_simplified->Fill(evt_hh_mass);
     }
 
-    int size_before = repetitions.size();
-    std::vector<float>::iterator last = std::unique(repetitions.begin(), repetitions.end());
-    repetitions.erase(last, repetitions.end());
-    int size_after = repetitions.size();
-
-    std::cout << "number of mass repetitions = " << size_before - size_after << std::endl;
-
-    file.close();
+    // file.close();
 
     auto stop = std::chrono::high_resolution_clock::now();
 
-    for (size_t i = 0; i < hme_prediction.size(); ++i)
-    {   
-        std::string name = "hh_mass_" + std::to_string((i + 1)*1000);
-        save::save_1d_dist(hme_prediction[i], name.c_str(), name.c_str());
-    }
+    // for (size_t i = 0; i < hme_prediction.size(); ++i)
+    // {   
+    //     std::string name = "hh_mass_" + std::to_string((i + 1)*1000);
+    //     save::save_1d_dist(hme_prediction[i], name.c_str(), name.c_str());
+    // }
 
     auto duration = duration_cast<std::chrono::seconds>(stop - start);
  
@@ -307,6 +316,23 @@ int main()
     std::cout << "Heavy Higgs mass = " << hh_mass << std::endl;
 
     save::save_1d_dist(hh_mass_final, "hh_mass", "HME prediction");
+
+    binmax = hme_mass_final_simplified->GetMaximumBin(); 
+    hh_mass = hme_mass_final_simplified->GetXaxis()->GetBinCenter(binmax);
+    std::cout << "simplified HME Heavy Higgs mass = " << hh_mass << std::endl;
+
+    save::save_1d_dist(hme_mass_final_simplified, "hh_mass_simplified", "Simplified HME prediction");
+    std::cout << "fails = " << fails << std::endl;
+
+    binmax = hme_mass_final_simpl_impr->GetMaximumBin(); 
+    hh_mass = hme_mass_final_simpl_impr->GetXaxis()->GetBinCenter(binmax);
+    std::cout << "simplified improved HME Heavy Higgs mass = " << hh_mass << std::endl;
+    save::save_1d_dist(hme_mass_final_simpl_impr, "hh_mass_simpl_impr", "Simplified Improved HME prediction");
+
+    save::save_1d_stack({hh_mass_final, hme_mass_final_simplified, hme_mass_final_simpl_impr}, 
+                        {"random sampling HME", "simplified HME", "simplified improved HME"}, 
+                        "hme_comparison", "HME comparison", "[GeV]");
+
     delete file_pdf;
     return 0;
 }
