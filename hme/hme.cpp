@@ -12,6 +12,12 @@
 #include "TRandom3.h"
 
 #include "tools.hpp"
+#include "Tracer.hpp"
+
+extern bool random_hme_failed;
+extern bool simpl_impr_hme_failed;
+extern float random_hme_eff;
+extern float simpl_impr_hme_eff;
 
 int main()
 {
@@ -22,6 +28,7 @@ int main()
     TH1F* offshell_w_from_qq = static_cast<TH1F*>(file_pdf->Get("offshell_w_from_qq"));
     TH1F* onshell_w_from_qq = static_cast<TH1F*>(file_pdf->Get("onshell_w_from_qq"));
     TH1F* h_mass = static_cast<TH1F*>(file_pdf->Get("h_mass"));
+    TH1F* nu_eta = static_cast<TH1F*>(file_pdf->Get("nu_eta"));
 
     TFile* file_data = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_Friend.root");
     TDirectory *dir = (TDirectory*)file_data;
@@ -159,6 +166,9 @@ int main()
     {
         myTree->GetEntry(i);
 
+        std::string msg("Event #");
+        msg += std::to_string(i) + ":\n";
+
         TLorentzVector b1, b2, j1, j2, l, nu, met, bq1, bq2;
         b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
         b2.SetPtEtaPhiM(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
@@ -170,12 +180,24 @@ int main()
 
         // Random Sampling HME
         rg.SetSeed(0);
-        float evt_hh_mass = hme::hme_rand_sampl({b1, b2, j1, j2, l, nu, met}, {lead_bjet_pdf, lead_on, lead_off, onshell_w_from_qq, offshell_w_from_qq, h_mass}, nIter, rg);
+        float evt_hh_mass = hme::hme_rand_sampl({b1, b2, j1, j2, l, nu, met}, {lead_bjet_pdf, lead_on, lead_off, onshell_w_from_qq, offshell_w_from_qq, h_mass, nu_eta}, nIter, rg);
         hh_mass_final->Fill(evt_hh_mass);
+        
+        if (random_hme_failed)
+        {
+            msg += "\trandom sampling HME efficiency = " + std::to_string(random_hme_eff);
+            Tracer::instance().write(msg);
+        }
 
         // Simplified improved hme
         evt_hh_mass = hme::hme_simpl_impr({b1, b2, j1, j2, l, met}, h_mass, nIter, rg);
         hme_mass_final_simpl_impr->Fill(evt_hh_mass);
+
+        if (simpl_impr_hme_failed)
+        {
+            msg += "\tsimplified improved HME efficiency = " + std::to_string(simpl_impr_hme_eff);
+            Tracer::instance().write(msg);
+        }
 
         // TLorentzVector met_corr;
 
@@ -291,6 +313,8 @@ int main()
         if (evt_hh_mass == -1.0) 
         {   
             ++fails;
+            msg += "\tsimplified HME failed";
+            Tracer::instance().write(msg);
             continue;
         }
         hme_mass_final_simplified->Fill(evt_hh_mass);

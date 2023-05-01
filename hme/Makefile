@@ -25,29 +25,14 @@ OUTLIB	      = ./obj/
 
 #----------------------------------------------------#
 
-hme: hme.cpp
-	g++ -o hme *.cpp `root-config --cflags --glibs ` -lSpectrum
+hme: hme.cpp tools.cpp tracer.cpp
+	g++ -o hme hme.cpp tools.cpp tracer.cpp `root-config --cflags --glibs ` -lSpectrum
 
-Plot: widthplot.cpp
-	g++ -o widthplot widthplot.cpp `root-config --cflags --glibs ` -lSpectrum
-
-convertL: convertL.cc
-	g++ -o convertL convertL.cc `root-config --cflags --glibs`
-
-plotsFast: plotsFast.cc analysis_corto.o
-	g++ -o plotsFast plotsFast.cc *.o `root-config --cflags --glibs`
-
-analysis_corto.o: analysis_corto.cc analysis_corto.h
-	$(CXX) $(CXXFLAGS) -c -I. -o analysis_corto.o $<
+compute: compute_pdfs.cpp tools.cpp
+	g++ -o compute compute_pdfs.cpp tools.cpp `root-config --cflags --glibs ` -lSpectrum
 
 clean:
 	rm -f hme
-	rm -f Data
-	rm -f widthplot
-	rm -f convertL	rm -f
+	rm -f compute
 	rm -f *~
 
-cleananalysis:
-	rm -f analysis_corto.o
-	rm -f plotsFast
-	rm -f *~

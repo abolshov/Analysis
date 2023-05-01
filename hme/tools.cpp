@@ -1,7 +1,13 @@
 #include "tools.hpp"
+#include "Tracer.hpp"
 
 #include <iostream>
 #include <memory>
+
+bool random_hme_failed = false;
+bool simpl_impr_hme_failed = false;
+float random_hme_eff = 0.0;
+float simpl_impr_hme_eff = 0.0;
 
 void save::save_1d_dist(TH1F* dist, 
                         std::string const& name,
@@ -127,13 +133,14 @@ std::pair<float, float> jet::compute_resc_factors(TLorentzVector& p1,
         return std::make_pair(lead_rescale_factor, trail_rescale_factor);
     }
 
-    float universal_corr = mass/(p1+p2).M();
-    return std::make_pair(universal_corr, universal_corr);
+    return std::make_pair(-1.0, -1.0);
 }
 
 float hme::hme_simplified(std::vector<TLorentzVector> const& particles)
 {
     float mass = -1.0;
+
+    static int fails_counter = 0;
 
     float mh = 125.0;
     TLorentzVector b1 = particles[0];
@@ -198,15 +205,19 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
     TH1F* onshell_w_from_qq = pdfs[3];
     TH1F* offshell_w_from_qq = pdfs[4];
     TH1F* h_mass = pdfs[5];
+    TH1F* nu_eta_pdf = pdfs[6];
 
     float const met_sigma = 25.2;
 
     std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", 80, 0.0, 2000.0);
 
+    static int fails_counter = 0;
+
     rg.SetSeed(0);
     for (size_t i = 0; i < nIter; ++i)
     {
-        float nu_eta = rg.Uniform(-6, 6);
+        // float nu_eta = rg.Uniform(-6, 6);
+        float nu_eta = nu_eta_pdf->GetRandom();
         std::pair<float, float> light_jet_resc;
 
         if (jet::is_offshell(j1, j2, l, nu))
@@ -219,6 +230,14 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
         }
 
         std::pair<float, float> b_jet_resc = jet::compute_resc_factors(b1, b2, lead_bjet_pdf, h_mass);
+
+        std::pair<float, float> fail(-1.0, -1.0);
+
+        if (light_jet_resc == fail || b_jet_resc == fail)
+        {
+            ++fails_counter;
+            continue;
+        }
 
         float dpx = rg.Gaus(0, met_sigma);
         float dpy = rg.Gaus(0, met_sigma);
@@ -242,6 +261,13 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
         hh_mass->Fill(tmp_hh_mass);
     }
 
+    if (fails_counter != 0)
+    {
+        random_hme_failed = true;
+        random_hme_eff = 1 - static_cast<float>(fails_counter)/nIter;
+    }
+    fails_counter = 0;
+
     int binmax = hh_mass->GetMaximumBin(); 
     float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
 
@@ -259,6 +285,8 @@ float hme::hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_
 
     std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", 80, 0.0, 2000.0);
 
+    static int fails_counter = 0;
+
     rg.SetSeed(0);
     for (size_t i = 0; i < nIter; ++i)
     {
@@ -274,7 +302,11 @@ float hme::hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_
         float C = -4.0*vis.E()*vis.E()*(met.Px()*met.Px() + met.Py()*met.Py()) - a*a;
         float delta = B*B - 4.0*A*C;
 
-        if (delta < 0.0f) continue;
+        if (delta < 0.0f) 
+        {
+            ++fails_counter;
+            continue;
+        }
 
         float pz_1 = (-B + sqrt(delta))/(2.0*A);
         float pz_2 = (-B - sqrt(delta))/(2.0*A);
@@ -299,6 +331,14 @@ float hme::hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_
         float tmp_hh_mass = (l + nu + j1 + j2 + b1 + b2).M();
         hh_mass->Fill(tmp_hh_mass);
     }
+
+    if (fails_counter != 0)
+    {
+        simpl_impr_hme_failed = true;
+        simpl_impr_hme_eff = 1 - static_cast<float>(fails_counter)/nIter;
+    }
+
+    fails_counter = 0;
 
     int binmax = hh_mass->GetMaximumBin(); 
     float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
