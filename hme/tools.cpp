@@ -114,16 +114,18 @@ std::pair<float, float> jet::compute_resc_factors(TLorentzVector& p1,
         float x2 = 2*lead_rescale_factor*(p1*p2);
         float x3 = lead_rescale_factor*lead_rescale_factor*p1.M2() - mass*mass;
 
+        float discriminant = (x2 * x2 - 4 * x1 * x3);
+
         if (x2 < 0.0)
         {
             continue;
         }
-        if ((x2 * x2 - 4 * x1 * x3) < 0.0 or x1 == 0.0)
+        if (discriminant < 0.0 or x1 == 0.0)
         {
             continue;
         }
 
-        float trail_rescale_factor = (-x2 + sqrt(x2 * x2 - 4 * x1 * x3)) / (2 * x1);
+        float trail_rescale_factor = (-x2 + sqrt(discriminant)) / (2 * x1);
 
         if (trail_rescale_factor < 0.0)
         {
@@ -191,13 +193,13 @@ float hme::hme_simplified(std::vector<TLorentzVector> const& particles)
 
 float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, bool light_on, bool uniform_eta)
 {
-    TLorentzVector b1 = particles[0];
-    TLorentzVector b2 = particles[1];
-    TLorentzVector j1 = particles[2];
-    TLorentzVector j2 = particles[3];
-    TLorentzVector l = particles[4];
-    TLorentzVector nu = particles[5];
-    TLorentzVector met = particles[6];
+    TLorentzVector b1(particles[hme::GEN_PART::b1]);
+    TLorentzVector b2(particles[hme::GEN_PART::b2]);
+    TLorentzVector j1(particles[hme::GEN_PART::j1]);
+    TLorentzVector j2(particles[hme::GEN_PART::j2]);
+    TLorentzVector l(particles[hme::GEN_PART::l]);
+    TLorentzVector met(particles[hme::GEN_PART::met]);
+    TLorentzVector nu(particles[hme::GEN_PART::nu]);
 
     TH1F* lead_bjet_pdf = pdfs[0];
     TH1F* lead_on = pdfs[1];
@@ -243,8 +245,8 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
 
         std::pair<float, float> fail(-1.0, -1.0);
 
-        // if (light_jet_resc == fail || b_jet_resc == fail)
-        if (b_jet_resc == fail)
+        if (light_jet_resc == fail || b_jet_resc == fail)
+        // if (b_jet_resc == fail)
         {
             ++fails_counter;
             continue;
@@ -259,33 +261,76 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
         TLorentzVector met_corr;
 
         float c3, c4;
-        float met_px_corr, met_py_corr;
+        // float met_px_corr, met_py_corr;
+        float met_px_corr = 0.0;
+        float met_py_corr = 0.0;
         if (light_on)
         {
             c3 = light_jet_resc.first;
             c4 = light_jet_resc.second;
-            met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
-            met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - (c3 - 1)*j1.Py() - (c4 - 1)*j2.Py();
+            met_px_corr -= (c1 - 1)*b1.Px();
+            met_px_corr -= (c2 - 1)*b2.Px();
+            met_px_corr -= (c3 - 1)*j1.Px();
+            met_px_corr -= (c4 - 1)*j2.Px();
+            // met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
+            met_py_corr -= (c1 - 1)*b1.Py();
+            met_py_corr -= (c2 - 1)*b2.Py();
+            met_py_corr -= (c3 - 1)*j1.Py();
+            met_py_corr -= (c4 - 1)*j2.Py();
+            // met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - (c3 - 1)*j1.Py() - (c4 - 1)*j2.Py();
         }
         else
         {
-            met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
-            met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
+            met_px_corr -= (c1 - 1)*b1.Px();
+            met_px_corr -= (c2 - 1)*b2.Px();
+            // met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
+            met_py_corr -= (c1 - 1)*b1.Py();
+            met_py_corr -= (c2 - 1)*b2.Py();
+            // met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
         }
 
-        met_corr.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
+        float met_px = met.Px();
+        float met_py = met.Py();
+        met_px += dpx;
+        met_px += met_px_corr;
+        met_py += dpy;
+        met_py += met_py_corr;
+        met_corr.SetPxPyPzE(met_px, met_py, met.Pz(), met.E());
+
+        // met_corr.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
 
         TLorentzVector nu_corr;
         nu_corr.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
 
         float tmp_hh_mass;
+        // TLorentzVector tmp_hh_momentum(0.0, 0.0, 0.0, 0.0);
         if (light_on)
         {
-            tmp_hh_mass = (c1*b1 + c2*b2 + c3*j1 + c4*j2 + nu_corr + l).M();
+            // b1 *= c1;
+            // b2 *= c2;
+            // j1 *= c3;
+            // j2 *= c4;
+            TLorentzVector tmp_hh_momentum(c1*b1);
+            tmp_hh_momentum += c2*b2;
+            tmp_hh_momentum += c3*j1;
+            tmp_hh_momentum += c4*j2;
+            tmp_hh_momentum += nu_corr;
+            tmp_hh_momentum += l;
+            // tmp_hh_mass = (c1*b1 + c2*b2 + c3*j1 + c4*j2 + nu_corr + l).M();
+            tmp_hh_mass = tmp_hh_momentum.M();
         }
         else
         {
-            tmp_hh_mass = (c1*b1 + c2*b2 + j1 + j2 + nu_corr + l).M();
+            // b1 *= c1;
+            // b2 *= c2;
+            TLorentzVector tmp_hh_momentum(c1*b1);
+            tmp_hh_momentum += c2*b2;
+            tmp_hh_momentum += j1;
+            tmp_hh_momentum += j2;
+            tmp_hh_momentum += nu_corr;
+            tmp_hh_momentum += l;
+            // tmp_hh_mass = (c1*b1 + c2*b2 + j1 + j2 + nu_corr + l).M();
+            tmp_hh_mass = tmp_hh_momentum.M();
         }
         hh_mass->Fill(tmp_hh_mass);
     }

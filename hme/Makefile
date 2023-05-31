@@ -26,10 +26,10 @@ OUTLIB	      = ./obj/
 #----------------------------------------------------#
 
 hme: hme.cpp tools.cpp tracer.cpp
-	g++ -o hme hme.cpp tools.cpp tracer.cpp `root-config --cflags --glibs ` -lSpectrum
+	g++ -o hme hme.cpp tools.cpp tracer.cpp `root-config --cflags --glibs ` -lSpectrum -O1
 
 compute: compute_pdfs.cpp tools.cpp
-	g++ -o compute compute_pdfs.cpp tools.cpp `root-config --cflags --glibs ` -lSpectrum
+	g++ -o compute compute_pdfs.cpp tools.cpp `root-config --cflags --glibs ` -lSpectrum -O1
 
 clean:
 	rm -f hme

@@ -37,6 +37,8 @@ namespace jet
 
 namespace hme
 {
+    enum GEN_PART { b1, b2, j1, j2, l, nu, met };
+
     float hme_simplified(std::vector<TLorentzVector> const& particles);
     float hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_mass, int nIter, TRandom3& rg);
     float hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, bool light_on, bool uniform_eta);
