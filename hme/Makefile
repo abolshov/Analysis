@@ -26,7 +26,7 @@ OUTLIB	      = ./obj/
 #----------------------------------------------------#
 
 hme: hme.cpp tools.cpp tracer.cpp
-	g++ -o hme hme.cpp tools.cpp tracer.cpp `root-config --cflags --glibs ` -lSpectrum -O1
+	g++ $^ -o $@ `root-config --cflags --glibs ` -lSpectrum -O2
 
 compute: compute_pdfs.cpp tools.cpp
 	g++ -o compute compute_pdfs.cpp tools.cpp `root-config --cflags --glibs ` -lSpectrum -O1

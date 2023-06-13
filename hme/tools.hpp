@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "TH1.h"
+#include "TF1.h"
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TCanvas.h"
@@ -23,7 +24,9 @@ namespace save
                        std::vector<std::string> const& legends,
                        std::string const& name,
                        std::string const& title,
-                       std::string const& axis_label);    
+                       std::string const& axis_label); 
+
+    std::pair<double, double> save_fit(TH1F* dist, std::string const& name, std::string const& title);   
 }
 
 namespace jet

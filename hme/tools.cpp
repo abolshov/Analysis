@@ -76,6 +76,39 @@ void save::save_1d_stack(std::vector<TH1F*> const& distrs,
     delete c1;
 }
 
+std::pair<double, double> save::save_fit(TH1F* dist, std::string const& name, std::string const& title)
+{
+    TCanvas* c1 = new TCanvas("c1", "c1");
+
+    dist->SetStats(0);
+
+    TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
+
+    dist->GetXaxis()->SetTitle(title.c_str());
+    dist->SetLineWidth(3);
+    dist->Draw();
+
+    auto fitFunc = new TF1("fitFunc", "landau", 0.0, 2000.0);
+    fitFunc->SetParameter(1, 400);
+    fitFunc->SetParameter(2, 5);
+    fitFunc->SetParameter(0, dist->GetEntries());
+    dist->Fit(fitFunc, "R");
+
+    legend->AddEntry(dist, "Histogram", "l");
+    legend->AddEntry(fitFunc, "Fit", "l");
+    legend->Draw();
+
+    c1->SaveAs((name + ".png").c_str());
+
+    auto result = std::make_pair(fitFunc->GetParameter(1), fitFunc->GetParameter(2));
+
+    delete legend;
+    delete fitFunc;
+    delete c1;
+
+    return result;
+}
+
 void jet::pt_order(TLorentzVector& p1, TLorentzVector& p2)
 {
     if (p1.Pt() < p2.Pt())
@@ -268,11 +301,13 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
         {
             c3 = light_jet_resc.first;
             c4 = light_jet_resc.second;
+
             met_px_corr -= (c1 - 1)*b1.Px();
             met_px_corr -= (c2 - 1)*b2.Px();
             met_px_corr -= (c3 - 1)*j1.Px();
             met_px_corr -= (c4 - 1)*j2.Px();
             // met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
+
             met_py_corr -= (c1 - 1)*b1.Py();
             met_py_corr -= (c2 - 1)*b2.Py();
             met_py_corr -= (c3 - 1)*j1.Py();
@@ -284,6 +319,7 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
             met_px_corr -= (c1 - 1)*b1.Px();
             met_px_corr -= (c2 - 1)*b2.Px();
             // met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
+
             met_py_corr -= (c1 - 1)*b1.Py();
             met_py_corr -= (c2 - 1)*b2.Py();
             // met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
@@ -310,7 +346,9 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
             // b2 *= c2;
             // j1 *= c3;
             // j2 *= c4;
-            TLorentzVector tmp_hh_momentum(c1*b1);
+            TLorentzVector tmp_hh_momentum(b1);
+            tmp_hh_momentum *= c1;
+            // TLorentzVector tmp_hh_momentum(c1*b1);
             tmp_hh_momentum += c2*b2;
             tmp_hh_momentum += c3*j1;
             tmp_hh_momentum += c4*j2;
@@ -365,22 +403,22 @@ float hme::hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_
     for (size_t i = 0; i < nIter; ++i)
     {
         float mh = h_mass->GetRandom();
-        float universal_corr = mh/(b1+b2).M();
-        b1 *= universal_corr;
-        b2 *= universal_corr;
+        // float universal_corr = mh/(b1+b2).M();
+        // b1 *= universal_corr;
+        // b2 *= universal_corr;
 
-        float met_sigma = 25.2;
+        // float met_sigma = 25.2;
 
-        float dpx = rg.Gaus(0, met_sigma);
-        float dpy = rg.Gaus(0, met_sigma);
+        // float dpx = rg.Gaus(0, met_sigma);
+        // float dpy = rg.Gaus(0, met_sigma);
 
-        float c1 = universal_corr;
-        float c2 = universal_corr;
+        // float c1 = universal_corr;
+        // float c2 = universal_corr;
 
-        float met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
-        float met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
+        // float met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
+        // float met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
 
-        met.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
+        // met.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
 
         TLorentzVector vis = (l + j1 + j2);
         float a = mh*mh - vis.M()*vis.M() + 2.0*vis.Px()*met.Px() + 2.0*vis.Py()*met.Py();

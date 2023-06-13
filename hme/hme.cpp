@@ -10,6 +10,7 @@
 #include "TDirectory.h"
 #include "TTreeReader.h"
 #include "TRandom3.h"
+#include "TF1.h"
 
 #include "tools.hpp"
 #include "Tracer.hpp"
@@ -21,7 +22,7 @@ extern float simpl_impr_hme_eff;
 
 int main()
 {
-    TFile* file_pdf = new TFile("pdfs.root", "READ");
+    TFile* file_pdf = new TFile("pdfs_2016.root", "READ");
     TH1F* lead_bjet_pdf = static_cast<TH1F*>(file_pdf->Get("lead_bjet_pdf"));
     TH1F* lead_off = static_cast<TH1F*>(file_pdf->Get("lead_off"));
     TH1F* lead_on = static_cast<TH1F*>(file_pdf->Get("lead_on"));
@@ -155,8 +156,8 @@ int main()
     TH1F* hh_mass_final_no_light = new TH1F("hh_mass", "Random Sampling HME without light jets", 40, 0.0, 2000.0);
     TH1F* hh_mass_final_uni_nu = new TH1F("hh_mass", "Random Sampling HME with uniform nu eta", 40, 0.0, 2000.0);
     TH1F* hh_mass_final_simple = new TH1F("hh_mass", "Random Sampling HME without light jets and uniform eta", 40, 0.0, 2000.0);
-    // TH1F* hme_mass_final_simplified = new TH1F("hh_mass", "simplified HME", 30, 0.0, 1500.0);
-    // TH1F* hme_mass_final_simpl_impr = new TH1F("hh_mass", "Simplified Improved HME", 30, 0.0, 1500.0);
+    TH1F* hme_mass_final_simplified = new TH1F("hh_mass", "simplified HME", 40, 0.0, 2000.0);
+    // TH1F* hme_mass_final_simpl_impr = new TH1F("hh_mass", "Simplified Improved HME", 40, 0.0, 2000.0);
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -244,7 +245,7 @@ int main()
         // }
 
         // simplified hme starts here
-        // evt_hh_mass = hme::hme_simplified({b1, b2, j1, j2, l, met});
+        evt_hh_mass = hme::hme_simplified({b1, b2, j1, j2, l, met});
         // if (evt_hh_mass == -1.0) 
         // {   
         //     ++fails;
@@ -252,7 +253,7 @@ int main()
         //     Tracer::instance().write(msg);
         //     continue;
         // }
-        // hme_mass_final_simplified->Fill(evt_hh_mass);
+        hme_mass_final_simplified->Fill(evt_hh_mass);
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
@@ -262,9 +263,25 @@ int main()
     int binmax = hh_mass_final->GetMaximumBin(); 
     float hh_mass = hh_mass_final->GetXaxis()->GetBinCenter(binmax);
 
+    // save::save_1d_stack({hh_mass_final, hme_mass_final_simplified, hme_mass_final_simpl_impr}, 
+    //                     {"random sampling HME", "simplified HME", "simplified improved HME"}, 
+    //                     "hme_comparison", "HME comparison", "[GeV]");
+
+    save::save_1d_stack({hh_mass_final, hme_mass_final_simplified}, 
+                        {"random sampling HME", "simplified HME"}, 
+                        "hme_comparison", "HME comparison", "[GeV]");
+
+    save::save_1d_stack({hh_mass_final, hh_mass_final_no_light, hh_mass_final_uni_nu, hh_mass_final_simple}, 
+                        {"lj on + non uni eta", "lj off + non uni eta", "lj on + uni eta", "lj off + uni eta"}, 
+                        "rand_sampl_hme_comparison", "Random Sampling HME comparison", "[GeV]");
+
     std::cout << "Random Sampling HME Heavy Higgs mass = " << hh_mass << std::endl;
 
-    save::save_1d_dist(hh_mass_final, "hh_mass", "HME prediction");
+    auto rand_par = save::save_fit(hh_mass_final, "hh_mass_fit", "[GeV]");
+    auto simpl_par = save::save_fit(hme_mass_final_simplified, "hh_mass_fit_simpl", "[GeV]");
+
+    std::cout << "Widths ratio = " << simpl_par.second / rand_par.second << std::endl;
+    // save::save_1d_dist(hh_mass_final, "hh_mass", "[GeV]");
 
     // binmax = hme_mass_final_simplified->GetMaximumBin(); 
     // hh_mass = hme_mass_final_simplified->GetXaxis()->GetBinCenter(binmax);
@@ -277,14 +294,6 @@ int main()
     // hh_mass = hme_mass_final_simpl_impr->GetXaxis()->GetBinCenter(binmax);
     // std::cout << "simplified improved HME Heavy Higgs mass = " << hh_mass << std::endl;
     // save::save_1d_dist(hme_mass_final_simpl_impr, "hh_mass_simpl_impr", "Simplified Improved HME prediction");
-
-    // save::save_1d_stack({hh_mass_final, hme_mass_final_simplified, hme_mass_final_simpl_impr}, 
-    //                     {"random sampling HME", "simplified HME", "simplified improved HME"}, 
-    //                     "hme_comparison", "HME comparison", "[GeV]");
-
-    save::save_1d_stack({hh_mass_final, hh_mass_final_no_light, hh_mass_final_uni_nu, hh_mass_final_simple}, 
-                        {"lj on + non uni eta", "lj off + non uni eta", "lj on + uni eta", "lj off + uni eta"}, 
-                        "rand_sampl_hme_comparison", "Random Sampling HME comparison", "[GeV]");
 
     delete file_pdf;
     return 0;
