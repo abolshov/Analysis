@@ -22,7 +22,7 @@ extern float simpl_impr_hme_eff;
 
 int main()
 {
-    TFile* file_pdf = new TFile("pdfs_2016.root", "READ");
+    TFile* file_pdf = new TFile("pdfs.root", "READ");
     TH1F* lead_bjet_pdf = static_cast<TH1F*>(file_pdf->Get("lead_bjet_pdf"));
     TH1F* lead_off = static_cast<TH1F*>(file_pdf->Get("lead_off"));
     TH1F* lead_on = static_cast<TH1F*>(file_pdf->Get("lead_on"));
@@ -31,8 +31,8 @@ int main()
     TH1F* h_mass = static_cast<TH1F*>(file_pdf->Get("h_mass"));
     TH1F* nu_eta = static_cast<TH1F*>(file_pdf->Get("nu_eta"));
 
-    // TFile* file_data = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_Friend.root");
-    TFile* file_data = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-800_narrow_13TeV_Friend.root");
+    TFile* file_data = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_Friend.root");
+    // TFile* file_data = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-800_narrow_13TeV_Friend.root");
     TDirectory *dir = (TDirectory*)file_data;
     TTree *myTree = (TTree*)dir->Get("syncTree");
 
@@ -145,7 +145,7 @@ int main()
     int nEvents = myTree->GetEntries();
 
     std::vector<TH1F*> hme_prediction;
-    int nIter = 1000;
+    int nIter = 2000;
     float met_sigma = 25.2;
     int nbins = 101;
 
@@ -157,7 +157,7 @@ int main()
     TH1F* hh_mass_final_uni_nu = new TH1F("hh_mass", "Random Sampling HME with uniform nu eta", 40, 0.0, 2000.0);
     TH1F* hh_mass_final_simple = new TH1F("hh_mass", "Random Sampling HME without light jets and uniform eta", 40, 0.0, 2000.0);
     TH1F* hme_mass_final_simplified = new TH1F("hh_mass", "simplified HME", 40, 0.0, 2000.0);
-    // TH1F* hme_mass_final_simpl_impr = new TH1F("hh_mass", "Simplified Improved HME", 40, 0.0, 2000.0);
+    TH1F* hme_mass_final_simpl_impr = new TH1F("hh_mass", "Simplified Improved HME", 40, 0.0, 2000.0);
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -165,7 +165,7 @@ int main()
     int fails = 0;
     bool uniform_eta, light_on;
 
-    for (size_t i = 2; i < nEvents; ++i)
+    for (size_t i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
 
@@ -235,8 +235,8 @@ int main()
         }
 
         // Simplified improved hme
-        // evt_hh_mass = hme::hme_simpl_impr({b1, b2, j1, j2, l, met}, h_mass, nIter, rg);
-        // hme_mass_final_simpl_impr->Fill(evt_hh_mass);
+        evt_hh_mass = hme::hme_simpl_impr({b1, b2, j1, j2, l, met}, h_mass, nIter, rg);
+        hme_mass_final_simpl_impr->Fill(evt_hh_mass);
 
         // if (simpl_impr_hme_failed)
         // {
@@ -246,14 +246,18 @@ int main()
 
         // simplified hme starts here
         evt_hh_mass = hme::hme_simplified({b1, b2, j1, j2, l, met});
-        // if (evt_hh_mass == -1.0) 
-        // {   
-        //     ++fails;
-        //     msg += "\tsimplified HME failed";
-        //     Tracer::instance().write(msg);
-        //     continue;
-        // }
-        hme_mass_final_simplified->Fill(evt_hh_mass);
+        if (evt_hh_mass >= 0.0f) 
+        {   
+            // msg += "\tsimplified HME failed";
+            // Tracer::instance().write(msg);
+            // continue;
+            hme_mass_final_simplified->Fill(evt_hh_mass);
+        }
+        else 
+        {
+            ++fails;
+        }
+        // hme_mass_final_simplified->Fill(evt_hh_mass);
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
@@ -266,10 +270,13 @@ int main()
     // save::save_1d_stack({hh_mass_final, hme_mass_final_simplified, hme_mass_final_simpl_impr}, 
     //                     {"random sampling HME", "simplified HME", "simplified improved HME"}, 
     //                     "hme_comparison", "HME comparison", "[GeV]");
-
     save::save_1d_stack({hh_mass_final, hme_mass_final_simplified}, 
                         {"random sampling HME", "simplified HME"}, 
                         "hme_comparison", "HME comparison", "[GeV]");
+
+    // save::save_1d_stack({hh_mass_final, hme_mass_final_simplified}, 
+    //                     {"random sampling HME", "simplified HME"}, 
+    //                     "hme_comparison", "HME comparison", "[GeV]");
 
     save::save_1d_stack({hh_mass_final, hh_mass_final_no_light, hh_mass_final_uni_nu, hh_mass_final_simple}, 
                         {"lj on + non uni eta", "lj off + non uni eta", "lj on + uni eta", "lj off + uni eta"}, 
@@ -288,12 +295,14 @@ int main()
     // std::cout << "simplified HME Heavy Higgs mass = " << hh_mass << std::endl;
 
     // save::save_1d_dist(hme_mass_final_simplified, "hh_mass_simplified", "Simplified HME prediction");
-    // std::cout << "fails = " << fails << std::endl;
+    std::cout << "Analytical solution fails in " << fails << " out of " << nEvents << " total events" << std::endl;
 
     // binmax = hme_mass_final_simpl_impr->GetMaximumBin(); 
     // hh_mass = hme_mass_final_simpl_impr->GetXaxis()->GetBinCenter(binmax);
     // std::cout << "simplified improved HME Heavy Higgs mass = " << hh_mass << std::endl;
     // save::save_1d_dist(hme_mass_final_simpl_impr, "hh_mass_simpl_impr", "Simplified Improved HME prediction");
+
+    std::cout << "done\n";
 
     delete file_pdf;
     return 0;
