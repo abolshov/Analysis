@@ -25,14 +25,15 @@ OUTLIB	      = ./obj/
 
 #----------------------------------------------------#
 
-hme: hme.cpp tools.cpp tracer.cpp
-	g++ $^ -o $@ `root-config --cflags --glibs ` -lSpectrum -O2
+hme: hme.cpp tools.cpp
+	g++ -O2 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum
 
-compute: compute_pdfs.cpp tools.cpp
-	g++ -o compute compute_pdfs.cpp tools.cpp `root-config --cflags --glibs ` -lSpectrum -O1
+compute: compute_pdfs.cpp Utils.cpp Plotting.cpp
+	g++ -O2 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum 
 
+test: test.cpp
+	g++ -O3 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum 
 clean:
 	rm -f hme
-	rm -f compute
 	rm -f *~
-
+	rm *.o 
