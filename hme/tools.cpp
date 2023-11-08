@@ -1,22 +1,28 @@
 #include "tools.hpp"
 #include "Tracer.hpp"
+#include "constants.hpp"
 
 #include <iostream>
 #include <memory>
+#include <random>
+#include <cassert>
+#include <algorithm>
+#include <cmath>
 
-bool random_hme_failed = false;
-bool simpl_impr_hme_failed = false;
-float random_hme_eff = 0.0;
-float simpl_impr_hme_eff = 0.0;
+static TLorentzVector zero(0.0, 0.0, 0.0, 0.0);
 
 void save::save_1d_dist(TH1F* dist, 
                         std::string const& name,
                         std::string const& title)
 {
     TCanvas* c1 = new TCanvas("c1", "c1");
+    c1->SetGrid();
+    c1->SetTickx();
+    c1->SetTicky();
 
     dist->GetXaxis()->SetTitle(title.c_str());
     dist->SetLineWidth(3);
+    dist->SetStats(1);
     dist->DrawNormalized();
     c1->SaveAs((name + ".png").c_str());
 
@@ -29,6 +35,9 @@ void save::save_2d_dist(TH2F* dist,
                         std::string const& title_y)
 {
     TCanvas* c1 = new TCanvas("c1", "c1");
+    c1->SetGrid();
+    c1->SetTickx();
+    c1->SetTicky();
     TStyle* gStyle = new TStyle();
     gStyle->SetPalette(kRainBow);
 
@@ -54,11 +63,14 @@ void save::save_1d_stack(std::vector<TH1F*> const& distrs,
         return;
     }
     TCanvas* c1 = new TCanvas("c1", "c1");
+    c1->SetGrid();
+    c1->SetTickx();
+    c1->SetTicky();
 
     THStack* stack = new THStack("stack", title.c_str());
     auto legend = new TLegend(0.7, 0.7, 0.9, 0.9);
 
-    for (size_t i = 0; i < distrs.size(); ++i)
+    for (int i = 0; i < static_cast<int>(distrs.size()); ++i)
     {
         distrs[i]->SetLineWidth(3);
         distrs[i]->SetLineColor(i + 1);
@@ -76,23 +88,31 @@ void save::save_1d_stack(std::vector<TH1F*> const& distrs,
     delete c1;
 }
 
-std::pair<double, double> save::save_fit(TH1F* dist, std::string const& name, std::string const& title)
+std::pair<double, double> save::save_fit(TH1F* dist, std::string const& name, std::string const& title, std::string const& fit_func)
 {
     TCanvas* c1 = new TCanvas("c1", "c1");
-
+    c1->SetGrid();
+    c1->SetTickx();
+    c1->SetTicky();
+    
     dist->SetStats(0);
 
     TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
 
     dist->GetXaxis()->SetTitle(title.c_str());
     dist->SetLineWidth(3);
+    dist->SetLineColor(1);
     dist->Draw();
 
-    auto fitFunc = new TF1("fitFunc", "landau", 0.0, 2000.0);
+    auto fitFunc = new TF1("fitFunc", fit_func.c_str(), 0.0, 2000.0);
     fitFunc->SetParameter(1, 400);
     fitFunc->SetParameter(2, 5);
     fitFunc->SetParameter(0, dist->GetEntries());
     dist->Fit(fitFunc, "R");
+
+    int ndf = fitFunc->GetNDF();
+    double chi2 = fitFunc->GetChisquare();
+    std::cout << "chi2/ndf = " << chi2 << "/" << ndf << " = " << chi2/ndf << std::endl;
 
     legend->AddEntry(dist, "Histogram", "l");
     legend->AddEntry(fitFunc, "Fit", "l");
@@ -137,7 +157,7 @@ std::pair<float, float> jet::compute_resc_factors(TLorentzVector& p1,
     
     float mass = mass_pdf->GetRandom();
 
-    for (size_t i = 0; i < 1000; ++i)
+    for (int i = 0; i < 1000; ++i)
     {
         float lead_rescale_factor = lead_jet_pdf->GetRandom();
         
@@ -168,14 +188,12 @@ std::pair<float, float> jet::compute_resc_factors(TLorentzVector& p1,
         return std::make_pair(lead_rescale_factor, trail_rescale_factor);
     }
 
-    return std::make_pair(-1.0, -1.0);
+    return FAIL;
 }
 
-float hme::hme_simplified(std::vector<TLorentzVector> const& particles)
+float hme::analytical(std::vector<TLorentzVector> const& particles)
 {
     float mass = -1.0;
-
-    static int fails_counter = 0;
 
     float mh = 125.0;
     TLorentzVector b1 = particles[0];
@@ -185,12 +203,7 @@ float hme::hme_simplified(std::vector<TLorentzVector> const& particles)
     TLorentzVector l = particles[4];
     TLorentzVector met = particles[5];
 
-    // float universal_corr = mh/(b1+b2).M();
-
-    // b1 *= universal_corr;
-    // b2 *= universal_corr;
-
-    TLorentzVector vis = (l + j1 + j2);
+    TLorentzVector vis = (l + j1 + j2 + b1 + b2);
     float a = mh*mh - vis.M()*vis.M() + 2.0*vis.Px()*met.Px() + 2.0*vis.Py()*met.Py();
     float A = 4.0*(vis.E()*vis.E() - vis.Pz()*vis.Pz());
     float B = -4.0*a*vis.Pz();
@@ -219,12 +232,69 @@ float hme::hme_simplified(std::vector<TLorentzVector> const& particles)
         nu = nu2;
     }
 
+    // std::cout << "From Simple:" << std::endl;
+    // std::cout << "----corrected dijet mass = " << (j1 + j2).M() << std::endl;
+    // std::cout << "----leptonic W mass = " << (l + nu).M() << std::endl;
+
     float tmp_hh_mass = (l + nu + j1 + j2 + b1 + b2).M();
     mass = tmp_hh_mass;
     return mass;
 }
 
-float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, bool light_on, bool uniform_eta)
+TLorentzVector NuFromLeptonicW_v1(float nu_eta, float nu_phi, TLorentzVector const& l, float mw)
+{
+    float deta = nu_eta - l.Eta();
+    float dphi = nu_phi - l.Phi();
+    float pt = mw*mw/(2*l.Pt()*(cosh(deta) - cos(dphi)));
+
+    bool invalid = std::isinf(pt) || std::isnan(pt);
+    float tmp_pt = invalid ? 0.0f : pt;
+    float tmp_eta = invalid ? 0.0f : nu_eta;
+    float tmp_phi = invalid ? 0.0f : nu_phi;
+
+    TLorentzVector res;
+    res.SetPtEtaPhiM(tmp_pt, tmp_eta, tmp_phi, 0.0f);
+    return res;
+}
+
+TLorentzVector NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh, int control)
+{
+    TLorentzVector vis = l + j1+ j2;
+    TLorentzVector res;
+
+    float fin_pt, fin_eta, fin_phi;
+
+    float vis_pt = vis.Pt();
+    float vis_m = vis.M();
+
+    float tmp_px = met.Px();
+    float tmp_py = met.Py();
+
+    TLorentzVector tmp_vec;
+    tmp_vec.SetPxPyPzE(sqrt(vis_pt*vis_pt + vis_m*vis_m), 0.0f, vis.Pz(), vis.E());
+
+    fin_pt = met.Pt();
+
+    float chdeta = (mh*mh + 2*tmp_px*vis.Px() + tmp_py*vis.Py() - vis_m*vis_m)/(2*tmp_vec.Pt()*fin_pt);
+    if (chdeta < 1.0f)
+    {
+        res.SetPtEtaPhiM(0.0, 0.0, 0.0, 0.0);
+    }
+    else
+    {
+        fin_phi = met.Phi();
+        float deta = acosh(chdeta);
+        fin_eta = (control == 1) ? (tmp_vec.Eta() - deta) : (tmp_vec.Eta() + deta);
+        if (abs(fin_eta) > 7.0) 
+        {
+            res.SetPtEtaPhiM(0.0, 0.0, 0.0, 0.0);
+        }
+        res.SetPtEtaPhiM(fin_pt, fin_eta, fin_phi, 0.0);
+    }   
+    return res;
+}
+
+float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, bool correct_light_jets, bool weighted)
 {
     TLorentzVector b1(particles[hme::GEN_PART::b1]);
     TLorentzVector b2(particles[hme::GEN_PART::b2]);
@@ -242,29 +312,36 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
     TH1F* h_mass = pdfs[5];
     TH1F* nu_eta_pdf = pdfs[6];
 
-    float const met_sigma = 25.2;
+    // std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", 3000, 0.0, 3000.0);
+    std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", nbins, 0.0, 3000.0);
+    float mh = h_mass->GetRandom();
 
-    std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", 120, 0.0, 3000.0);
+    float hadronic_w = (j1 + j2).M();
+    if (hadronic_w > mh) return -1.0f;
 
-    static int fails_counter = 0;
+    bool is_offshell = hadronic_w < 60.0f;  
+    // if hadronic W is ofshell, leptonic is onshell and vice versa
+    // float leptonic_w = is_offshell ? onshell_w_from_qq->GetRandom() : offshell_w_from_qq->GetRandom();  
+    float offshell_mass = offshell_w_from_qq->GetRandom(); 
+    float onshell_mass = onshell_w_from_qq->GetRandom();
+    // while (leptonic_w > mh - hadronic_w)
+    // {
+    //     leptonic_w = is_offshell ? onshell_w_from_qq->GetRandom() : offshell_w_from_qq->GetRandom();
+    // }
+
+    // std::unique_ptr<TH1F> higgsFromWW = std::make_unique<TH1F>("higgsFromWW", "higgsFromWW", 50, 100.0, 200.0);
+    // std::unique_ptr<TH1F> WfromJJ = std::make_unique<TH1F>("WfromJJ", "WfromJJ", 100, 0.0, 120.0);
+    // std::unique_ptr<TH1F> WfromLV = std::make_unique<TH1F>("WfromLV", "WfromLV", 50, 0.0, 120.0);
 
     rg.SetSeed(0);
-    for (size_t i = 0; i < nIter; ++i)
+    for (int i = 0; i < nIter; ++i)
     {
-        float nu_eta;
-        if (uniform_eta)
-        {
-            nu_eta = rg.Uniform(-6, 6);
-        }
-        else
-        {
-            nu_eta = nu_eta_pdf->GetRandom();
-        }
+        float nu_eta = nu_eta_pdf->GetRandom();
 
-        std::pair<float, float> light_jet_resc;
-        if (light_on)
+        std::pair<float, float> light_jet_resc{1.0f, 1.0f};
+        if (correct_light_jets)
         {
-            if (jet::is_offshell(j1, j2, l, nu))
+            if (is_offshell)
             {
                 light_jet_resc = jet::compute_resc_factors(j1, j2, lead_off, offshell_w_from_qq);
             }
@@ -274,19 +351,19 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
             }
         }
 
+
         std::pair<float, float> b_jet_resc = jet::compute_resc_factors(b1, b2, lead_bjet_pdf, h_mass);
 
-        std::pair<float, float> fail(-1.0, -1.0);
-
-        if (light_jet_resc == fail || b_jet_resc == fail)
+        // std::pair<float, float> fail(-1.0, -1.0);
+        // if (light_jet_resc == fail || b_jet_resc == fail)
         // if (b_jet_resc == fail)
-        {
-            ++fails_counter;
-            continue;
-        }
+        // {
+        //     ++fails_counter;
+        //     continue;
+        // }
 
-        float dpx = rg.Gaus(0, met_sigma);
-        float dpy = rg.Gaus(0, met_sigma);
+        float dpx = rg.Gaus(0, MET_SIGMA);
+        float dpy = rg.Gaus(0, MET_SIGMA);
 
         float c1 = b_jet_resc.first;
         float c2 = b_jet_resc.second;
@@ -294,36 +371,21 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
         TLorentzVector met_corr;
 
         float c3, c4;
-        // float met_px_corr, met_py_corr;
         float met_px_corr = 0.0;
         float met_py_corr = 0.0;
-        if (light_on)
-        {
-            c3 = light_jet_resc.first;
-            c4 = light_jet_resc.second;
+        
+        c3 = light_jet_resc.first;
+        c4 = light_jet_resc.second;
 
-            met_px_corr -= (c1 - 1)*b1.Px();
-            met_px_corr -= (c2 - 1)*b2.Px();
-            met_px_corr -= (c3 - 1)*j1.Px();
-            met_px_corr -= (c4 - 1)*j2.Px();
-            // met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - (c3 - 1)*j1.Px() - (c4 - 1)*j2.Px();
+        met_px_corr -= (c1 - 1)*b1.Px();
+        met_px_corr -= (c2 - 1)*b2.Px();
+        met_px_corr -= (c3 - 1)*j1.Px();
+        met_px_corr -= (c4 - 1)*j2.Px();
 
-            met_py_corr -= (c1 - 1)*b1.Py();
-            met_py_corr -= (c2 - 1)*b2.Py();
-            met_py_corr -= (c3 - 1)*j1.Py();
-            met_py_corr -= (c4 - 1)*j2.Py();
-            // met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - (c3 - 1)*j1.Py() - (c4 - 1)*j2.Py();
-        }
-        else
-        {
-            met_px_corr -= (c1 - 1)*b1.Px();
-            met_px_corr -= (c2 - 1)*b2.Px();
-            // met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
-
-            met_py_corr -= (c1 - 1)*b1.Py();
-            met_py_corr -= (c2 - 1)*b2.Py();
-            // met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
-        }
+        met_py_corr -= (c1 - 1)*b1.Py();
+        met_py_corr -= (c2 - 1)*b2.Py();
+        met_py_corr -= (c3 - 1)*j1.Py();
+        met_py_corr -= (c4 - 1)*j2.Py();
 
         float met_px = met.Px();
         float met_py = met.Py();
@@ -333,140 +395,162 @@ float hme::hme_rand_sampl(std::vector<TLorentzVector> const& particles, std::vec
         met_py += met_py_corr;
         met_corr.SetPxPyPzE(met_px, met_py, met.Pz(), met.E());
 
-        // met_corr.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
-
-        TLorentzVector nu_corr;
-        nu_corr.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
-
-        float tmp_hh_mass;
-        // TLorentzVector tmp_hh_momentum(0.0, 0.0, 0.0, 0.0);
-        if (light_on)
+        if (weighted)
         {
-            // b1 *= c1;
-            // b2 *= c2;
-            // j1 *= c3;
-            // j2 *= c4;
+            float tmp_hh_mass;
             TLorentzVector tmp_hh_momentum(b1);
             tmp_hh_momentum *= c1;
-            // TLorentzVector tmp_hh_momentum(c1*b1);
             tmp_hh_momentum += c2*b2;
             tmp_hh_momentum += c3*j1;
             tmp_hh_momentum += c4*j2;
-            tmp_hh_momentum += nu_corr;
             tmp_hh_momentum += l;
-            // tmp_hh_mass = (c1*b1 + c2*b2 + c3*j1 + c4*j2 + nu_corr + l).M();
-            tmp_hh_mass = tmp_hh_momentum.M();
+
+            // TLorentzVector tmp_nu = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, leptonic_w);
+            // tmp_hh_momentum += tmp_nu;
+            // tmp_hh_mass = tmp_hh_momentum.M();
+            // if (tmp_hh_mass < 2.0f*mh) continue;
+            // hh_mass->Fill(tmp_hh_mass);
+
+            TLorentzVector nu_off = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, offshell_mass);
+            TLorentzVector nu_on = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, onshell_mass);
+
+            if (nu_off == zero && nu_on == zero) continue;
+            if (nu_off != zero && nu_on != zero)
+            {
+                tmp_hh_mass = (tmp_hh_momentum + nu_off).M();
+                if (tmp_hh_mass < 2.0f*mh) continue;
+                hh_mass->Fill(tmp_hh_mass, 0.5);
+
+                tmp_hh_mass = (tmp_hh_momentum + nu_on).M();
+                if (tmp_hh_mass < 2.0f*mh) continue;
+                hh_mass->Fill(tmp_hh_mass, 0.5);
+            }
+            else
+            {
+                if (nu_off != zero)
+                {
+                    tmp_hh_mass = (tmp_hh_momentum + nu_off).M();
+                    if (tmp_hh_mass < 2.0f*mh) continue;
+                    hh_mass->Fill(tmp_hh_mass);
+                }
+                else
+                {
+                    tmp_hh_mass = (tmp_hh_momentum + nu_on).M();
+                    if (tmp_hh_mass < 2.0f*mh) continue;
+                    hh_mass->Fill(tmp_hh_mass);
+                }
+            }
         }
         else
         {
-            // b1 *= c1;
-            // b2 *= c2;
-            TLorentzVector tmp_hh_momentum(c1*b1);
+            TLorentzVector tmp_nu;
+            tmp_nu.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
+            float tmp_hh_mass;
+            TLorentzVector tmp_hh_momentum(b1);
+            tmp_hh_momentum *= c1;
             tmp_hh_momentum += c2*b2;
-            tmp_hh_momentum += j1;
-            tmp_hh_momentum += j2;
-            tmp_hh_momentum += nu_corr;
+            tmp_hh_momentum += c3*j1;
+            tmp_hh_momentum += c4*j2;
             tmp_hh_momentum += l;
-            // tmp_hh_mass = (c1*b1 + c2*b2 + j1 + j2 + nu_corr + l).M();
+            tmp_hh_momentum += tmp_nu;
             tmp_hh_mass = tmp_hh_momentum.M();
+            if (tmp_hh_mass < 2.0f*mh) continue;
+            hh_mass->Fill(tmp_hh_mass);
         }
-        hh_mass->Fill(tmp_hh_mass);
-    }
 
-    if (fails_counter != 0)
-    {
-        random_hme_failed = true;
-        random_hme_eff = 1 - static_cast<float>(fails_counter)/nIter;
+        // std::cout << "True W mass = " << (l + nu).M() << "\n";
+        // std::cout << "nu = ";
+        // Print(nu);
+        // std::cout << "l = ";
+        // Print(l);
+        // std::cout << "met = ";
+        // Print(met);
+        // std::cout << "lmet mass = " << (l + met).M() << "\n";
+        // std::cout << "tmp_nu = ";
+        // Print(tmp_nu);
+        // std::cout << "W mass = " << (l + tmp_nu).M() << "\n";
+
+        // tmp_nu = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, offshell_mass);
+        // std::cout << "offshell_mass = " << offshell_mass << "\n";
+        // std::cout << "NuFromLeptonicW_v1 = ";
+        // Print(tmp_nu);
+        // std::cout << "W mass v1 = " << (l + tmp_nu).M() << "\n";
+
+        // tmp_nu = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, onshell_mass);
+        // std::cout << "onshell_mass = " << onshell_mass << "\n";
+        // std::cout << "NuFromLeptonicW_v1 = ";
+        // Print(tmp_nu);
+        // std::cout << "W mass v1 = " << (l + tmp_nu).M() << "\n";
+
+        // tmp_nu = NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 0);
+        // std::cout << "NuFromLeptonicW_v2_1 = ";
+        // Print(tmp_nu);
+        // std::cout << "W mass v2_1 = " << (l + tmp_nu).M() << "\n";
+
+        // tmp_nu = NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 1);
+        // std::cout << "NuFromLeptonicW_v2_2 = ";
+        // Print(tmp_nu);
+        // std::cout << "W mass v2_1 = " << (l + tmp_nu).M() << "\n";
+
+        // std::cout << "-------------------------------------------------\n";
     }
-    fails_counter = 0;
+    
+    // std::cout << "EventWeight = " << EventWeight << std::endl;
+    // std::cout << "nonzeroWeightCnt = " << nonzeroWeightCnt << std::endl;
+
+    // if (call_cnt % 1000 == 0)
+    // {
+    //     std::string num = std::to_string(call_cnt);
+    //     std::string name = "debug/lep/lepW_" + num;
+    //     save::save_1d_dist(WfromLV.get(), name, "[GeV]");
+    //     name = "debug/had/hadW_" + num;
+    //     save::save_1d_dist(WfromJJ.get(), name, "[GeV]");
+    //     name = "debug/higgs/higgs_" + num;
+    //     save::save_1d_dist(higgsFromWW.get(), name, "[GeV]");
+    // }
+
+    // if (fails_counter != 0)
+    // {
+    //     random_hme_failed = true;
+    //     random_hme_eff = 1 - static_cast<float>(fails_counter)/nIter;
+    // }
+    // fails_counter = 0;
 
     int binmax = hh_mass->GetMaximumBin(); 
     float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
 
+    // std::cout << "Event mass = " << evt_hh_mass << std::endl;
+
+    // ++call_cnt;
     return evt_hh_mass;
 }
 
-float hme::hme_simpl_impr(std::vector<TLorentzVector> const& particles, TH1F* h_mass, int nIter, TRandom3& rg)
+void Print(TLorentzVector const& p, bool EXYZ)
 {
-    TLorentzVector b1 = particles[0];
-    TLorentzVector b2 = particles[1];
-    TLorentzVector j1 = particles[2];
-    TLorentzVector j2 = particles[3];
-    TLorentzVector l = particles[4];
-    TLorentzVector met = particles[5];
-
-    std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", 80, 0.0, 2000.0);
-
-    static int fails_counter = 0;
-
-    rg.SetSeed(0);
-    for (size_t i = 0; i < nIter; ++i)
+    if (EXYZ) 
     {
-        float mh = h_mass->GetRandom();
-        // float universal_corr = mh/(b1+b2).M();
-        // b1 *= universal_corr;
-        // b2 *= universal_corr;
-
-        // float met_sigma = 25.2;
-
-        // float dpx = rg.Gaus(0, met_sigma);
-        // float dpy = rg.Gaus(0, met_sigma);
-
-        // float c1 = universal_corr;
-        // float c2 = universal_corr;
-
-        // float met_px_corr = -(c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
-        // float met_py_corr = -(c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
-
-        // met.SetPxPyPzE(met.Px() + dpx + met_px_corr, met.Py() + dpy + met_py_corr, met.Pz(), met.E());
-
-        TLorentzVector vis = (l + j1 + j2);
-        float a = mh*mh - vis.M()*vis.M() + 2.0*vis.Px()*met.Px() + 2.0*vis.Py()*met.Py();
-        float A = 4.0*(vis.E()*vis.E() - vis.Pz()*vis.Pz());
-        float B = -4.0*a*vis.Pz();
-        float C = -4.0*vis.E()*vis.E()*(met.Px()*met.Px() + met.Py()*met.Py()) - a*a;
-        float delta = B*B - 4.0*A*C;
-
-        if (delta < 0.0f) 
-        {
-            ++fails_counter;
-            continue;
-        }
-
-        float pz_1 = (-B + sqrt(delta))/(2.0*A);
-        float pz_2 = (-B - sqrt(delta))/(2.0*A);
-
-        TLorentzVector nu1, nu2;
-        nu1.SetPxPyPzE(met.Px(), met.Py(), pz_1, met.E());
-        nu2.SetPxPyPzE(met.Px(), met.Py(), pz_2, met.E());
-
-        TLorentzVector h_nu1 = (l + nu1 + j1 + j2);
-        TLorentzVector h_nu2 = (l + nu2 + j1 + j2);
-
-        TLorentzVector nu;
-        if (abs(h_nu1.M() - 125.0) < abs(h_nu2.M() - 125.0))
-        {
-            nu = nu1;
-        }
-        else
-        {
-            nu = nu2;
-        }
-
-        float tmp_hh_mass = (l + nu + j1 + j2 + b1 + b2).M();
-        hh_mass->Fill(tmp_hh_mass);
+        std::cout << "(" << p.E() << ", " << p.X() << ", " << p.Y() << ", " << p.Z() << ")\n";
     }
-
-    if (fails_counter != 0)
+    else
     {
-        simpl_impr_hme_failed = true;
-        simpl_impr_hme_eff = 1 - static_cast<float>(fails_counter)/nIter;
+        std::cout << "(" << p.Pt() << ", " << p.Eta() << ", " << p.Phi() << ", " << p.M() << ")\n";
     }
+}
 
-    fails_counter = 0;
+bool HasZeroParticle(std::vector<TLorentzVector> const& particles)
+{
+    TLorentzVector const zero(0.0f, 0.0f, 0.0f, 0.0f);
+    auto zeroIt = std::find(particles.begin(), particles.end(), zero);
+    if (zeroIt != particles.end()) return false;
+    return true;
+}
 
-    int binmax = hh_mass->GetMaximumBin(); 
-    float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
+bool HasIdenticalPair(TLorentzVector const& p1, TLorentzVector const& p2)
+{
+    return p1 == p2;
+}
 
-    return evt_hh_mass;
+bool ValidDeltaR(TLorentzVector const& p1, TLorentzVector const& p2)
+{
+    return p1.DeltaR(p2) < 0.4;
 }
