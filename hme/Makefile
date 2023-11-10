@@ -25,7 +25,7 @@ OUTLIB	      = ./obj/
 
 #----------------------------------------------------#
 
-hme: hme.cpp tools.cpp
+hme: hme.cpp tools.cpp Utils.cpp
 	g++ -O2 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum
 
 compute: compute_pdfs.cpp Utils.cpp Plotting.cpp
@@ -33,6 +33,7 @@ compute: compute_pdfs.cpp Utils.cpp Plotting.cpp
 
 test: test.cpp
 	g++ -O3 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum 
+	
 clean:
 	rm -f hme
 	rm -f *~
