@@ -1,6 +1,7 @@
 #include "tools.hpp"
 #include "Tracer.hpp"
 #include "constants.hpp"
+#include "Utils.hpp"
 
 #include <iostream>
 #include <memory>
@@ -9,7 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
-static TLorentzVector zero(0.0, 0.0, 0.0, 0.0);
+extern TLorentzVector const zero;
 
 void save::save_1d_dist(TH1F* dist, 
                         std::string const& name,
@@ -88,7 +89,7 @@ void save::save_1d_stack(std::vector<TH1F*> const& distrs,
     delete c1;
 }
 
-std::pair<double, double> save::save_fit(TH1F* dist, std::string const& name, std::string const& title, std::string const& fit_func)
+std::pair<double, double> save::save_fit(TH1F* dist, std::string const& name, std::string const& title)
 {
     TCanvas* c1 = new TCanvas("c1", "c1");
     c1->SetGrid();
@@ -104,7 +105,7 @@ std::pair<double, double> save::save_fit(TH1F* dist, std::string const& name, st
     dist->SetLineColor(1);
     dist->Draw();
 
-    auto fitFunc = new TF1("fitFunc", fit_func.c_str(), 0.0, 2000.0);
+    auto fitFunc = new TF1("fitFunc", "landau", 0.0, 2000.0);
     fitFunc->SetParameter(1, 400);
     fitFunc->SetParameter(2, 5);
     fitFunc->SetParameter(0, dist->GetEntries());
@@ -525,32 +526,3 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
     return evt_hh_mass;
 }
 
-void Print(TLorentzVector const& p, bool EXYZ)
-{
-    if (EXYZ) 
-    {
-        std::cout << "(" << p.E() << ", " << p.X() << ", " << p.Y() << ", " << p.Z() << ")\n";
-    }
-    else
-    {
-        std::cout << "(" << p.Pt() << ", " << p.Eta() << ", " << p.Phi() << ", " << p.M() << ")\n";
-    }
-}
-
-bool HasZeroParticle(std::vector<TLorentzVector> const& particles)
-{
-    TLorentzVector const zero(0.0f, 0.0f, 0.0f, 0.0f);
-    auto zeroIt = std::find(particles.begin(), particles.end(), zero);
-    if (zeroIt != particles.end()) return false;
-    return true;
-}
-
-bool HasIdenticalPair(TLorentzVector const& p1, TLorentzVector const& p2)
-{
-    return p1 == p2;
-}
-
-bool ValidDeltaR(TLorentzVector const& p1, TLorentzVector const& p2)
-{
-    return p1.DeltaR(p2) < 0.4;
-}

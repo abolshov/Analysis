@@ -48,3 +48,16 @@ void Print(TLorentzVector const& p, bool EXYZ)
         std::cout << "(" << p.Pt() << ", " << p.Eta() << ", " << p.Phi() << ", " << p.M() << ")\n";
     }
 }
+
+bool HasZeroParticle(std::vector<TLorentzVector> const& particles)
+{
+    TLorentzVector const zero(0.0f, 0.0f, 0.0f, 0.0f);
+    auto zeroIt = std::find(particles.begin(), particles.end(), zero);
+    if (zeroIt != particles.end()) return true;
+    return false;
+}
+
+bool IsIdenticalPair(TLorentzVector const& p1, TLorentzVector const& p2)
+{
+    return p1 == p2;
+}

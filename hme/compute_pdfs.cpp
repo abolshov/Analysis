@@ -16,7 +16,7 @@
 #include "Plotting.hpp"
 #include "BinaryFunction.hpp"
 
-extern TLorentzVector const zero(0.0f, 0.0f, 0.0f, 0.0f);
+extern TLorentzVector const zero;
 
 inline bool is_offshell(TLorentzVector const& p1, TLorentzVector const& p2, TLorentzVector const& l, TLorentzVector const& nu) noexcept
 {
@@ -37,9 +37,9 @@ void pt_order(TLorentzVector& p1, TLorentzVector& p2)
 int main()
 {
     // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-350_narrow_13TeV_Friend.root");
-    TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_Friend.root");
+    // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_Friend.root");
     // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_matched.root");
-    // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-800_narrow_13TeV_matched.root");
+    TFile *myFile = TFile::Open("data/NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_matched.root");
     TDirectory *dir = (TDirectory*)myFile;
     TTree *myTree = (TTree*)dir->Get("syncTree");
 
@@ -196,6 +196,15 @@ int main()
     std::unique_ptr<TH1F> jq2_dE = std::make_unique<TH1F>("jq2_dE", "dE between quark and jet #2", nbins, -150.0f, 150.0f);
     std::unique_ptr<TH1F> jq2_dPt = std::make_unique<TH1F>("jq2_dPt", "dPt between quark and jet #2", nbins, -150.0f, 150.0f);
 
+    // compare met and visible particles at parton and genjet levels
+    std::unique_ptr<TH2F> met_vs_nu_2d = std::make_unique<TH2F>("met_vs_nu_2d", "MET pt vs neutrino pt", nbins, 0.0, 300.0, nbins, 0.0, 300.0);
+    std::unique_ptr<TH2F> met_vs_gvis_2d = std::make_unique<TH2F>("met_vs_gvis_2d", "MET pt vs visible (quarks) pt", nbins, 0.0, 300.0, nbins, 0.0, 300.0);
+    std::unique_ptr<TH2F> met_vs_jvis_2d = std::make_unique<TH2F>("met_vs_jvis_2d", "MET pt vs visible (jets) pt", nbins, 0.0, 300.0, nbins, 0.0, 300.0);
+
+    std::unique_ptr<TH1F> met_vs_nu_1d = std::make_unique<TH1F>("met_vs_nu_1d", "MET pt vs neutrino pt", nbins, -100.0, 100.0);
+    std::unique_ptr<TH1F> met_vs_gvis_1d = std::make_unique<TH1F>("met_vs_gvis_1d", "MET pt vs visible (quarks) pt", nbins, -200.0, 200.0);
+    std::unique_ptr<TH1F> met_vs_jvis_1d = std::make_unique<TH1F>("met_vs_jvis_1d", "MET pt vs visible (jets) pt", nbins, -200.0, 200.0);
+
     size_t nEvents = myTree->GetEntries();
     std::cout << "nEvents = " << nEvents << "\n";
     int failedMatching = 0;
@@ -220,6 +229,19 @@ int main()
         std::vector<TLorentzVector> partons = {bq1, bq2, q1, q2, l, met};
         std::vector<TLorentzVector> genjets = {bj1, bj2, j1, j2, l, met};
 
+        if (HasZeroParticle(genjets)) continue;
+        if (IsIdenticalPair(j1, j2) || IsIdenticalPair(bj1, bj2)) continue;
+
+        TLorentzVector vis_g = bq1 + bq2 + q1 + q2 + l;
+        TLorentzVector vis_j = bj1 + bj2 + j1 + j2 + l;
+        met_vs_gvis_2d->Fill(genMET_pT, (-1.0*vis_g).Pt());
+        met_vs_jvis_2d->Fill(genMET_pT, (-1.0*vis_j).Pt());
+        met_vs_nu_2d->Fill(genMET_pT, gennu_pt);
+
+        met_vs_gvis_1d->Fill(genMET_pT - (-1.0*vis_g).Pt());
+        met_vs_jvis_1d->Fill(genMET_pT - (-1.0*vis_j).Pt());
+        met_vs_nu_1d->Fill(genMET_pT - gennu_pt);
+
         // if (j1.DeltaR(q1) > 0.3f || j2.DeltaR(q2) > 0.3f) continue;
 
         // if (!ValidEvent(partons) || !ValidEvent(genjets)) continue;
@@ -228,87 +250,87 @@ int main()
         // if (!GenJetCut(genjets)) continue;
 
         
-        auto dEta_1 = genqjet1_eta - genq1_eta;
-        auto dEta_2 = genqjet2_eta - genq2_eta;
-        auto dphi_1 = abs(genqjet1_phi - genq1_phi);
-        auto dPhi_1 = dphi_1 < TMath::Pi() ? dphi_1 : 2.0*TMath::Pi() - dphi_1;
-        auto dphi_2 = abs(genqjet2_phi - genq2_phi);
-        auto dPhi_2 = dphi_2 < TMath::Pi() ? dphi_2 : 2.0*TMath::Pi() - dphi_2;
-        auto dPt_1 = genqjet1_pt - genq1_pt;
-        auto dPt_2 = genqjet2_pt - genq2_pt;
-        auto dE_1 = j1.E() - q1.E();
-        auto dE_2 = j2.E() - q2.E();
+        // auto dEta_1 = genqjet1_eta - genq1_eta;
+        // auto dEta_2 = genqjet2_eta - genq2_eta;
+        // auto dphi_1 = abs(genqjet1_phi - genq1_phi);
+        // auto dPhi_1 = dphi_1 < TMath::Pi() ? dphi_1 : 2.0*TMath::Pi() - dphi_1;
+        // auto dphi_2 = abs(genqjet2_phi - genq2_phi);
+        // auto dPhi_2 = dphi_2 < TMath::Pi() ? dphi_2 : 2.0*TMath::Pi() - dphi_2;
+        // auto dPt_1 = genqjet1_pt - genq1_pt;
+        // auto dPt_2 = genqjet2_pt - genq2_pt;
+        // auto dE_1 = j1.E() - q1.E();
+        // auto dE_2 = j2.E() - q2.E();
         
-        if (deltaR(j1, q1) > 0.4f || deltaR(j2, q2) > 0.4f)
-        {
-            // std::cout << "Event #" << i << ":\n";
-            // std::cout << "q1 = ";
-            // Print(q1, false); 
-            // std::cout << "q2 = ";
-            // Print(q2, false);
-            // std::cout << "j1 = ";
-            // Print(j1, false); 
-            // std::cout << "j2 = ";
-            // Print(j2, false); 
-            // std::cout << "dR(j1, q1) = " << deltaR(j1, q1) << "\n";
-            // std::cout << "dR(j2, q2) = " << deltaR(j2, q2) << "\n";
-            // std::cout << "------------------------------------------------\n";
-            ++failedMatching;
-            continue;
-        }
+        // if (deltaR(j1, q1) > 0.4f || deltaR(j2, q2) > 0.4f)
+        // {
+        //     // std::cout << "Event #" << i << ":\n";
+        //     // std::cout << "q1 = ";
+        //     // Print(q1, false); 
+        //     // std::cout << "q2 = ";
+        //     // Print(q2, false);
+        //     // std::cout << "j1 = ";
+        //     // Print(j1, false); 
+        //     // std::cout << "j2 = ";
+        //     // Print(j2, false); 
+        //     // std::cout << "dR(j1, q1) = " << deltaR(j1, q1) << "\n";
+        //     // std::cout << "dR(j2, q2) = " << deltaR(j2, q2) << "\n";
+        //     // std::cout << "------------------------------------------------\n";
+        //     ++failedMatching;
+        //     continue;
+        // }
 
-        if (abs(dE_1) >= 50.0f || abs(dE_2) >= 50.0f)
-        {
-            std::cout << "Event #" << i << ":\n";
-            std::cout << "q1 = ";
-            Print(q1, false); 
-            std::cout << "q2 = ";
-            Print(q2, false);
-            std::cout << "j1 = ";
-            Print(j1, false); 
-            std::cout << "j2 = ";
-            Print(j2, false); 
-            std::cout << "dR(j1, q1) = " << deltaR(j1, q1) << "\n";
-            std::cout << "dR(j2, q2) = " << deltaR(j2, q2) << "\n";
-            std::cout << "dE_1 = " << dE_1 << "\n"
-                      << "dPt_1 = " << dPt_1 << "\n"
-                      << "dEta_1 = " << dEta_1 << "\n"
-                      << "dPhi_1 = " << dPhi_1 << "\n"
-                      << "dE_2 = " << dE_2 << "\n"
-                      << "dPt_2 = " << dPt_2 << "\n"
-                      << "dEta_2 = " << dEta_2 << "\n"
-                      << "dPhi_2 = " << dPhi_2 << "\n";
-            std::cout << "bq1 = ";
-            Print(bq1, false);
-            std::cout << "bq2 = ";
-            Print(bq2, false);
-            std::cout << "bj1 = ";
-            Print(bj1, false);
-            std::cout << "bj2 = ";
-            Print(bj2, false);
-            deltaR.Print({bq1, bq2, bj1, bj2, q1, q2, j1, j2});
-            std::cout << "------------------------------------------------\n";
-            // break;
-        }
+        // if (abs(dE_1) >= 50.0f || abs(dE_2) >= 50.0f)
+        // {
+        //     std::cout << "Event #" << i << ":\n";
+        //     std::cout << "q1 = ";
+        //     Print(q1, false); 
+        //     std::cout << "q2 = ";
+        //     Print(q2, false);
+        //     std::cout << "j1 = ";
+        //     Print(j1, false); 
+        //     std::cout << "j2 = ";
+        //     Print(j2, false); 
+        //     std::cout << "dR(j1, q1) = " << deltaR(j1, q1) << "\n";
+        //     std::cout << "dR(j2, q2) = " << deltaR(j2, q2) << "\n";
+        //     std::cout << "dE_1 = " << dE_1 << "\n"
+        //               << "dPt_1 = " << dPt_1 << "\n"
+        //               << "dEta_1 = " << dEta_1 << "\n"
+        //               << "dPhi_1 = " << dPhi_1 << "\n"
+        //               << "dE_2 = " << dE_2 << "\n"
+        //               << "dPt_2 = " << dPt_2 << "\n"
+        //               << "dEta_2 = " << dEta_2 << "\n"
+        //               << "dPhi_2 = " << dPhi_2 << "\n";
+        //     std::cout << "bq1 = ";
+        //     Print(bq1, false);
+        //     std::cout << "bq2 = ";
+        //     Print(bq2, false);
+        //     std::cout << "bj1 = ";
+        //     Print(bj1, false);
+        //     std::cout << "bj2 = ";
+        //     Print(bj2, false);
+        //     deltaR.Print({bq1, bq2, bj1, bj2, q1, q2, j1, j2});
+        //     std::cout << "------------------------------------------------\n";
+        //     // break;
+        // }
 
-        jq1_eta->Fill(genq1_eta, genqjet1_eta);
-        jq1_dEta->Fill(dEta_1);
-        jq2_eta->Fill(genq2_eta, genqjet2_eta);
-        jq2_dEta->Fill(dEta_2);
-        jq1_phi->Fill(genq1_phi, genqjet1_phi);
-        jq1_dPhi->Fill(dPhi_1);
-        jq2_phi->Fill(genq2_phi, genqjet2_phi);
-        jq2_dPhi->Fill(dPhi_2);
-        jq1_Pt->Fill(genq1_pt, genqjet1_pt);
-        jq1_dPt->Fill(dPt_1);
-        jq2_Pt->Fill(genq2_pt, genqjet2_pt);
-        jq2_dPt->Fill(dPt_2);
-        jq1_E->Fill(q1.E(), j1.E());
-        jq2_E->Fill(q2.E(), j2.E());
-        jq1_dE->Fill(dE_1);
-        jq2_dE->Fill(dE_2);
+        // jq1_eta->Fill(genq1_eta, genqjet1_eta);
+        // jq1_dEta->Fill(dEta_1);
+        // jq2_eta->Fill(genq2_eta, genqjet2_eta);
+        // jq2_dEta->Fill(dEta_2);
+        // jq1_phi->Fill(genq1_phi, genqjet1_phi);
+        // jq1_dPhi->Fill(dPhi_1);
+        // jq2_phi->Fill(genq2_phi, genqjet2_phi);
+        // jq2_dPhi->Fill(dPhi_2);
+        // jq1_Pt->Fill(genq1_pt, genqjet1_pt);
+        // jq1_dPt->Fill(dPt_1);
+        // jq2_Pt->Fill(genq2_pt, genqjet2_pt);
+        // jq2_dPt->Fill(dPt_2);
+        // jq1_E->Fill(q1.E(), j1.E());
+        // jq2_E->Fill(q2.E(), j2.E());
+        // jq1_dE->Fill(dE_1);
+        // jq2_dE->Fill(dE_2);
 
-        qq_dR->Fill(q1.DeltaR(q2));
+        // qq_dR->Fill(q1.DeltaR(q2));
 
         // if (q1 == q2) 
         // {
@@ -384,9 +406,9 @@ int main()
         // h_mass->Fill(mh);
     }
 
-    std::cout << "Failed Matching = " << failedMatching << "\n";
-    std::cout << "Overlapping Jets = " << deltaR.Count() << "\n";
-    std::cout << "nEvents = " << nEvents << "\n";
+    // std::cout << "Failed Matching = " << failedMatching << "\n";
+    // std::cout << "Overlapping Jets = " << deltaR.Count() << "\n";
+    // std::cout << "nEvents = " << nEvents << "\n";
     // std::cout << "same_bquarks = " << same_bquarks << "\n"
     //           << "same_bjets = " << same_bjets << "\n"
     //           << "same_light_qurks = " << same_light_quarks << "\n"
@@ -405,25 +427,31 @@ int main()
     // file->WriteObject(higgs_mass.get(), "h_mass");
     // file->WriteObject(nu_eta.get(), "nu_eta");
 
-    save_2d_dist(hadrW.get(), "hadronic_W", "diquark mass [GeV]", "dijet mass [GeV]");
+    // save_2d_dist(hadrW.get(), "hadronic_W", "diquark mass [GeV]", "dijet mass [GeV]");
     // save_1d_dist(qq_dR.get(), "qq_dR", "dR");
-    save_2d_dist(jq1_eta.get(), "jq1_eta", "quark #1 eta", "jet #1 eta");
-    save_2d_dist(jq2_eta.get(), "jq2_eta", "quark #2 eta", "jet #2 eta");
-    save_2d_dist(jq1_phi.get(), "jq1_phi", "quark #1 phi", "jet #1 phi");
-    save_2d_dist(jq2_phi.get(), "jq2_phi", "quark #2 phi", "jet #2 phi");
-    save_2d_dist(jq1_E.get(), "jq1_E", "quark #1 E [GeV]", "jet #1 E [GeV]");
-    save_2d_dist(jq2_E.get(), "jq2_E", "quark #2 E [GeV]", "jet #2 E [GeV]");
-    save_2d_dist(jq1_Pt.get(), "jq1_Pt", "quark #1 Pt [GeV]", "jet #1 Pt [GeV]");
-    save_2d_dist(jq2_Pt.get(), "jq2_Pt", "quark #2 Pt [GeV]", "jet #2 Pt [GeV]");
-    save_1d_dist(jq1_dR.get(), "jq1_dR", "dR");
-    save_1d_dist(jq2_dR.get(), "jq2_dR", "dR");
-    save_1d_dist(jq1_dE.get(), "jq1_dE", "[GeV]");
-    save_1d_dist(jq2_dE.get(), "jq2_dE", "[GeV]");
-    save_1d_dist(jq1_dPhi.get(), "jq1_dPhi", "dPhi");
-    save_1d_dist(jq2_dPhi.get(), "jq2_dPhi", "dPhi");
-    save_1d_dist(jq1_dEta.get(), "jq1_dEta", "dEta");
-    save_1d_dist(jq2_dEta.get(), "jq2_dEta", "dEta");
-    save_1d_dist(jq1_dPt.get(), "jq1_dPt", "[GeV]");
-    save_1d_dist(jq2_dPt.get(), "jq2_dPt", "[GeV]");
+    // save_2d_dist(jq1_eta.get(), "jq1_eta", "quark #1 eta", "jet #1 eta");
+    // save_2d_dist(jq2_eta.get(), "jq2_eta", "quark #2 eta", "jet #2 eta");
+    // save_2d_dist(jq1_phi.get(), "jq1_phi", "quark #1 phi", "jet #1 phi");
+    // save_2d_dist(jq2_phi.get(), "jq2_phi", "quark #2 phi", "jet #2 phi");
+    // save_2d_dist(jq1_E.get(), "jq1_E", "quark #1 E [GeV]", "jet #1 E [GeV]");
+    // save_2d_dist(jq2_E.get(), "jq2_E", "quark #2 E [GeV]", "jet #2 E [GeV]");
+    // save_2d_dist(jq1_Pt.get(), "jq1_Pt", "quark #1 Pt [GeV]", "jet #1 Pt [GeV]");
+    // save_2d_dist(jq2_Pt.get(), "jq2_Pt", "quark #2 Pt [GeV]", "jet #2 Pt [GeV]");
+    // save_1d_dist(jq1_dR.get(), "jq1_dR", "dR");
+    // save_1d_dist(jq2_dR.get(), "jq2_dR", "dR");
+    // save_1d_dist(jq1_dE.get(), "jq1_dE", "[GeV]");
+    // save_1d_dist(jq2_dE.get(), "jq2_dE", "[GeV]");
+    // save_1d_dist(jq1_dPhi.get(), "jq1_dPhi", "dPhi");
+    // save_1d_dist(jq2_dPhi.get(), "jq2_dPhi", "dPhi");
+    // save_1d_dist(jq1_dEta.get(), "jq1_dEta", "dEta");
+    // save_1d_dist(jq2_dEta.get(), "jq2_dEta", "dEta");
+    // save_1d_dist(jq1_dPt.get(), "jq1_dPt", "[GeV]");
+    // save_1d_dist(jq2_dPt.get(), "jq2_dPt", "[GeV]");
+    save_2d_dist(met_vs_nu_2d.get(), "met_vs_nu_2d", "genMET_pt [GeV]", "nu pt [GeV]");
+    save_2d_dist(met_vs_gvis_2d.get(), "met_vs_gvis_2d", "genMET_pt [GeV]", "visible genparticles pt [GeV]");
+    save_2d_dist(met_vs_jvis_2d.get(), "met_vs_jvis_2d", "genMET_pt [GeV]", "visible genjets pt [GeV]");
+    save_1d_dist(met_vs_nu_1d.get(), "met_vs_nu_1d", "[GeV]");
+    save_1d_dist(met_vs_gvis_1d.get(), "met_vs_gvis_1d", "[GeV]");
+    save_1d_dist(met_vs_jvis_1d.get(), "met_vs_jvis_1d", "[GeV]");
     return 0;
 }

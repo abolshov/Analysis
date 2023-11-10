@@ -23,8 +23,6 @@ struct CorrData
     TLorentzVector p2;
 };
 
-void Print(TLorentzVector const& p, bool EXYZ = false);
-
 namespace save 
 {
     void save_1d_dist(TH1F* dist, std::string const& name, std::string const& title);
@@ -37,7 +35,7 @@ namespace save
                        std::string const& title,
                        std::string const& axis_label); 
 
-    std::pair<double, double> save_fit(TH1F* dist, std::string const& name, std::string const& title, std::string const& fit_func);   
+    std::pair<double, double> save_fit(TH1F* dist, std::string const& name, std::string const& title);   
 }
 
 namespace jet
@@ -65,9 +63,5 @@ namespace kinematics
 {
     float mT(TLorentzVector const& p1, TLorentzVector const& p2);
 }
-
-bool HasZeroParticle(std::vector<TLorentzVector> const& particles);
-bool HasIdenticalPair(TLorentzVector const& p1, TLorentzVector const& p2);
-bool ValidDeltaR(TLorentzVector const& p1, TLorentzVector const& p2);
 
 #endif

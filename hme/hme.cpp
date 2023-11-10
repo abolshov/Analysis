@@ -13,6 +13,7 @@
 #include "TF1.h"
 
 #include "tools.hpp"
+#include "Utils.hpp"
 #include "Tracer.hpp"
 #include "constants.hpp"
 
@@ -147,15 +148,13 @@ int main()
 
     int nEvents = static_cast<int>(myTree->GetEntries());
 
-    int nIter = 10000;
+    int nIter = 5000;
     // int nbins = 101;
+    int offshell_cnt = 0;
     int zero_part_event = 0;
     int identical_pair_event = 0;
     int too_low_hh_mass = 0;
     int hme_error = 0;
-    int bad_light_jet_match = 0;
-    int bad_b_jet_match = 0;
-    int valid_event = 0;
 
     TRandom3 rg;
 
@@ -177,7 +176,7 @@ int main()
         // std::string msg("Event #");
         // msg += std::to_string(i) + ":\n";
 
-        TLorentzVector bq1, bq2, b1, b2, j1, j2, l, nu, met, q1, q2;
+        TLorentzVector b1, b2, j1, j2, l, nu, met, q1, q2;
         b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
         b2.SetPtEtaPhiM(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
         j1.SetPtEtaPhiM(genqjet1_pt, genqjet1_eta, genqjet1_phi, genqjet1_mass);
@@ -187,40 +186,26 @@ int main()
         met.SetPtEtaPhiM(genMET_pT, 0.0, genMET_phi, 0.0);
         q1.SetPtEtaPhiM(genq1_pt, genq1_eta, genq1_phi, genq1_mass);
         q2.SetPtEtaPhiM(genq2_pt, genq2_eta, genq2_phi, genq2_mass);
-        bq1.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
-        bq2.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
+
+        if (jet::is_offshell(j1, j2, l, nu)) ++offshell_cnt;
 
         std::vector<TLorentzVector> particles = {b1, b2, j1, j2, l, nu, met};
         // std::vector<TLorentzVector> particles = {b1, b2, q1, q2, l, nu, met}; // quarks instead of jets
         std::vector<TH1F*> pdfs = {lead_bjet_pdf, lead_on, lead_off, onshell_w_from_qq, offshell_w_from_qq, h_mass, nu_eta};
 
-        if (!HasZeroParticle(particles))
+        if (HasZeroParticle(particles))
         {
             ++zero_part_event;
             // std::cout << "Skipping event #" << i << ": contains zero particle(s)" << "\n";
             continue;
         }
 
-        if (HasIdenticalPair(j1, j2) || HasIdenticalPair(b1, b2))
+        if (IsIdenticalPair(j1, j2) || IsIdenticalPair(b1, b2))
         {
             ++identical_pair_event;
             // std::cout << "Skipping event #" << i << ": contains identical pair(s)" << "\n";
             continue;
         }
-
-        if (!ValidDeltaR(q1, j1) || !ValidDeltaR(q2, j2))
-        {
-            ++bad_light_jet_match;
-            continue;
-        }
-
-        if (!ValidDeltaR(bq1, b1) || !ValidDeltaR(bq2, b2))
-        {
-            ++bad_b_jet_match;
-            continue;
-        }
-
-        ++valid_event;
 
         hadronic_w->Fill((j1 + j2).M());
         dR1->Fill(j1.DeltaR(q1));
@@ -256,6 +241,9 @@ int main()
         evt_hh_mass = hme::analytical({b1, b2, j1, j2, l, met});
         if (evt_hh_mass > 0.0f) 
         {   
+            // msg += "\tsimplified HME failed";
+            // Tracer::instance().write(msg);
+            // continue;
             hh_mass_analytical->Fill(evt_hh_mass);
         }
         else 
@@ -272,29 +260,22 @@ int main()
     std::cout << "Total " << nEvents << " events, from them:\n";
     std::cout << "\t have zero particle(s) " << zero_part_event << "(" << (1.0*zero_part_event)/nEvents*100 << "%)\n";
     std::cout << "\t have identical pair(s) " << identical_pair_event << "(" << (1.0*identical_pair_event)/nEvents*100 << "%)\n";
-    std::cout << "\t have bad light jet match " << bad_light_jet_match << "(" << (1.0*bad_light_jet_match)/nEvents*100 << "%)\n";
-    std::cout << "\t have bad b jet match " << bad_b_jet_match << "(" << (1.0*bad_b_jet_match)/nEvents*100 << "%)\n";
-
-    std::cout << "\n";
-
-    std::cout << "Total " << valid_event << " valid events, from them:\n";
-    std::cout << "\t have hh_mass < 2*mh " << too_low_hh_mass << "(" << (1.0*too_low_hh_mass)/valid_event*100 << "%)\n";
-    std::cout << "\t have HME error (hh_mass < 0) " << hme_error << "(" << (1.0*hme_error)/valid_event*100 << "%)\n";
-    std::cout << "\t have analytical solution fail " << analytical_fails << "(" << (1.0*analytical_fails)/valid_event*100 << "%)\n";
+    std::cout << "\t have too low hh mass " << too_low_hh_mass << "(" << (1.0*too_low_hh_mass)/nEvents*100 << "%)\n";
+    std::cout << "\t HME error " << hme_error << "(" << (1.0*hme_error)/nEvents*100 << "%)\n";
 
     std::cout << "Number of HME predictions: " << hh_mass_rand_sampl->GetEntries() << "\n";
     std::cout << "Number of analytical solutions: " << hh_mass_analytical->GetEntries() << "\n";
 
-    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl}, 
-                        {"analytical solution", "random sampling"}, 
-                        "rs_vs_anal", "Random sampling vs Analytical solution", "[GeV]");
+    // save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl}, 
+    //                     {"analytical solution", "random sampling"}, 
+    //                     "hme_comparison", "HME comparison", "[GeV]");
 
     save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_rand_sampl_lj}, 
                         {"analytical solution", "random sampling", "weighted random sampling"}, 
                         "hme_comparison", "HME comparison", "[GeV]");
 
-    auto rand_sampl_par = save::save_fit(hh_mass_rand_sampl, "hh_mass_rand_sampl_fit", "[GeV]", "landau");
-    auto simpl_par = save::save_fit(hh_mass_analytical, "hh_mass_analytical_fit", "[GeV]", "landau");
+    auto rand_sampl_par = save::save_fit(hh_mass_rand_sampl, "hh_mass_rand_sampl_fit", "[GeV]");
+    auto simpl_par = save::save_fit(hh_mass_analytical, "hh_mass_analytical_fit", "[GeV]");
     std::cout << "Widths ratio = " << simpl_par.second / rand_sampl_par.second << "\n";
 
     save::save_1d_dist(hh_mass_rand_sampl, "hh_mass_rand_sampl", "[GeV]");
@@ -304,7 +285,7 @@ int main()
     save::save_1d_dist(dR1, "dR1", "[dR]");
     save::save_1d_dist(dR2, "dR2", "[dR]");
 
-    // std::cout << "Analytical solution fails in " << analytical_fails << " out of " << nEvents << " total events (" << (1.0*analytical_fails)/nEvents*100 << "%)" << "\n";
+    std::cout << "Analytical solution fails in " << analytical_fails << " out of " << nEvents << " total events (" << (1.0*analytical_fails)/nEvents*100 << ")" << "\n";
     std::cout << "done\n";
 
     delete file_pdf;

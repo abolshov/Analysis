@@ -10,66 +10,7 @@
 #include "TRandom3.h"
 #include "TGraph.h"
 
-#include "Math/Vector4D.h"
-
-using PtEtaPhiMVector = ROOT::Math::PtEtaPhiMVector;
-
-double AnalyticalSolution(std::vector<PtEtaPhiMVector> const& particles)
-{
-    float mass = -1.0;
-
-    float mh = 125.0;
-    PtEtaPhiMVector b1 = particles[0];
-    PtEtaPhiMVector b2 = particles[1];
-    PtEtaPhiMVector j1 = particles[2];
-    PtEtaPhiMVector j2 = particles[3];
-    PtEtaPhiMVector l = particles[4];
-    PtEtaPhiMVector met = particles[5];
-
-    PtEtaPhiMVector vis(l); 
-    vis += j1;
-    vis += j2;
-    vis += b1;
-    vis += b2;
-    float a = mh*mh - vis.M()*vis.M() + 2.0*vis.Px()*met.Px() + 2.0*vis.Py()*met.Py();
-    float A = 4.0*(vis.E()*vis.E() - vis.Pz()*vis.Pz());
-    float B = -4.0*a*vis.Pz();
-    float C = -4.0*vis.E()*vis.E()*(met.Px()*met.Px() + met.Py()*met.Py()) - a*a;
-    float delta = B*B - 4.0*A*C;
-
-    if (delta < 0.0f) return mass;
-
-    float pz_1 = (-B + sqrt(delta))/(2.0*A);
-    float pz_2 = (-B - sqrt(delta))/(2.0*A);
-
-    PtEtaPhiMVector nu1, nu2;
-    nu1.SetPxPyPzE(met.Px(), met.Py(), pz_1, met.E());
-    nu2.SetPxPyPzE(met.Px(), met.Py(), pz_2, met.E());
-
-    PtEtaPhiMVector jj(j1);
-    jj += j2;
-
-    PtEtaPhiMVector h_nu1(l);  
-    h_nu1 += nu1;
-    h_nu1 += jj;
-    PtEtaPhiMVector h_nu2(l);  
-    h_nu2 += nu2;
-    h_nu2 += jj;
-
-    PtEtaPhiMVector X(b1);
-    X += b2;
-    if (abs(h_nu1.M() - mh) < abs(h_nu2.M() - mh))
-    {
-        X += h_nu1;
-    }
-    else
-    {
-        X += h_nu2;
-    }
-
-    mass = X.M();
-    return mass;
-}
+using namespace std::chrono;
 
 float hme_simplified(std::vector<TLorentzVector> const& particles)
 {
@@ -83,7 +24,7 @@ float hme_simplified(std::vector<TLorentzVector> const& particles)
     TLorentzVector l = particles[4];
     TLorentzVector met = particles[5];
 
-    TLorentzVector vis(l); 
+    TLorentzVector vis(l);
     vis += j1;
     vis += j2;
     vis += b1;
@@ -106,25 +47,31 @@ float hme_simplified(std::vector<TLorentzVector> const& particles)
     TLorentzVector jj(j1);
     jj += j2;
 
-    TLorentzVector h_nu1(l);  
+    TLorentzVector h_nu1(l);
     h_nu1 += nu1;
     h_nu1 += jj;
-    TLorentzVector h_nu2(l);  
+ 
+    TLorentzVector h_nu2(l);
     h_nu2 += nu2;
     h_nu2 += jj;
+    
+    // TLorentzVector nu;
+    TLorentzVector tmp_hh_mom(b1);
+    tmp_hh_mom += b2;
 
-    TLorentzVector X(b1);
-    X += b2;
-    if (abs(h_nu1.M() - 125.0) < abs(h_nu2.M() - 125.0))
+    if (abs(h_nu1.M() - mh) < abs(h_nu2.M() - mh))
     {
-        X += h_nu1;
+        // nu = nu1;
+        tmp_hh_mom += h_nu1;
     }
     else
     {
-        X += h_nu2;
+        // nu = nu2;
+        tmp_hh_mom += h_nu2;
     }
 
-    mass = X.M();
+    double tmp_hh_mass = tmp_hh_mom.M();
+    mass = tmp_hh_mass;
     return mass;
 }
 
@@ -247,29 +194,22 @@ int main()
     {
         myTree->GetEntry(i);
 
-        // TLorentzVector b1, b2, j1, j2, l, met;
-        // b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
-        // b2.SetPtEtaPhiM(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
-        // j1.SetPtEtaPhiM(genqjet1_pt, genqjet1_eta, genqjet1_phi, genqjet1_mass);
-        // j2.SetPtEtaPhiM(genqjet2_pt, genqjet2_eta, genqjet2_phi, genqjet2_mass);
-        // l.SetPtEtaPhiM(genl_pt, genl_eta, genl_phi, genl_mass);
-        // met.SetPtEtaPhiM(genMET_pT, 0.0, genMET_phi, 0.0);
+        TLorentzVector b1, b2, j1, j2, l, nu, met, q1, q2;
+        b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
+        b2.SetPtEtaPhiM(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
+        j1.SetPtEtaPhiM(genqjet1_pt, genqjet1_eta, genqjet1_phi, genqjet1_mass);
+        j2.SetPtEtaPhiM(genqjet2_pt, genqjet2_eta, genqjet2_phi, genqjet2_mass);
+        l.SetPtEtaPhiM(genl_pt, genl_eta, genl_phi, genl_mass);
+        met.SetPtEtaPhiM(genMET_pT, 0.0, genMET_phi, 0.0);
 
-        PtEtaPhiMVector b1(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
-        PtEtaPhiMVector b2(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
-        PtEtaPhiMVector j1(genqjet1_pt, genqjet1_eta, genqjet1_phi, genqjet1_mass);
-        PtEtaPhiMVector j2(genqjet2_pt, genqjet2_eta, genqjet2_phi, genqjet2_mass);
-        PtEtaPhiMVector l(genl_pt, genl_eta, genl_phi, genl_mass);
-        PtEtaPhiMVector met(genMET_pT, 0.0, genMET_phi, 0.0);
-
-        // hme_simplified({b1, b2, j1, j2, l, met});
-        AnalyticalSolution({b1, b2, j1, j2, l, met});
+        hme_simplified({b1, b2, j1, j2, l, met});
     }
     auto loop_stop = std::chrono::high_resolution_clock::now();
     auto loop_duration = duration_cast<std::chrono::milliseconds>(loop_stop - loop_start);
     auto prog_duration = duration_cast<std::chrono::milliseconds>(loop_stop - prog_start);
     std::cout << "Time taken by simple HME event loop: " << loop_duration.count() << " ms\n";
     std::cout << "Time taken by entire program: " << prog_duration.count() << " ms\n";
+
 
     return 0;
 }
