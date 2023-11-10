@@ -148,7 +148,7 @@ int main()
 
     int nEvents = static_cast<int>(myTree->GetEntries());
 
-    int nIter = 5000;
+    int nIter = 1000;
     // int nbins = 101;
     int offshell_cnt = 0;
     int zero_part_event = 0;
@@ -159,12 +159,9 @@ int main()
     TRandom3 rg;
 
     TH1F* hh_mass_rand_sampl = new TH1F("hh_mass", "Random Sampling", 200, 0.0, 2000.0);
-    TH1F* hh_mass_rand_sampl_lj = new TH1F("hh_mass", "Random Sampling with light jets", 200, 0.0, 2000.0);
+    // TH1F* hh_mass_rand_sampl_lj = new TH1F("hh_mass", "Random Sampling with light jets", 200, 0.0, 2000.0);
     TH1F* hh_mass_analytical = new TH1F("hh_mass", "Analytical solution", 200, 0.0, 2000.0);
-
-    TH1F* hadronic_w = new TH1F("hadronic_w", "Hadronic W mass", 51, 0.0, 120.0);
-    TH1F* dR1 = new TH1F("dR1", "dR1", 51, 0.0, 1.0);
-    TH1F* dR2 = new TH1F("dR2", "dR2", 51, 0.0, 1.0);
+    TH1F* hh_mass_anal_sampl = new TH1F("hh_mass", "Analytical solution sampling", 200, 0.0, 2000.0);
 
     auto start = std::chrono::high_resolution_clock::now();
     // TLorentzVector zero(0.0, 0.0, 0.0, 0.0);
@@ -207,10 +204,6 @@ int main()
             continue;
         }
 
-        hadronic_w->Fill((j1 + j2).M());
-        dR1->Fill(j1.DeltaR(q1));
-        dR2->Fill(j2.DeltaR(q2));
-
         rg.SetSeed(0);
         // Ideal HME (when I know for sure what W I am using) without light jet corrections
         float evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000);
@@ -230,11 +223,18 @@ int main()
         }
 
         // random sampling with usual number of bins
-        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, false, true);
+        // evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, false, true);
+        // if (evt_hh_mass > 0.0f)
+        // {
+        //     if (evt_hh_mass < 250.0f) continue;
+        //     hh_mass_rand_sampl_lj->Fill(evt_hh_mass);
+        // }
+
+        evt_hh_mass = hme::anal_sampl(particles, pdfs, nIter, rg, 3000);
         if (evt_hh_mass > 0.0f)
         {
             if (evt_hh_mass < 250.0f) continue;
-            hh_mass_rand_sampl_lj->Fill(evt_hh_mass);
+            hh_mass_anal_sampl->Fill(evt_hh_mass);
         }
         
         // simplified hme
@@ -270,8 +270,12 @@ int main()
     //                     {"analytical solution", "random sampling"}, 
     //                     "hme_comparison", "HME comparison", "[GeV]");
 
-    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_rand_sampl_lj}, 
-                        {"analytical solution", "random sampling", "weighted random sampling"}, 
+    // save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_rand_sampl_lj}, 
+    //                     {"analytical solution", "random sampling", "weighted random sampling"}, 
+    //                     "hme_comparison", "HME comparison", "[GeV]");
+
+    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_anal_sampl}, 
+                        {"analytical solution", "random sampling", "analytical solution sampling"}, 
                         "hme_comparison", "HME comparison", "[GeV]");
 
     auto rand_sampl_par = save::save_fit(hh_mass_rand_sampl, "hh_mass_rand_sampl_fit", "[GeV]");
@@ -280,10 +284,6 @@ int main()
 
     save::save_1d_dist(hh_mass_rand_sampl, "hh_mass_rand_sampl", "[GeV]");
     save::save_1d_dist(hh_mass_analytical, "hh_mass_analytical", "[GeV]");
-
-    save::save_1d_dist(hadronic_w, "hadronic_w", "[GeV]");
-    save::save_1d_dist(dR1, "dR1", "[dR]");
-    save::save_1d_dist(dR2, "dR2", "[dR]");
 
     std::cout << "Analytical solution fails in " << analytical_fails << " out of " << nEvents << " total events (" << (1.0*analytical_fails)/nEvents*100 << ")" << "\n";
     std::cout << "done\n";

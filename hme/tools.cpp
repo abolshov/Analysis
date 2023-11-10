@@ -526,3 +526,100 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
     return evt_hh_mass;
 }
 
+float hme::anal_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, bool correct_light_jets)
+{
+    TLorentzVector b1(particles[hme::GEN_PART::b1]);
+    TLorentzVector b2(particles[hme::GEN_PART::b2]);
+    TLorentzVector j1(particles[hme::GEN_PART::j1]);
+    TLorentzVector j2(particles[hme::GEN_PART::j2]);
+    TLorentzVector l(particles[hme::GEN_PART::l]);
+    TLorentzVector met(particles[hme::GEN_PART::met]);
+    TLorentzVector nu(particles[hme::GEN_PART::nu]);
+
+    TH1F* lead_bjet_pdf = pdfs[0];
+    TH1F* lead_on = pdfs[1];
+    TH1F* lead_off = pdfs[2];
+    TH1F* onshell_w_from_qq = pdfs[3];
+    TH1F* offshell_w_from_qq = pdfs[4];
+    TH1F* h_mass = pdfs[5];
+
+    std::unique_ptr<TH1F> hh_mass = std::make_unique<TH1F>("evt_hh_mass", "evt_hh_mass", nbins, 0.0, 3000.0);
+
+    float hadronic_w = (j1 + j2).M();
+    float mh = h_mass->GetRandom();
+    if (hadronic_w > mh) return -1.0f;
+    bool is_offshell = hadronic_w < 60.0f;
+
+    // sampling loop
+    // sample b jet rescaling factors, correct jet momenta and met and pass corrected values to analytical
+    for (int i = 0; i < nIter; ++i)
+    {
+        std::pair<float, float> light_jet_resc{1.0f, 1.0f};
+        if (correct_light_jets)
+        {
+            if (is_offshell)
+            {
+                light_jet_resc = jet::compute_resc_factors(j1, j2, lead_off, offshell_w_from_qq);
+            }
+            else
+            {
+                light_jet_resc = jet::compute_resc_factors(j1, j2, lead_on, onshell_w_from_qq);
+            }
+        }
+
+        std::pair<float, float> b_jet_resc = jet::compute_resc_factors(b1, b2, lead_bjet_pdf, h_mass);
+
+        float dpx = rg.Gaus(0, MET_SIGMA);
+        float dpy = rg.Gaus(0, MET_SIGMA);
+
+        auto [c1, c2] = b_jet_resc;
+        auto [c3, c4] = light_jet_resc;
+
+        TLorentzVector met_corr;
+
+        float met_px_corr = 0.0;
+        float met_py_corr = 0.0;
+
+        met_px_corr -= (c1 - 1)*b1.Px();
+        met_px_corr -= (c2 - 1)*b2.Px();
+        met_px_corr -= (c3 - 1)*j1.Px();
+        met_px_corr -= (c4 - 1)*j2.Px();
+
+        met_py_corr -= (c1 - 1)*b1.Py();
+        met_py_corr -= (c2 - 1)*b2.Py();
+        met_py_corr -= (c3 - 1)*j1.Py();
+        met_py_corr -= (c4 - 1)*j2.Py();
+
+        float met_px = met.Px();
+        float met_py = met.Py();
+        met_px += dpx;
+        met_px += met_px_corr;
+        met_py += dpy;
+        met_py += met_py_corr;
+        met_corr.SetPxPyPzE(met_px, met_py, met.Pz(), met.E());
+
+        TLorentzVector bb1(c1*b1);
+        TLorentzVector bb2(c2*b2);
+        TLorentzVector jj1(c3*j1);
+        TLorentzVector jj2(c4*j2);
+
+        std::vector<TLorentzVector> parts = {bb1, bb2, jj1, jj2, l, met_corr};
+        float tmp_mass = hme::analytical(parts);
+        if (tmp_mass > 0.0)
+        {
+            hh_mass->Fill(tmp_mass);
+        }
+        else
+        {
+            continue;
+        }
+    }
+
+    if (hh_mass->GetEntries() != 0)
+    {
+        int binmax = hh_mass->GetMaximumBin(); 
+        float evt_hh_mass = hh_mass->GetXaxis()->GetBinCenter(binmax);
+        return evt_hh_mass;
+    }
+    return -1.0f;
+}

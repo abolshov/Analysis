@@ -57,6 +57,7 @@ namespace hme
 
     float analytical(std::vector<TLorentzVector> const& particles);
     float rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, bool correct_light_jets = false, bool weighted = false);
+    float anal_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, bool correct_light_jets = false);
 }
 
 namespace kinematics
