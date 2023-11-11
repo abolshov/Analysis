@@ -243,7 +243,7 @@ float hme::analytical(std::vector<TLorentzVector> const& particles)
     return mass;
 }
 
-TLorentzVector NuFromLeptonicW_v1(float nu_eta, float nu_phi, TLorentzVector const& l, float mw)
+TLorentzVector hme::NuFromLeptonicW_v1(float nu_eta, float nu_phi, TLorentzVector const& l, float mw)
 {
     float deta = nu_eta - l.Eta();
     float dphi = nu_phi - l.Phi();
@@ -259,7 +259,7 @@ TLorentzVector NuFromLeptonicW_v1(float nu_eta, float nu_phi, TLorentzVector con
     return res;
 }
 
-TLorentzVector NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh, int control)
+TLorentzVector hme::NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh, int control)
 {
     TLorentzVector vis = l + j1+ j2;
     TLorentzVector res;
@@ -405,8 +405,8 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
             // if (tmp_hh_mass < 2.0f*mh) continue;
             // hh_mass->Fill(tmp_hh_mass);
 
-            TLorentzVector nu_off = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, offshell_mass);
-            TLorentzVector nu_on = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, onshell_mass);
+            TLorentzVector nu_off = hme::NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, offshell_mass);
+            TLorentzVector nu_on = hme::NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, onshell_mass);
 
             if (nu_off == zero && nu_on == zero) continue;
             if (nu_off != zero && nu_on != zero)
@@ -463,10 +463,10 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
             tmp_hh_momentum += c4*j2;
             tmp_hh_momentum += l;
 
-            TLorentzVector nu0 = NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 0);
+            TLorentzVector nu0 = hme::NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 0);
             // std::cout << "nu0 = ";
             // Print(nu0);
-            TLorentzVector nu1 = NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 1);
+            TLorentzVector nu1 = hme::NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 1);
             // std::cout << "nu1 = ";
             // Print(nu1);
 

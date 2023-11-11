@@ -47,13 +47,12 @@ namespace jet
     std::pair<float, float> compute_resc_factors(TLorentzVector& p1, TLorentzVector& p2, TH1F* lead_jet_pdf, TH1F* mass_pdf);
 }
 
-TLorentzVector NuFromLeptonicW_v1(float nu_eta, float nu_phi, TLorentzVector const& l, float mw);
-TLorentzVector NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh);
-
 namespace hme
 {
     enum GEN_PART { b1, b2, j1, j2, l, nu, met };
-    // enum PDF {};
+    
+    TLorentzVector NuFromLeptonicW_v1(float nu_eta, float nu_phi, TLorentzVector const& l, float mw);
+    TLorentzVector NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh, int control);
 
     float analytical(std::vector<TLorentzVector> const& particles);
     float rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, int mode, bool correct_light_jets = false);
