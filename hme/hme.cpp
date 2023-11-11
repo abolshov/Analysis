@@ -148,12 +148,13 @@ int main()
 
     int nEvents = static_cast<int>(myTree->GetEntries());
 
-    int nIter = 1000;
+    int nIter = 2000;
     // int nbins = 101;
     int offshell_cnt = 0;
     int zero_part_event = 0;
     int identical_pair_event = 0;
     int too_low_hh_mass = 0;
+    int too_low_hh_mass_v2 = 0;
     int hme_error = 0;
 
     TRandom3 rg;
@@ -162,6 +163,8 @@ int main()
     // TH1F* hh_mass_rand_sampl_lj = new TH1F("hh_mass", "Random Sampling with light jets", 200, 0.0, 2000.0);
     TH1F* hh_mass_analytical = new TH1F("hh_mass", "Analytical solution", 200, 0.0, 2000.0);
     TH1F* hh_mass_anal_sampl = new TH1F("hh_mass", "Analytical solution sampling", 200, 0.0, 2000.0);
+    TH1F* hh_mass_rand_sampl_v1 = new TH1F("hh_mass", "Random Sampling v1", 200, 0.0, 2000.0);
+    TH1F* hh_mass_rand_sampl_v2 = new TH1F("hh_mass", "Random Sampling v2", 200, 0.0, 2000.0);
 
     auto start = std::chrono::high_resolution_clock::now();
     // TLorentzVector zero(0.0, 0.0, 0.0, 0.0);
@@ -206,13 +209,13 @@ int main()
 
         rg.SetSeed(0);
         // Ideal HME (when I know for sure what W I am using) without light jet corrections
-        float evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000);
+        float evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, 0);
         if (evt_hh_mass > 0.0f)
         {
             if (evt_hh_mass < 250.0f) 
             {
                 ++too_low_hh_mass;
-                continue;
+                // continue;
             }
             hh_mass_rand_sampl->Fill(evt_hh_mass);
             // std::cout << "Event " << i << ", hh_mass_rand_sampl = " << evt_hh_mass << "\n";
@@ -230,37 +233,62 @@ int main()
         //     hh_mass_rand_sampl_lj->Fill(evt_hh_mass);
         // }
 
+        // solution sampling
         evt_hh_mass = hme::anal_sampl(particles, pdfs, nIter, rg, 3000);
         if (evt_hh_mass > 0.0f)
         {
-            if (evt_hh_mass < 250.0f) continue;
+            // if (evt_hh_mass < 250.0f) continue;
             hh_mass_anal_sampl->Fill(evt_hh_mass);
         }
+
+        // random sampling v2
+        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, 2);
+        if (evt_hh_mass > 0.0f)
+        {
+            if (evt_hh_mass < 250.0f)
+            {
+                // std::cout << "Event #" << i << ": random sampling v2 hh_mass = " <<  evt_hh_mass << "\n";
+                ++too_low_hh_mass_v2;
+                // continue;
+                // break;
+            }
+            hh_mass_rand_sampl_v2->Fill(evt_hh_mass);
+        }
+
+        // random sampling v1
+        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, 1);
+        if (evt_hh_mass > 0.0f)
+        {
+            // if (evt_hh_mass < 250.0f) continue;
+            hh_mass_rand_sampl_v1->Fill(evt_hh_mass);
+        }
         
-        // simplified hme
+        // analytical solution
         evt_hh_mass = hme::analytical({b1, b2, j1, j2, l, met});
         if (evt_hh_mass > 0.0f) 
         {   
-            // msg += "\tsimplified HME failed";
-            // Tracer::instance().write(msg);
-            // continue;
             hh_mass_analytical->Fill(evt_hh_mass);
         }
         else 
         {
             ++analytical_fails;
         }
-        // break;
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = duration_cast<std::chrono::seconds>(stop - start);
     std::cout << "Time taken by HME event loop: " << duration.count() << " seconds" << "\n";
 
+    save::save_1d_dist(hh_mass_rand_sampl, "hh_mass_rand_sampl", "[GeV]");
+    save::save_1d_dist(hh_mass_analytical, "hh_mass_analytical", "[GeV]");
+    save::save_1d_dist(hh_mass_rand_sampl_v2, "hh_mass_rand_sampl_v2", "[GeV]");
+    save::save_1d_dist(hh_mass_rand_sampl_v1, "hh_mass_rand_sampl_v1", "[GeV]");
+
     std::cout << "Total " << nEvents << " events, from them:\n";
     std::cout << "\t have zero particle(s) " << zero_part_event << "(" << (1.0*zero_part_event)/nEvents*100 << "%)\n";
     std::cout << "\t have identical pair(s) " << identical_pair_event << "(" << (1.0*identical_pair_event)/nEvents*100 << "%)\n";
     std::cout << "\t have too low hh mass " << too_low_hh_mass << "(" << (1.0*too_low_hh_mass)/nEvents*100 << "%)\n";
+    std::cout << "\t have too low v2 hh mass " << too_low_hh_mass_v2 << "(" << (1.0*too_low_hh_mass_v2)/nEvents*100 << "%)\n";
     std::cout << "\t HME error " << hme_error << "(" << (1.0*hme_error)/nEvents*100 << "%)\n";
 
     std::cout << "Number of HME predictions: " << hh_mass_rand_sampl->GetEntries() << "\n";
@@ -274,17 +302,17 @@ int main()
     //                     {"analytical solution", "random sampling", "weighted random sampling"}, 
     //                     "hme_comparison", "HME comparison", "[GeV]");
 
-    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_anal_sampl}, 
-                        {"analytical solution", "random sampling", "analytical solution sampling"}, 
+    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_anal_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2}, 
+                        {"analytical solution", "random sampling", "analytical solution sampling", "random sampling v1", "random sampling v2"}, 
+                        "all_comparison", "All method comparison", "[GeV]");
+
+    save::save_1d_stack({hh_mass_rand_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2}, 
+                        {"random sampling", "random sampling v1", "random sampling v2"}, 
                         "hme_comparison", "HME comparison", "[GeV]");
 
     auto rand_sampl_par = save::save_fit(hh_mass_rand_sampl, "hh_mass_rand_sampl_fit", "[GeV]");
     auto simpl_par = save::save_fit(hh_mass_analytical, "hh_mass_analytical_fit", "[GeV]");
     std::cout << "Widths ratio = " << simpl_par.second / rand_sampl_par.second << "\n";
-
-    save::save_1d_dist(hh_mass_rand_sampl, "hh_mass_rand_sampl", "[GeV]");
-    save::save_1d_dist(hh_mass_analytical, "hh_mass_analytical", "[GeV]");
-
     std::cout << "Analytical solution fails in " << analytical_fails << " out of " << nEvents << " total events (" << (1.0*analytical_fails)/nEvents*100 << ")" << "\n";
     std::cout << "done\n";
 

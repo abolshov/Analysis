@@ -56,8 +56,10 @@ namespace hme
     // enum PDF {};
 
     float analytical(std::vector<TLorentzVector> const& particles);
-    float rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, bool correct_light_jets = false, bool weighted = false);
+    float rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, int mode, bool correct_light_jets = false);
     float anal_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, bool correct_light_jets = false);
+
+    enum class MODE { Original, WeightedV1, WeightedV2 };
 }
 
 namespace kinematics
