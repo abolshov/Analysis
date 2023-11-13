@@ -31,8 +31,8 @@ int main()
     TH1F* h_mass = static_cast<TH1F*>(file_pdf->Get("h_mass"));
     TH1F* nu_eta = static_cast<TH1F*>(file_pdf->Get("nu_eta"));
     // TH1F* sublead_bjet_pdf = static_cast<TH1F*>(file_pdf->Get("sublead_bjet_pdf"));
-    TH1F* sublead_on = static_cast<TH1F*>(file_pdf->Get("sublead_on"));
-    TH1F* sublead_off = static_cast<TH1F*>(file_pdf->Get("sublead_off"));
+    // TH1F* sublead_on = static_cast<TH1F*>(file_pdf->Get("sublead_on"));
+    // TH1F* sublead_off = static_cast<TH1F*>(file_pdf->Get("sublead_off"));
 
     // TFile* file_data = TFile::Open("data/NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_Friend.root");
     // TFile* file_data = TFile::Open("data/GluGluToRadionToHHTo2B2WToLNu2J_M-350_narrow_13TeV_Friend.root");
@@ -148,7 +148,7 @@ int main()
 
     int nEvents = static_cast<int>(myTree->GetEntries());
 
-    int nIter = 2000;
+    int nIter = 1000;
     // int nbins = 101;
     int offshell_cnt = 0;
     int zero_part_event = 0;
@@ -165,6 +165,7 @@ int main()
     TH1F* hh_mass_anal_sampl = new TH1F("hh_mass", "Analytical solution sampling", 200, 0.0, 2000.0);
     TH1F* hh_mass_rand_sampl_v1 = new TH1F("hh_mass", "Random Sampling v1", 200, 0.0, 2000.0);
     TH1F* hh_mass_rand_sampl_v2 = new TH1F("hh_mass", "Random Sampling v2", 200, 0.0, 2000.0);
+    TH1F* hh_mass_rand_sampl_v3 = new TH1F("hh_mass", "Random Sampling v3", 200, 0.0, 2000.0);
 
     auto start = std::chrono::high_resolution_clock::now();
     int analytical_fails = 0;
@@ -249,6 +250,13 @@ int main()
         {
             hh_mass_rand_sampl_v1->Fill(evt_hh_mass);
         }
+
+        // random sampling v3
+        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::SimpleV3);
+        if (evt_hh_mass > 0.0f)
+        {
+            hh_mass_rand_sampl_v3->Fill(evt_hh_mass);
+        }
         
         // analytical solution
         evt_hh_mass = hme::analytical({b1, b2, j1, j2, l, met});
@@ -270,6 +278,7 @@ int main()
     save::save_1d_dist(hh_mass_analytical, "hh_mass_analytical", "[GeV]");
     save::save_1d_dist(hh_mass_rand_sampl_v2, "hh_mass_rand_sampl_v2", "[GeV]");
     save::save_1d_dist(hh_mass_rand_sampl_v1, "hh_mass_rand_sampl_v1", "[GeV]");
+    save::save_1d_dist(hh_mass_rand_sampl_v3, "hh_mass_rand_sampl_v3", "[GeV]");
 
     std::cout << "Total " << nEvents << " events, from them:\n";
     std::cout << "\t have zero particle(s) " << zero_part_event << "(" << (1.0*zero_part_event)/nEvents*100 << "%)\n";
@@ -293,8 +302,8 @@ int main()
                         {"analytical solution", "random sampling", "analytical solution sampling", "random sampling v1", "random sampling v2"}, 
                         "all_comparison", "All method comparison", "[GeV]");
 
-    save::save_1d_stack({hh_mass_rand_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2}, 
-                        {"random sampling", "random sampling v1", "random sampling v2"}, 
+    save::save_1d_stack({hh_mass_rand_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2, hh_mass_rand_sampl_v3}, 
+                        {"random sampling", "random sampling v1", "random sampling v2", "hh_mass_rand_sampl_v3"}, 
                         "hme_comparison", "HME comparison", "[GeV]");
 
     auto rand_sampl_par = save::save_fit(hh_mass_rand_sampl, "hh_mass_rand_sampl_fit", "[GeV]");

@@ -50,10 +50,11 @@ namespace jet
 namespace hme
 {
     enum GEN_PART { b1, b2, j1, j2, l, nu, met };
-    enum class MODE { Original, WeightedV1, WeightedV2 };
+    enum class MODE { Original, WeightedV1, WeightedV2, SimpleV3 };
     
     TLorentzVector NuFromLeptonicW_v1(float nu_eta, float nu_phi, TLorentzVector const& l, float mw);
     TLorentzVector NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh, int control);
+    TLorentzVector NuFromLeptonicW_v3(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh, float gen_eta);
 
     float analytical(std::vector<TLorentzVector> const& particles);
     float rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, hme::MODE mode, bool correct_light_jets = false);

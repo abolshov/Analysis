@@ -296,6 +296,23 @@ TLorentzVector hme::NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector c
     return res;
 }
 
+TLorentzVector hme::NuFromLeptonicW_v3(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, float mh, float gen_eta)
+{
+    TLorentzVector vis = l + j1+ j2;
+    TLorentzVector res;
+
+    float phi = met.Phi();
+    float pt = (mh*mh - vis*vis)/(2*(vis.E()*cosh(gen_eta) - vis.Px()*cos(phi) - vis.Py()*sin(phi) - vis.Pz()*sinh(gen_eta)));
+
+    bool invalid = std::isinf(pt) || std::isnan(pt); 
+    float nu_pt = invalid ? 0.0f : pt;
+    float nu_eta = invalid ? 0.0f : gen_eta;
+    float nu_phi = invalid ? 0.0f : phi;
+
+    res.SetPtEtaPhiM(nu_pt, nu_eta, nu_phi, 0.0);
+    return res;
+}
+
 float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, hme::MODE mode, bool correct_light_jets)
 {
     TLorentzVector b1(particles[hme::GEN_PART::b1]);
@@ -345,31 +362,17 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
             }
         }
 
-
         std::pair<float, float> b_jet_resc = jet::compute_resc_factors(b1, b2, lead_bjet_pdf, h_mass);
-
-        // std::pair<float, float> fail(-1.0, -1.0);
-        // if (light_jet_resc == fail || b_jet_resc == fail)
-        // if (b_jet_resc == fail)
-        // {
-        //     ++fails_counter;
-        //     continue;
-        // }
 
         float dpx = rg.Gaus(0, MET_SIGMA);
         float dpy = rg.Gaus(0, MET_SIGMA);
 
-        float c1 = b_jet_resc.first;
-        float c2 = b_jet_resc.second;
+        auto [c1, c2] = b_jet_resc;
+        auto [c3, c4] = light_jet_resc;
 
         TLorentzVector met_corr;
-
-        float c3, c4;
         float met_px_corr = 0.0;
         float met_py_corr = 0.0;
-        
-        c3 = light_jet_resc.first;
-        c4 = light_jet_resc.second;
 
         met_px_corr -= (c1 - 1)*b1.Px();
         met_px_corr -= (c2 - 1)*b2.Px();
@@ -398,12 +401,6 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
             tmp_hh_momentum += c3*j1;
             tmp_hh_momentum += c4*j2;
             tmp_hh_momentum += l;
-
-            // TLorentzVector tmp_nu = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, leptonic_w);
-            // tmp_hh_momentum += tmp_nu;
-            // tmp_hh_mass = tmp_hh_momentum.M();
-            // if (tmp_hh_mass < 2.0f*mh) continue;
-            // hh_mass->Fill(tmp_hh_mass);
 
             TLorentzVector nu_off = hme::NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, offshell_mass);
             TLorentzVector nu_on = hme::NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, onshell_mass);
@@ -463,12 +460,11 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
             tmp_hh_momentum += c4*j2;
             tmp_hh_momentum += l;
 
-            TLorentzVector nu0 = hme::NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 0);
-            // std::cout << "nu0 = ";
-            // Print(nu0);
-            TLorentzVector nu1 = hme::NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 1);
-            // std::cout << "nu1 = ";
-            // Print(nu1);
+            // potential bug here: I was passing NOT CORRECTED jets to NuFromLeptonicW_v2
+            // but luckily c3 = c4 = 1 (should be) so it should not affect anything 
+            // issue needs to be addressed!
+            TLorentzVector nu0 = hme::NuFromLeptonicW_v2(l, c3*j1, c4*j2, met_corr, mh, 0);
+            TLorentzVector nu1 = hme::NuFromLeptonicW_v2(l, c3*j1, c4*j2, met_corr, mh, 1);
 
             if (nu0 == zero && nu1 == zero) continue;
             if (nu0 != zero && nu1 != zero)
@@ -476,12 +472,10 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
                 tmp_hh_mass = (tmp_hh_momentum + nu0).M();
                 // if (tmp_hh_mass < 2.0f*mh) continue;
                 hh_mass->Fill(tmp_hh_mass, 0.5);
-                // std::cout << "\tFilling tmp_hh_mass = " << tmp_hh_mass << "\n";
 
                 tmp_hh_mass = (tmp_hh_momentum + nu1).M();
                 // if (tmp_hh_mass < 2.0f*mh) continue;
                 hh_mass->Fill(tmp_hh_mass, 0.5);
-                // std::cout << "\tFilling tmp_hh_mass = " << tmp_hh_mass << "\n";
             }
             else
             {
@@ -490,53 +484,33 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
                     tmp_hh_mass = (tmp_hh_momentum + nu0).M();
                     // if (tmp_hh_mass < 2.0f*mh) continue;
                     hh_mass->Fill(tmp_hh_mass);
-                    // std::cout << "\tFilling tmp_hh_mass = " << tmp_hh_mass << "\n";
                 }
                 else
                 {
                     tmp_hh_mass = (tmp_hh_momentum + nu1).M();
                     // if (tmp_hh_mass < 2.0f*mh) continue;
                     hh_mass->Fill(tmp_hh_mass);
-                    // std::cout << "\tFilling tmp_hh_mass = " << tmp_hh_mass << "\n";
                 }
             }
         }
 
-        // std::cout << "True W mass = " << (l + nu).M() << "\n";
-        // std::cout << "nu = ";
-        // Print(nu);
-        // std::cout << "l = ";
-        // Print(l);
-        // std::cout << "met = ";
-        // Print(met);
-        // std::cout << "lmet mass = " << (l + met).M() << "\n";
-        // std::cout << "tmp_nu = ";
-        // Print(tmp_nu);
-        // std::cout << "W mass = " << (l + tmp_nu).M() << "\n";
+        if (mode == hme::MODE::SimpleV3)
+        {
+            float tmp_hh_mass;
+            TLorentzVector tmp_hh_momentum(b1);
+            tmp_hh_momentum *= c1;
+            tmp_hh_momentum += c2*b2;
+            tmp_hh_momentum += c3*j1;
+            tmp_hh_momentum += c4*j2;
+            tmp_hh_momentum += l;
 
-        // tmp_nu = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, offshell_mass);
-        // std::cout << "offshell_mass = " << offshell_mass << "\n";
-        // std::cout << "NuFromLeptonicW_v1 = ";
-        // Print(tmp_nu);
-        // std::cout << "W mass v1 = " << (l + tmp_nu).M() << "\n";
+            TLorentzVector nu = hme::NuFromLeptonicW_v3(l, c3*j1, c4*j2, met_corr, mh, nu_eta);
+            if (nu == zero) continue;
+            tmp_hh_momentum += nu;
 
-        // tmp_nu = NuFromLeptonicW_v1(nu_eta, met_corr.Phi(), l, onshell_mass);
-        // std::cout << "onshell_mass = " << onshell_mass << "\n";
-        // std::cout << "NuFromLeptonicW_v1 = ";
-        // Print(tmp_nu);
-        // std::cout << "W mass v1 = " << (l + tmp_nu).M() << "\n";
-
-        // tmp_nu = NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 0);
-        // std::cout << "NuFromLeptonicW_v2_1 = ";
-        // Print(tmp_nu);
-        // std::cout << "W mass v2_1 = " << (l + tmp_nu).M() << "\n";
-
-        // tmp_nu = NuFromLeptonicW_v2(l, j1, j2, met_corr, mh, 1);
-        // std::cout << "NuFromLeptonicW_v2_2 = ";
-        // Print(tmp_nu);
-        // std::cout << "W mass v2_1 = " << (l + tmp_nu).M() << "\n";
-
-        // std::cout << "-------------------------------------------------\n";
+            tmp_hh_mass = tmp_hh_momentum.M();
+            hh_mass->Fill(tmp_hh_mass);
+        }
     }
 
     if (hh_mass->GetEntries() == 0) return -1.0f;
