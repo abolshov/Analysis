@@ -296,7 +296,7 @@ TLorentzVector hme::NuFromLeptonicW_v2(TLorentzVector const& l, TLorentzVector c
     return res;
 }
 
-float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, int mode, bool correct_light_jets)
+float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<TH1F*> const& pdfs, int nIter, TRandom3& rg, int nbins, hme::MODE mode, bool correct_light_jets)
 {
     TLorentzVector b1(particles[hme::GEN_PART::b1]);
     TLorentzVector b2(particles[hme::GEN_PART::b2]);
@@ -389,7 +389,7 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
         met_py += met_py_corr;
         met_corr.SetPxPyPzE(met_px, met_py, met.Pz(), met.E());
 
-        if (mode == static_cast<int>(MODE::WeightedV1))
+        if (mode == hme::MODE::WeightedV1)
         {
             float tmp_hh_mass;
             TLorentzVector tmp_hh_momentum(b1);
@@ -436,7 +436,7 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
             }
         }
         
-        if (mode == static_cast<int>(MODE::Original))
+        if (mode == hme::MODE::Original)
         {
             TLorentzVector tmp_nu;
             tmp_nu.SetPtEtaPhiM(met_corr.Pt(), nu_eta, met_corr.Phi(), 0.0);
@@ -453,7 +453,7 @@ float hme::rand_sampl(std::vector<TLorentzVector> const& particles, std::vector<
             hh_mass->Fill(tmp_hh_mass);
         }
 
-        if (mode == static_cast<int>(MODE::WeightedV2))
+        if (mode == hme::MODE::WeightedV2)
         {
             float tmp_hh_mass;
             TLorentzVector tmp_hh_momentum(b1);

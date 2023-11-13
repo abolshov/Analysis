@@ -167,14 +167,10 @@ int main()
     TH1F* hh_mass_rand_sampl_v2 = new TH1F("hh_mass", "Random Sampling v2", 200, 0.0, 2000.0);
 
     auto start = std::chrono::high_resolution_clock::now();
-    // TLorentzVector zero(0.0, 0.0, 0.0, 0.0);
     int analytical_fails = 0;
     for (int i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
-
-        // std::string msg("Event #");
-        // msg += std::to_string(i) + ":\n";
 
         TLorentzVector b1, b2, j1, j2, l, nu, met, q1, q2;
         b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
@@ -196,29 +192,25 @@ int main()
         if (HasZeroParticle(particles))
         {
             ++zero_part_event;
-            // std::cout << "Skipping event #" << i << ": contains zero particle(s)" << "\n";
             continue;
         }
 
         if (IsIdenticalPair(j1, j2) || IsIdenticalPair(b1, b2))
         {
             ++identical_pair_event;
-            // std::cout << "Skipping event #" << i << ": contains identical pair(s)" << "\n";
             continue;
         }
 
         rg.SetSeed(0);
         // Ideal HME (when I know for sure what W I am using) without light jet corrections
-        float evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, 0);
+        float evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::Original);
         if (evt_hh_mass > 0.0f)
         {
             if (evt_hh_mass < 250.0f) 
             {
                 ++too_low_hh_mass;
-                // continue;
             }
             hh_mass_rand_sampl->Fill(evt_hh_mass);
-            // std::cout << "Event " << i << ", hh_mass_rand_sampl = " << evt_hh_mass << "\n";
         }
         else 
         {
@@ -237,29 +229,24 @@ int main()
         evt_hh_mass = hme::anal_sampl(particles, pdfs, nIter, rg, 3000);
         if (evt_hh_mass > 0.0f)
         {
-            // if (evt_hh_mass < 250.0f) continue;
             hh_mass_anal_sampl->Fill(evt_hh_mass);
         }
 
         // random sampling v2
-        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, 2);
+        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::WeightedV2);
         if (evt_hh_mass > 0.0f)
         {
             if (evt_hh_mass < 250.0f)
             {
-                // std::cout << "Event #" << i << ": random sampling v2 hh_mass = " <<  evt_hh_mass << "\n";
                 ++too_low_hh_mass_v2;
-                // continue;
-                // break;
             }
             hh_mass_rand_sampl_v2->Fill(evt_hh_mass);
         }
 
         // random sampling v1
-        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, 1);
+        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::WeightedV1);
         if (evt_hh_mass > 0.0f)
         {
-            // if (evt_hh_mass < 250.0f) continue;
             hh_mass_rand_sampl_v1->Fill(evt_hh_mass);
         }
         
