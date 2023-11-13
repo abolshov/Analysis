@@ -148,19 +148,20 @@ int main()
 
     int nEvents = static_cast<int>(myTree->GetEntries());
 
-    int nIter = 1000;
+    int nIter = 5000;
     // int nbins = 101;
-    int offshell_cnt = 0;
     int zero_part_event = 0;
     int identical_pair_event = 0;
     int too_low_hh_mass = 0;
     int too_low_hh_mass_v2 = 0;
     int hme_error = 0;
+    int valid_event = 0;
+    int bad_bjet_match = 0;
+    int bad_ljet_match = 0;
 
     TRandom3 rg;
 
     TH1F* hh_mass_rand_sampl = new TH1F("hh_mass", "Random Sampling", 200, 0.0, 2000.0);
-    // TH1F* hh_mass_rand_sampl_lj = new TH1F("hh_mass", "Random Sampling with light jets", 200, 0.0, 2000.0);
     TH1F* hh_mass_analytical = new TH1F("hh_mass", "Analytical solution", 200, 0.0, 2000.0);
     TH1F* hh_mass_anal_sampl = new TH1F("hh_mass", "Analytical solution sampling", 200, 0.0, 2000.0);
     TH1F* hh_mass_rand_sampl_v1 = new TH1F("hh_mass", "Random Sampling v1", 200, 0.0, 2000.0);
@@ -173,9 +174,11 @@ int main()
     {
         myTree->GetEntry(i);
 
-        TLorentzVector b1, b2, j1, j2, l, nu, met, q1, q2;
+        TLorentzVector b1, b2, j1, j2, l, nu, met, q1, q2, bq1, bq2;
         b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
         b2.SetPtEtaPhiM(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
+        bq1.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
+        bq2.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
         j1.SetPtEtaPhiM(genqjet1_pt, genqjet1_eta, genqjet1_phi, genqjet1_mass);
         j2.SetPtEtaPhiM(genqjet2_pt, genqjet2_eta, genqjet2_phi, genqjet2_mass);
         l.SetPtEtaPhiM(genl_pt, genl_eta, genl_phi, genl_mass);
@@ -183,8 +186,6 @@ int main()
         met.SetPtEtaPhiM(genMET_pT, 0.0, genMET_phi, 0.0);
         q1.SetPtEtaPhiM(genq1_pt, genq1_eta, genq1_phi, genq1_mass);
         q2.SetPtEtaPhiM(genq2_pt, genq2_eta, genq2_phi, genq2_mass);
-
-        if (jet::is_offshell(j1, j2, l, nu)) ++offshell_cnt;
 
         std::vector<TLorentzVector> particles = {b1, b2, j1, j2, l, nu, met};
         // std::vector<TLorentzVector> particles = {b1, b2, q1, q2, l, nu, met}; // quarks instead of jets
@@ -202,6 +203,20 @@ int main()
             continue;
         }
 
+        if (b1.DeltaR(bq1) > 0.4 || b2.DeltaR(bq2) > 0.4)
+        {
+            ++bad_bjet_match;
+            continue;
+        }
+
+        if (q1.DeltaR(j1) > 0.4 || q2.DeltaR(j2) > 0.4)
+        {
+            ++bad_ljet_match;
+            continue;
+        }
+
+        ++valid_event;
+
         rg.SetSeed(0);
         // Ideal HME (when I know for sure what W I am using) without light jet corrections
         float evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::Original);
@@ -217,14 +232,6 @@ int main()
         {
             ++hme_error;
         }
-
-        // random sampling with usual number of bins
-        // evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, false, true);
-        // if (evt_hh_mass > 0.0f)
-        // {
-        //     if (evt_hh_mass < 250.0f) continue;
-        //     hh_mass_rand_sampl_lj->Fill(evt_hh_mass);
-        // }
 
         // solution sampling
         evt_hh_mass = hme::anal_sampl(particles, pdfs, nIter, rg, 3000);
@@ -283,33 +290,40 @@ int main()
     std::cout << "Total " << nEvents << " events, from them:\n";
     std::cout << "\t have zero particle(s) " << zero_part_event << "(" << (1.0*zero_part_event)/nEvents*100 << "%)\n";
     std::cout << "\t have identical pair(s) " << identical_pair_event << "(" << (1.0*identical_pair_event)/nEvents*100 << "%)\n";
-    std::cout << "\t have too low hh mass " << too_low_hh_mass << "(" << (1.0*too_low_hh_mass)/nEvents*100 << "%)\n";
-    std::cout << "\t have too low v2 hh mass " << too_low_hh_mass_v2 << "(" << (1.0*too_low_hh_mass_v2)/nEvents*100 << "%)\n";
-    std::cout << "\t HME error " << hme_error << "(" << (1.0*hme_error)/nEvents*100 << "%)\n";
+    std::cout << "\t have bad b jet match " << bad_bjet_match << "(" << (1.0*bad_bjet_match)/nEvents*100 << "%)\n";
+    std::cout << "\t have bad light jet match " << bad_ljet_match << "(" << (1.0*bad_ljet_match)/nEvents*100 << "%)\n";
 
-    std::cout << "Number of HME predictions: " << hh_mass_rand_sampl->GetEntries() << "\n";
+    std::cout << "Total " << valid_event << " valid events, from them:\n";
+    std::cout << "\t have too low hh mass (hh_mass < 2*mh) " << too_low_hh_mass << "(" << (1.0*too_low_hh_mass)/valid_event*100 << "%)\n";
+    std::cout << "\t have too low v2 hh mass (hh_mass < 2*mh) " << too_low_hh_mass_v2 << "(" << (1.0*too_low_hh_mass_v2)/valid_event*100 << "%)\n";
+    std::cout << "\t have HME error (hh_mass = -1.0) " << hme_error << "(" << (1.0*hme_error)/valid_event*100 << "%)\n";
+    std::cout << "\t have analytical solution failure " << analytical_fails << "(" << (1.0*analytical_fails)/valid_event*100 << ")" << "\n";
+
+    std::cout << "Number of HME v0 predictions: " << hh_mass_rand_sampl->GetEntries() << "\n";
+    std::cout << "Number of HME v1 predictions: " << hh_mass_rand_sampl_v1->GetEntries() << "\n";
+    std::cout << "Number of HME v2 predictions: " << hh_mass_rand_sampl_v2->GetEntries() << "\n";
+    std::cout << "Number of HME v3 predictions: " << hh_mass_rand_sampl_v3->GetEntries() << "\n";
     std::cout << "Number of analytical solutions: " << hh_mass_analytical->GetEntries() << "\n";
 
-    // save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl}, 
-    //                     {"analytical solution", "random sampling"}, 
-    //                     "hme_comparison", "HME comparison", "[GeV]");
-
-    // save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_rand_sampl_lj}, 
-    //                     {"analytical solution", "random sampling", "weighted random sampling"}, 
-    //                     "hme_comparison", "HME comparison", "[GeV]");
-
-    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_anal_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2}, 
-                        {"analytical solution", "random sampling", "analytical solution sampling", "random sampling v1", "random sampling v2"}, 
+    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_anal_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2, hh_mass_rand_sampl_v3}, 
+                        {"analytical solution", "random sampling v0", "analytical solution sampling", "random sampling v1", "random sampling v2", "random sampling v3"}, 
                         "all_comparison", "All method comparison", "[GeV]");
 
     save::save_1d_stack({hh_mass_rand_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2, hh_mass_rand_sampl_v3}, 
-                        {"random sampling", "random sampling v1", "random sampling v2", "hh_mass_rand_sampl_v3"}, 
+                        {"random sampling v0", "random sampling v1", "random sampling v2", "random sampling v3"}, 
                         "hme_comparison", "HME comparison", "[GeV]");
+
+    save::save_1d_stack({hh_mass_analytical, hh_mass_anal_sampl}, 
+                        {"analytical solution", "analytical solution sampling"}, 
+                        "all_anal_cmp", "All analytical method comparison", "[GeV]");
+
+    save::save_1d_stack({hh_mass_rand_sampl_v2, hh_mass_rand_sampl_v3}, 
+                        {"random sampling v2", "random sampling v3"}, 
+                        "v2v3_cmp", "Random Sampling method comparison", "[GeV]");
 
     auto rand_sampl_par = save::save_fit(hh_mass_rand_sampl, "hh_mass_rand_sampl_fit", "[GeV]");
     auto simpl_par = save::save_fit(hh_mass_analytical, "hh_mass_analytical_fit", "[GeV]");
     std::cout << "Widths ratio = " << simpl_par.second / rand_sampl_par.second << "\n";
-    std::cout << "Analytical solution fails in " << analytical_fails << " out of " << nEvents << " total events (" << (1.0*analytical_fails)/nEvents*100 << ")" << "\n";
     std::cout << "done\n";
 
     delete file_pdf;
