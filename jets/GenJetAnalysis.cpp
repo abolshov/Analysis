@@ -67,10 +67,10 @@ int main()
         GenPartIndex idx = IsDiHiggsSL(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_status, nGenPart);
         if (!idx) continue;
 
-        std::cout << "Event " << i << "\n";
-        std::cout << "parton flavors: ";
-        std::copy(GenJet_partonFlavour, GenJet_partonFlavour + nGenJet, std::ostream_iterator<Int_t>(std::cout, " "));
-        std::cout << "\n";
+        // std::cout << "Event " << i << "\n";
+        // std::cout << "parton flavors: ";
+        // std::copy(GenJet_partonFlavour, GenJet_partonFlavour + nGenJet, std::ostream_iterator<Int_t>(std::cout, " "));
+        // std::cout << "\n";
         ++diHiggsSL_cnt;
 
         PtEtaPhiMArray genPart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, nGenPart};

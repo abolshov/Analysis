@@ -122,8 +122,8 @@ GenJetIndex Match(GenPartIndex const& genPartIdx, PtEtaPhiMArray const& genPart,
         std::vector<Int_t> matchable_jets{}; // store indices of jets that can be matched to current quark
         auto IsMatchable = [&pdgId](Int_t part_flav)
         {
-            if (std::abs(pdgId) < 5) return (pdgId == part_flav || part_flav == 0 || part_flav == 21);
-            return (pdgId == part_flav || part_flav == 0); 
+            if (std::abs(pdgId) < 5) return (std::abs(pdgId) < 5 || part_flav == 0 || part_flav == 21);
+            return (std::abs(pdgId) == 5 || part_flav == 0); 
         }; // allow quarks match to jets with undefined flavor (0); can be removed later
         
         auto Insert = [&IsMatchable, &matchable_jets, count = 0](Int_t part_flav) mutable
@@ -134,9 +134,9 @@ GenJetIndex Match(GenPartIndex const& genPartIdx, PtEtaPhiMArray const& genPart,
 
         std::for_each(jetPartFlav, jetPartFlav + nJets, Insert); // makes list of indices (pointing to position in GenJet_* arrays) of jets that can be matched
 
-        std::cout << "\tpdgId = " << pdgId << ": ";
-        std::copy(matchable_jets.begin(), matchable_jets.end(), std::ostream_iterator<Int_t>(std::cout, " "));
-        std::cout << "\n";
+        // std::cout << "\tpdgId = " << pdgId << ": ";
+        // std::copy(matchable_jets.begin(), matchable_jets.end(), std::ostream_iterator<Int_t>(std::cout, " "));
+        // std::cout << "\n";
 
         // set target quark momentum
         auto const& [part_pt, part_eta, part_phi, part_m, n_parts] = genPart;
@@ -157,12 +157,12 @@ GenJetIndex Match(GenPartIndex const& genPartIdx, PtEtaPhiMArray const& genPart,
             Float_t dR = jet.DeltaR(part);
             if (dR > 0.4) 
             {
-                std::cout << "\t\tdiscarded:\n";
-                std::cout << "\t\t\t";
-                Print(part);
-                std::cout << "\t\t\t";
-                Print(jet);
-                std::cout << "\t\t\tdR = " << dR << "\n";
+                // std::cout << "\t\tdiscarded:\n";
+                // std::cout << "\t\t\t";
+                // Print(part);
+                // std::cout << "\t\t\t";
+                // Print(jet);
+                // std::cout << "\t\t\tdR = " << dR << "\n";
                 continue;
             }
             if (dR < match_dR)
@@ -171,27 +171,27 @@ GenJetIndex Match(GenPartIndex const& genPartIdx, PtEtaPhiMArray const& genPart,
                 if (it != matched_jets.end()) continue;
                 match_dR = dR;
                 match_idx = jetIdx;
-                std::cout << "\t\tattempting to match:\n";
-                std::cout << "\t\t\t";
-                Print(part);
-                std::cout << "\t\t\t";
-                Print(jet);
-                std::cout << "\t\t\tdR = " << dR << "\n";
+                // std::cout << "\t\tattempting to match:\n";
+                // std::cout << "\t\t\t";
+                // Print(part);
+                // std::cout << "\t\t\t";
+                // Print(jet);
+                // std::cout << "\t\t\tdR = " << dR << "\n";
             }
-            else
-            {
-                std::cout << "\t\tunable to match:\n";
-                std::cout << "\t\t\t";
-                Print(part);
-                std::cout << "\t\t\t";
-                Print(jet);
-                std::cout << "\t\t\tdR = " << dR << "\n";
-            }   
+            // else
+            // {
+            //     std::cout << "\t\tunable to match:\n";
+            //     std::cout << "\t\t\t";
+            //     Print(part);
+            //     std::cout << "\t\t\t";
+            //     Print(jet);
+            //     std::cout << "\t\t\tdR = " << dR << "\n";
+            // }   
         }
         matched_jets.push_back(match_idx);
-        std::cout << "\tmatches: ";
-        std::copy(matched_jets.begin(), matched_jets.end(), std::ostream_iterator<Int_t>(std::cout, " "));
-        std::cout << "\n";
+        // std::cout << "\tmatches: ";
+        // std::copy(matched_jets.begin(), matched_jets.end(), std::ostream_iterator<Int_t>(std::cout, " "));
+        // std::cout << "\n";
     }
 
     bj1_idx = matched_jets[0];
