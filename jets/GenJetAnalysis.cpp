@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <numeric>
 
 #include "TFile.h"
 #include "TTree.h"
@@ -67,10 +68,42 @@ int main()
         GenPartIndex idx = IsDiHiggsSL(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_status, nGenPart);
         if (!idx) continue;
 
+        std::vector<Int_t> indices(nGenPart);
+        std::vector<Bool_t> mask(nGenPart, false);
+        for (Int_t pos = 0; pos < static_cast<Int_t>(nGenPart); ++pos)
+        {
+            Int_t motherIdx = GenPart_genPartIdxMother[pos];
+            if (motherIdx == -1) continue;
+            mask[motherIdx] = true;
+        }
+        std::iota(indices.begin(), indices.end(), 0);
+
+        auto IsMother = [&mask](Int_t pos) { return mask[pos]; };
+        indices.erase(std::remove_if(indices.begin(), indices.end(), IsMother), indices.end());
+        std::cout << indices.size() << "/" << nGenPart << "\n";
+        std::copy(mask.begin(), mask.end(), std::ostream_iterator<Int_t>(std::cout, " "));
+        std::cout << "\n";
+
         // std::cout << "Event " << i << "\n";
         // std::cout << "parton flavors: ";
-        // std::copy(GenJet_partonFlavour, GenJet_partonFlavour + nGenJet, std::ostream_iterator<Int_t>(std::cout, " "));
+        // auto NoMother = [&GenPart_genPartIdxMother, n = 0](Int_t status) mutable
+        // {
+        //     // n++ returns copy with the initial value, and then increments value 
+        //     return GenPart_genPartIdxMother[n++] == -1; 
+        // };
+        auto IsKept = [&mask, pos = 0](Int_t unused) mutable
+        { 
+            return !mask[pos++]; 
+        };
+        std::copy_if(GenPart_pdgId, GenPart_pdgId + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "), IsKept);
+        std::cout << "\n";
+        // std::copy(GenPart_pdgId, GenPart_pdgId + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "));
         // std::cout << "\n";
+        // std::copy(GenPart_genPartIdxMother, GenPart_genPartIdxMother + 15, std::ostream_iterator<Int_t>(std::cout, " "));
+        // std::cout << "\n";
+        std::copy_if(GenPart_status, GenPart_status + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "), IsKept);
+        std::cout << "\n";
+        break;
         ++diHiggsSL_cnt;
 
         PtEtaPhiMArray genPart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, nGenPart};
