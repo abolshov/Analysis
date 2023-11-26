@@ -18,7 +18,7 @@ std::vector<Int_t> GetFinalParticles(Int_t const* motherIdxs, Int_t const* Statu
     return indices;
 }
 
-std::vector<Bool_t> FindFinalParticles(Int_t const* motherIdxs, Int_t const* StatusArr, Int_t nGenPart, GenPartIndex const& idx)
+std::vector<Bool_t> PossibleJetConstituents(Int_t const* motherIdxs, Int_t const* StatusArr, Int_t nGenPart, GenPartIndex const& idx)
 {
     std::vector<Bool_t> mask(nGenPart, true);
     Int_t lep_pos = idx.l;
