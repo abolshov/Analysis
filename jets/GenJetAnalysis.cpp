@@ -8,6 +8,7 @@
 
 #include "Utils.hpp"
 #include "Matching.hpp"
+#include "Clustering.hpp"
 
 constexpr bool debug = true;
 
@@ -80,29 +81,30 @@ int main()
 
         auto IsMother = [&mask](Int_t pos) { return mask[pos]; };
         indices.erase(std::remove_if(indices.begin(), indices.end(), IsMother), indices.end());
-        std::cout << indices.size() << "/" << nGenPart << "\n";
-        std::copy(mask.begin(), mask.end(), std::ostream_iterator<Int_t>(std::cout, " "));
-        std::cout << "\n";
+        // std::cout << indices.size() << "/" << nGenPart << "\n";
+        // std::copy(mask.begin(), mask.end(), std::ostream_iterator<Int_t>(std::cout, " "));
+        // std::cout << "\n";
 
-        // std::cout << "Event " << i << "\n";
-        // std::cout << "parton flavors: ";
-        // auto NoMother = [&GenPart_genPartIdxMother, n = 0](Int_t status) mutable
-        // {
-        //     // n++ returns copy with the initial value, and then increments value 
-        //     return GenPart_genPartIdxMother[n++] == -1; 
+        std::vector<Bool_t> fin = FindFinalParticles(GenPart_genPartIdxMother, GenPart_status, nGenPart, idx);
+        // std::copy(fin.begin(), fin.end(), std::ostream_iterator<Int_t>(std::cout, " "));
+        // std::cout << "\n";
+
+        // std::cout << idx << "\n";
+        // std::copy(indices.begin(), indices.end(), std::ostream_iterator<Int_t>(std::cout, " "));
+        // std::cout << "\n";
+
+        // auto IsKept = [&mask, pos = 0](Int_t unused) mutable
+        // { 
+        //     return !mask[pos++]; 
         // };
-        auto IsKept = [&mask, pos = 0](Int_t unused) mutable
-        { 
-            return !mask[pos++]; 
-        };
-        std::copy_if(GenPart_pdgId, GenPart_pdgId + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "), IsKept);
+        std::copy_if(GenPart_pdgId, GenPart_pdgId + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "), [&fin, count = 0](Int_t unused) mutable { return fin[count++]; });
         std::cout << "\n";
         // std::copy(GenPart_pdgId, GenPart_pdgId + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "));
         // std::cout << "\n";
         // std::copy(GenPart_genPartIdxMother, GenPart_genPartIdxMother + 15, std::ostream_iterator<Int_t>(std::cout, " "));
         // std::cout << "\n";
-        std::copy_if(GenPart_status, GenPart_status + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "), IsKept);
-        std::cout << "\n";
+        // std::copy_if(GenPart_status, GenPart_status + nGenPart, std::ostream_iterator<Int_t>(std::cout, " "), [&fin, count = 0](Int_t unused) mutable { return fin[count++]; });
+        // std::cout << "\n";
         break;
         ++diHiggsSL_cnt;
 
