@@ -16,4 +16,7 @@ std::vector<Bool_t> PossibleJetConstituents(Int_t const* motherIdxs, Int_t const
 
 inline Bool_t IsIncoming(Int_t status) { return incoming.find(status) != incoming.end(); }
 
+std::vector<Overlap> FindOverlaps(PtEtaPhiMArray const& gen_jets, PtEtaPhiMArray const& gen_parts, std::vector<Bool_t> const& finals);
+std::pair<Int_t, Int_t> FindBestMatch(Overlap const& ov, PtEtaPhiMArray const& gen_jets, PtEtaPhiMArray const& gen_parts);
+
 #endif

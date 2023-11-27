@@ -2,6 +2,7 @@
 #define INDEX_HPP
 
 #include <iostream>
+#include <vector>
 #include "TROOT.h"
 
 // struct to save indices of the bbWW decay chain
@@ -27,6 +28,7 @@ struct GenPartIndex
     friend std::ostream& operator<<(std::ostream& os, GenPartIndex const& idx);
 };
 
+// save indices of gen jets matched to quarks in the event
 struct GenJetIndex
 {
     Int_t bj1 = -1;
@@ -43,6 +45,7 @@ struct GenJetIndex
     friend std::ostream& operator<<(std::ostream& os, GenJetIndex const& idx);
 };
 
+// combine pointers to momentum arrays for convenience
 struct PtEtaPhiMArray
 {
     Float_t* ptPtr = nullptr;
@@ -55,6 +58,17 @@ struct PtEtaPhiMArray
     {
         return (ptPtr && etaPtr && phiPtr && mPtr);
     } 
+};
+
+// store info about particles potentially constituing several jets
+struct Overlap
+{
+    Int_t partIdx = -1; // index of gen part fitting to several jets
+    std::vector<Int_t> jets; // indices of jets to which this gen part can go
+
+    inline operator bool() const noexcept { return (partIdx >= 0 && jets.size() > 1); }
+
+    friend std::ostream& operator<<(std::ostream& os, Overlap const& ov);
 };
 
 #endif

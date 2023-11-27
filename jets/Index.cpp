@@ -25,3 +25,18 @@ std::ostream& operator<<(std::ostream& os, GenJetIndex const& idx)
        << lj2 << ")"; 
     return os;
 }
+
+std::ostream& operator<<(std::ostream& os, Overlap const& ov)
+{
+    auto const& [partIdx, jets] = ov;
+    if (ov)
+    {
+        std::cout << partIdx << ": ";
+        for (auto const& jetIdx: jets)
+        {
+            std::cout << jetIdx << " ";
+        }
+    }
+    else std::cout << "No overlaps found";
+    return os;
+}
