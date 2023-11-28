@@ -36,6 +36,42 @@ std::vector<Bool_t> PossibleJetConstituents(Int_t const* motherIdxs, Int_t const
     return mask;
 }
 
+void AnalyzeJets(std::unique_ptr<TH1I> const& unused_cand, std::unique_ptr<TH1I> const& bad_jets, PtEtaPhiMArray const& genPart, PtEtaPhiMArray const& genJet, std::vector<Bool_t> candidates, Int_t n_unused)
+{
+    auto& [jet_pt, jet_eta, jet_phi, jet_m, nJets] = genJet;
+    auto& [part_pt, part_eta, part_phi, part_m, nParts] = genPart;
+
+    Int_t n_bad_jets = 0;
+
+    for (Int_t jetIdx = 0; jetIdx < static_cast<Int_t>(nJets); ++jetIdx) // loop over all jets in event
+    {
+        TLorentzVector jet, jet_cand;
+        jet.SetPtEtaPhiM(jet_pt[jetIdx], jet_eta[jetIdx], jet_phi[jetIdx], jet_m[jetIdx]);
+
+        for (Int_t partIdx = 0; partIdx < static_cast<Int_t>(nParts); ++partIdx)
+        {
+            assert(nParts == candidates.size());
+            if (!candidates[partIdx]) continue; // skip all particles that can't potentially constitue jet
+
+            TLorentzVector part;
+            part.SetPtEtaPhiM(part_pt[partIdx], part_eta[partIdx], part_phi[partIdx], part_m[partIdx]);
+
+            float dR = part.DeltaR(jet);
+            if (dR < 0.4)
+            {   
+                jet_cand += part;
+                --n_unused;
+            }
+        }
+        
+        Double_t pt_ratio = jet_cand.Pt()/jet.Pt();
+        if (pt_ratio > 1.1 || pt_ratio < 0.9) ++n_bad_jets;
+    }
+
+    unused_cand->Fill(n_unused);
+    bad_jets->Fill(n_bad_jets);
+}
+
 std::vector<Overlap> FindOverlaps(PtEtaPhiMArray const& gen_jets, PtEtaPhiMArray const& gen_parts, std::vector<Bool_t> const& finals)
 {
     std::vector<Overlap> res;

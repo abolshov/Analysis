@@ -16,7 +16,8 @@
 #include "Matching.hpp"
 #include "Clustering.hpp"
 
-constexpr bool debug = true;
+constexpr bool debug = false;
+constexpr bool matched_debug = true;
 
 int main()
 {
@@ -64,18 +65,15 @@ int main()
 
     auto tot_gen_jets = std::make_unique<TH1I>("tot_gen_jets", "Number of gen jets", 19, 0, 19);
     auto bad_gen_jets = std::make_unique<TH1I>("bad_gen_jets", "Number of bad gen jets", 19, 0, 19);
-    auto tot_cand = std::make_unique<TH1I>("tot_cand", "Number of potential jet constituents", 75, -15, 60);
-    auto unused_cand = std::make_unique<TH1I>("unused_cand", "Number of unused candidates", 75, -15, 60);
+    auto tot_cand = std::make_unique<TH1I>("tot_cand", "Number of potential jet constituents", 60, 0, 60);
+    auto unused_cand = std::make_unique<TH1I>("unused_cand", "Number of unused candidates", 60, 0, 60);
+    auto empty_jets = std::make_unique<TH1I>("empty_jets", "Number of empty jets", 19, 0, 19);
 
     int diHiggsSL_cnt = 0;
     int good_matching = 0;
 
     int nEvents = myTree->GetEntries();
     std::cout << "nEvents = " << nEvents << "\n";
-
-    // Overlap ov;
-    // std::cout << ov;
-    // return 0;
 
     for (int i = 0; i < nEvents; ++i)
     {
@@ -91,6 +89,7 @@ int main()
         Int_t n_cand = std::count(candidates.begin(), candidates.end(), true);
         Int_t n_unused = n_cand;
         Int_t n_bad_jets = 0;
+        Int_t n_empty_jets = 0;
         // std::cout << "n_cand = " << n_cand << "\n";
         // std::cout << "nGenJet = " << nGenJet << "\n";
 
@@ -99,10 +98,13 @@ int main()
 
         if constexpr (debug) std::cout << "----------------------EVENT #" << i << " START-----------------------------\n";
         std::vector<Overlap> overlaps = FindOverlaps(genJet, genPart, candidates);
-        std::cout << "Found overlaps:\n";
-        for (auto const& ov: overlaps)
+        if constexpr (debug)
         {
-            std::cout << ov << "\n";
+            std::cout << "Found overlaps:\n";
+            for (auto const& ov: overlaps)
+            {
+                std::cout << ov << "\n";
+            }
         }
 
         std::vector<Int_t> used_parts;
@@ -113,10 +115,13 @@ int main()
             
             if constexpr (debug)
             {
-                // std::cout << "Event " << i << ":\n";
-                std::cout << "Jet = ";
+                std::cout << "----------------------JET #" << jetIdx << " START-------------------------------\n";
+                std::cout << "GenJet = ";
                 Print(jet);
+                std::cout << "\n";
             }
+
+            Int_t constituent_count = 0;
 
             for (Int_t partIdx = 0; partIdx < static_cast<Int_t>(nGenPart); ++partIdx)
             {
@@ -124,7 +129,7 @@ int main()
                 if (!candidates[partIdx]) continue; // skip all particles that can't potentially constitue jet
 
                 TLorentzVector part;
-                part.SetPtEtaPhiM(GenPart_pt[partIdx], GenPart_eta[partIdx], GenPart_phi[partIdx], GenJet_mass[partIdx]);
+                part.SetPtEtaPhiM(GenPart_pt[partIdx], GenPart_eta[partIdx], GenPart_phi[partIdx], GenPart_mass[partIdx]);
 
                 float dR = part.DeltaR(jet);
                 if (dR < 0.4)
@@ -132,13 +137,17 @@ int main()
                     // if the particle has NOT been used before, add it to jet_cand and mark as used
                     if (std::find(used_parts.begin(), used_parts.end(), partIdx) != used_parts.end()) 
                     {
-                        std::cout << "\tWARNING! Particle " << partIdx << " overlaps with jet " << jetIdx << "\n";  
+                        if constexpr (debug)
+                        {
+                            std::cout << "\n\tWARNING! Particle " << partIdx << " has been used before, skipping in " << jetIdx << " with dR = " << dR << "\n";
+                        }  
                         continue;
                     }
 
                     jet_cand += part;
                     --n_unused;
                     used_parts.push_back(partIdx);
+                    ++constituent_count;
 
                     Int_t motherIdx = GenPart_genPartIdxMother[partIdx];
                     Int_t motherPdgId = (motherIdx == -1) ? 0 : GenPart_pdgId[motherIdx];
@@ -148,7 +157,7 @@ int main()
                     {
                         std::cout << "\tpartIdx = " << partIdx << "\n"
                                   << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                                  << "\tmotherPdgId = " << motherPdgId << "\n"
+                                  << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
                                   << "\tpartStatus = " << partStatus << "\n"
                                   << "\tdR = " << dR << "\n";
                         std::cout << "\t";
@@ -158,9 +167,15 @@ int main()
                 }
             }
 
-            std::cout << "jet_cand = ";
-            Print(jet_cand);
-            std::cout << "dR = " << jet.DeltaR(jet_cand) << "\n";
+            if (constituent_count == 0) ++n_empty_jets;
+            constituent_count = 0;
+
+            if constexpr (debug)
+            {
+                std::cout << "jet_cand = ";
+                Print(jet_cand);
+                std::cout << "dR = " << jet.DeltaR(jet_cand) << "\n";
+            }
             
             Double_t pt_ratio = jet_cand.Pt()/jet.Pt();
             if (pt_ratio > 1.1 || pt_ratio < 0.9) ++n_bad_jets;
@@ -168,8 +183,10 @@ int main()
             if constexpr (debug) std::cout << "----------------------JET #" << jetIdx << " END-------------------------------\n";
         }
 
+        empty_jets->Fill(n_empty_jets);
+
         used_parts.clear();
-        if (overlaps.size() > 1) break;
+        // if (overlaps.size() > 1) break;
 
         unused_cand->Fill(n_unused);
         bad_gen_jets->Fill(n_bad_jets);
@@ -185,12 +202,130 @@ int main()
 
         if (!match) continue;
         ++good_matching;
+
+        auto [bj1Idx, bj2Idx, lj1Idx, lj2Idx] = match;
+        TLorentzVector bj1, bj2, lj1, lj2;
+        bj1.SetPtEtaPhiM(GenJet_pt[bj1Idx], GenJet_eta[bj1Idx], GenJet_phi[bj1Idx], GenJet_mass[bj1Idx]);
+        bj2.SetPtEtaPhiM(GenJet_pt[bj2Idx], GenJet_eta[bj2Idx], GenJet_phi[bj2Idx], GenJet_mass[bj2Idx]);
+        lj1.SetPtEtaPhiM(GenJet_pt[lj1Idx], GenJet_eta[lj1Idx], GenJet_phi[lj1Idx], GenJet_mass[lj1Idx]);
+        lj2.SetPtEtaPhiM(GenJet_pt[lj2Idx], GenJet_eta[lj2Idx], GenJet_phi[lj2Idx], GenJet_mass[lj2Idx]);
+
+        if constexpr (matched_debug)
+        {
+            std::cout << "----------------------EVENT #" << i << " MATCHED DEBUG START-----------------------------\n";
+            std::cout << "bj1 = ";
+            Print(bj1);
+            std::cout << "bj2 = ";
+            Print(bj2);
+            std::cout << "lj1 = ";
+            Print(lj1);
+            std::cout << "lj2 = ";
+            Print(lj2);
+            std::cout << "\n";
+        }
+
+        TLorentzVector cand_b1, cand_b2, cand_j1, cand_j2;
+        for (Int_t partIdx = 0; partIdx < static_cast<Int_t>(nGenPart); ++partIdx)
+        {
+            if (!candidates[partIdx]) continue;
+
+            TLorentzVector part;
+            part.SetPtEtaPhiM(GenPart_pt[partIdx], GenPart_eta[partIdx], GenPart_phi[partIdx], GenPart_mass[partIdx]);
+
+            Int_t motherIdx = GenPart_genPartIdxMother[partIdx];
+            Int_t motherPdgId = (motherIdx == -1) ? 0 : GenPart_pdgId[motherIdx];
+            Int_t partStatus = GenPart_status[partIdx];
+
+            Float_t dR_b1, dR_b2, dR_j1, dR_j2;
+            dR_b1 = bj1.DeltaR(part);
+            dR_b2 = bj2.DeltaR(part);
+            dR_j1 = lj1.DeltaR(part);
+            dR_j2 = lj2.DeltaR(part);
+
+            if (dR_b1 < 0.4) 
+            {
+                cand_b1 += part;
+                // if constexpr (matched_debug)
+                // {
+                //     std::cout << "\tParticle added to b jet #1\n";
+                //     std::cout << "\tpartIdx = " << partIdx << "\n"
+                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                //             << "\tpartStatus = " << partStatus << "\n"
+                //             << "\tdR = " << dR_b1 << "\n";
+                //     std::cout << "\t";
+                //     Print(part);
+                //     std::cout << "\n";
+                // }
+            }
+            if (dR_b2 < 0.4) 
+            {
+                cand_b2 += part;
+                // if constexpr (matched_debug)
+                // {
+                //     std::cout << "\tParticle added to b jet #2\n";
+                //     std::cout << "\tpartIdx = " << partIdx << "\n"
+                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                //             << "\tpartStatus = " << partStatus << "\n"
+                //             << "\tdR = " << dR_b2 << "\n";
+                //     std::cout << "\t";
+                //     Print(part);
+                //     std::cout << "\n";
+                // }
+            }
+            if (dR_j1 < 0.4) 
+            {
+                cand_j1 += part;
+                // if constexpr (matched_debug)
+                // {
+                //     std::cout << "\tParticle added to light jet #1\n";
+                //     std::cout << "\tpartIdx = " << partIdx << "\n"
+                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                //             << "\tpartStatus = " << partStatus << "\n"
+                //             << "\tdR = " << dR_j1 << "\n";
+                //     std::cout << "\t";
+                //     Print(part);
+                //     std::cout << "\n";
+                // }
+            }
+            if (dR_j2 < 0.4) 
+            {
+                cand_j2 += part;
+                // if constexpr (matched_debug)
+                // {
+                //     std::cout << "\tParticle added to light jet #2\n";
+                //     std::cout << "\tpartIdx = " << partIdx << "\n"
+                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                //             << "\tpartStatus = " << partStatus << "\n"
+                //             << "\tdR = " << dR_j2 << "\n";
+                //     std::cout << "\t";
+                //     Print(part);
+                //     std::cout << "\n";
+                // }
+            }
+        }
+
+        if constexpr (matched_debug)
+        {
+            std::cout << "cand_b1 = ";
+            Print(cand_b1);
+            std::cout << "cand_b2 = ";
+            Print(cand_b2);
+            std::cout << "cand_j1 = ";
+            Print(cand_j1);
+            std::cout << "cand_j2 = ";
+            Print(cand_j2);
+            std::cout << "----------------------EVENT #" << i << " MATCHED DEBUG END-----------------------------\n";
+        }
     }
 
-    auto c1 = std::make_unique<TCanvas>("c1", "c1");
-    c1->SetGrid();
-    c1->SetTickx();
-    c1->SetTicky();
+    // auto c1 = std::make_unique<TCanvas>("c1", "c1");
+    // c1->SetGrid();
+    // c1->SetTickx();
+    // c1->SetTicky();
 
     // auto stack = std::make_unique<THStack>("stack", "Total # of gen jets vs # of bad jets");
     // auto legend = std::make_unique<TLegend>(0.7, 0.7, 0.9, 0.9);
@@ -210,23 +345,29 @@ int main()
     // legend->Draw();
     // c1->SaveAs("jet_numbers.png");
 
-    auto stack = std::make_unique<THStack>("stack", "All potential jet constituents vs # of unused constituents");
-    auto legend = std::make_unique<TLegend>(0.7, 0.7, 0.9, 0.9);
+    // auto stack = std::make_unique<THStack>("stack", "All potential jet constituents vs # of unused constituents");
+    // auto legend = std::make_unique<TLegend>(0.7, 0.7, 0.9, 0.9);
 
-    unused_cand->SetLineWidth(3);
-    unused_cand->SetLineColor(2);
-    stack->Add(unused_cand.get());
-    legend->AddEntry(unused_cand.get(), "unused", "l");
+    // unused_cand->SetLineWidth(3);
+    // unused_cand->SetLineColor(2);
+    // stack->Add(unused_cand.get());
+    // legend->AddEntry(unused_cand.get(), "unused", "l");
 
-    tot_cand->SetLineWidth(3);
-    tot_cand->SetLineColor(4);
-    stack->Add(tot_cand.get());
-    legend->AddEntry(tot_cand.get(), "all constit", "l");
+    // tot_cand->SetLineWidth(3);
+    // tot_cand->SetLineColor(4);
+    // stack->Add(tot_cand.get());
+    // legend->AddEntry(tot_cand.get(), "all constit", "l");
 
-    stack->Draw("nostack");
-    stack->GetXaxis()->SetTitle("Number of gen jet constituents");
-    legend->Draw();
-    c1->SaveAs("jet_constituents.png");
+    // stack->Draw("nostack");
+    // stack->GetXaxis()->SetTitle("Number of gen jet constituents");
+    // legend->Draw();
+    // c1->SaveAs("jet_constituents.png");
+
+    // empty_jets->SetLineWidth(3);
+    // empty_jets->SetLineColor(4);
+    // empty_jets->GetXaxis()->SetTitle("Number of empty jets");
+    // empty_jets->Draw();
+    // c1->SaveAs("empty_jets.png");
 
     std::cout << "diHiggsSL_cnt = " << diHiggsSL_cnt << "\n";
     std::cout << "good_matching = " << good_matching << "\n";
