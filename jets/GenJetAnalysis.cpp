@@ -17,31 +17,48 @@
 #include "Clustering.hpp"
 
 constexpr bool debug = false;
-constexpr bool matched_debug = true;
+constexpr bool matched_debug = false;
 
-int main()
+constexpr int MAX_GENJET = 16;
+constexpr int MAX_GENPART = 300;
+
+int main(int argc, char* argv[])
 {
-    TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
+    bool interactive = false;
+    if (argc == 2)
+    {
+        std::string arg(argv[1]);
+        if (arg == "-i")
+        {
+            interactive = true;
+            std::cout << "Running in interactive mode\n";
+            std::cout << "Possible commands:\n"
+                      << "\tc for continue\n"
+                      << "\tf for finish\n";
+        }
+    }
+    // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
+    TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
 
     UInt_t          nGenPart;
-    Float_t         GenPart_eta[115];   //[nGenPart]
-    Float_t         GenPart_mass[115];   //[nGenPart]
-    Float_t         GenPart_phi[115];   //[nGenPart]
-    Float_t         GenPart_pt[115];   //[nGenPart]
-    Int_t           GenPart_genPartIdxMother[115];   //[nGenPart]
-    Int_t           GenPart_pdgId[115];   //[nGenPart]
-    Int_t           GenPart_status[115];   //[nGenPart]
-    // Int_t           GenPart_statusFlags[115];   //[nGenPart]
+    Float_t         GenPart_eta[MAX_GENPART];   //[nGenPart]
+    Float_t         GenPart_mass[MAX_GENPART];   //[nGenPart]
+    Float_t         GenPart_phi[MAX_GENPART];   //[nGenPart]
+    Float_t         GenPart_pt[MAX_GENPART];   //[nGenPart]
+    Int_t           GenPart_genPartIdxMother[MAX_GENPART];   //[nGenPart]
+    Int_t           GenPart_pdgId[MAX_GENPART];   //[nGenPart]
+    Int_t           GenPart_status[MAX_GENPART];   //[nGenPart]
+    // Int_t           GenPart_statusFlags[MAX_GENPART];   //[nGenPart]
 
     UInt_t          nGenJet;
-    Float_t         GenJet_eta[19];   //[nGenJet]
-    Float_t         GenJet_mass[19];   //[nGenJet]
-    Float_t         GenJet_phi[19];   //[nGenJet]
-    Float_t         GenJet_pt[19];   //[nGenJet]
+    Float_t         GenJet_eta[MAX_GENJET];   //[nGenJet]
+    Float_t         GenJet_mass[MAX_GENJET];   //[nGenJet]
+    Float_t         GenJet_phi[MAX_GENJET];   //[nGenJet]
+    Float_t         GenJet_pt[MAX_GENJET];   //[nGenJet]
 
-    Int_t           GenJet_partonFlavour[19];   //[nGenJet]
-    // UChar_t         GenJet_hadronFlavour[19];   //[nGenJet] doesn't work for some reason - prints empty spaces
+    Int_t           GenJet_partonFlavour[MAX_GENJET];   //[nGenJet]
+    // UChar_t         GenJet_hadronFlavour[MAX_GENJET];   //[nGenJet] doesn't work for some reason - prints empty spaces
 
     myTree->SetBranchAddress("nGenPart", &nGenPart);
     myTree->SetBranchAddress("GenPart_eta", &GenPart_eta);
@@ -78,6 +95,21 @@ int main()
     for (int i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
+        
+        if (interactive)
+        {
+            std::cout << "Event " << i << "\n";
+            char c;
+            while(std::cin.get(c))
+            {
+                if (c == 'c') break;
+                if (c == 'f')
+                {
+                    std::cout << "Finish\n";
+                    return 0;
+                }
+            }
+        }
 
         GenPartIndex idx = IsDiHiggsSL(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_status, nGenPart);
         if (!idx) continue;
@@ -92,6 +124,34 @@ int main()
         Int_t n_empty_jets = 0;
         // std::cout << "n_cand = " << n_cand << "\n";
         // std::cout << "nGenJet = " << nGenJet << "\n";
+
+        for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
+        {
+            std::cout << std::boolalpha;
+            if (candidates[idx]) std::cout << "idx = " << idx
+                                           << ", pdgId = " << GenPart_pdgId[idx] 
+                                           << ", status = " << GenPart_status[idx] 
+                                           << ", mother_idx = " << GenPart_genPartIdxMother[idx] 
+                                           << ", mother_pdgId = " << GenPart_pdgId[GenPart_genPartIdxMother[idx]] << "\n";
+            if (GenPart_pdgId[idx] == 21 && candidates[idx])
+            {
+                // auto it = std::find(GenPart_genPartIdxMother, GenPart_genPartIdxMother + nGenPart, idx);
+                // std::cout << "\t" << "nGenPart = " << nGenPart << ", it = " << it - GenPart_genPartIdxMother << "\n";
+                TLorentzVector g;
+                g.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
+                std::cout << "\tg = ";
+                Print(g);
+            }
+            if (GenPart_pdgId[idx] == 2212 && candidates[idx])
+            {
+                TLorentzVector p;
+                p.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
+                std::cout << "\tp = ";
+                Print(p);
+            }
+            // std::cout << "pdgId = " << GenPart_pdgId[idx] << ", status = " << GenPart_status[idx] << ", mother_idx = " << GenPart_genPartIdxMother[idx] << ": " << candidates[idx] << "\n";
+        }   
+        // break;
 
         tot_gen_jets->Fill(nGenJet);
         tot_cand->Fill(n_cand);
@@ -210,17 +270,31 @@ int main()
         lj1.SetPtEtaPhiM(GenJet_pt[lj1Idx], GenJet_eta[lj1Idx], GenJet_phi[lj1Idx], GenJet_mass[lj1Idx]);
         lj2.SetPtEtaPhiM(GenJet_pt[lj2Idx], GenJet_eta[lj2Idx], GenJet_phi[lj2Idx], GenJet_mass[lj2Idx]);
 
+        TLorentzVector bq1, bq2, lq1, lq2;
+        bq1.SetPtEtaPhiM(GenPart_pt[idx.b1], GenPart_eta[idx.b1], GenPart_phi[idx.b1], GenPart_mass[idx.b1]);
+        bq2.SetPtEtaPhiM(GenPart_pt[idx.b2], GenPart_eta[idx.b2], GenPart_phi[idx.b2], GenPart_mass[idx.b2]);
+        lq1.SetPtEtaPhiM(GenPart_pt[idx.q1], GenPart_eta[idx.q1], GenPart_phi[idx.q1], GenPart_mass[idx.q1]);
+        lq2.SetPtEtaPhiM(GenPart_pt[idx.q2], GenPart_eta[idx.q2], GenPart_phi[idx.q2], GenPart_mass[idx.q2]);
+
         if constexpr (matched_debug)
         {
             std::cout << "----------------------EVENT #" << i << " MATCHED DEBUG START-----------------------------\n";
             std::cout << "bj1 = ";
             Print(bj1);
+            std::cout << "bq1 = ";
+            Print(bq1);
             std::cout << "bj2 = ";
             Print(bj2);
+            std::cout << "bq2 = ";
+            Print(bq2);
             std::cout << "lj1 = ";
             Print(lj1);
+            std::cout << "lq1 = ";
+            Print(lq1);
             std::cout << "lj2 = ";
             Print(lj2);
+            std::cout << "lq2 = ";
+            Print(lq2);
             std::cout << "\n";
         }
 
@@ -245,66 +319,66 @@ int main()
             if (dR_b1 < 0.4) 
             {
                 cand_b1 += part;
-                // if constexpr (matched_debug)
-                // {
-                //     std::cout << "\tParticle added to b jet #1\n";
-                //     std::cout << "\tpartIdx = " << partIdx << "\n"
-                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                //             << "\tpartStatus = " << partStatus << "\n"
-                //             << "\tdR = " << dR_b1 << "\n";
-                //     std::cout << "\t";
-                //     Print(part);
-                //     std::cout << "\n";
-                // }
+                if constexpr (matched_debug)
+                {
+                    std::cout << "\tParticle added to b jet #1\n";
+                    std::cout << "\tpartIdx = " << partIdx << "\n"
+                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                            << "\tpartStatus = " << partStatus << "\n"
+                            << "\tdR = " << dR_b1 << "\n";
+                    std::cout << "\t";
+                    Print(part);
+                    std::cout << "\n";
+                }
             }
             if (dR_b2 < 0.4) 
             {
                 cand_b2 += part;
-                // if constexpr (matched_debug)
-                // {
-                //     std::cout << "\tParticle added to b jet #2\n";
-                //     std::cout << "\tpartIdx = " << partIdx << "\n"
-                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                //             << "\tpartStatus = " << partStatus << "\n"
-                //             << "\tdR = " << dR_b2 << "\n";
-                //     std::cout << "\t";
-                //     Print(part);
-                //     std::cout << "\n";
-                // }
+                if constexpr (matched_debug)
+                {
+                    std::cout << "\tParticle added to b jet #2\n";
+                    std::cout << "\tpartIdx = " << partIdx << "\n"
+                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                            << "\tpartStatus = " << partStatus << "\n"
+                            << "\tdR = " << dR_b2 << "\n";
+                    std::cout << "\t";
+                    Print(part);
+                    std::cout << "\n";
+                }
             }
             if (dR_j1 < 0.4) 
             {
                 cand_j1 += part;
-                // if constexpr (matched_debug)
-                // {
-                //     std::cout << "\tParticle added to light jet #1\n";
-                //     std::cout << "\tpartIdx = " << partIdx << "\n"
-                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                //             << "\tpartStatus = " << partStatus << "\n"
-                //             << "\tdR = " << dR_j1 << "\n";
-                //     std::cout << "\t";
-                //     Print(part);
-                //     std::cout << "\n";
-                // }
+                if constexpr (matched_debug)
+                {
+                    std::cout << "\tParticle added to light jet #1\n";
+                    std::cout << "\tpartIdx = " << partIdx << "\n"
+                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                            << "\tpartStatus = " << partStatus << "\n"
+                            << "\tdR = " << dR_j1 << "\n";
+                    std::cout << "\t";
+                    Print(part);
+                    std::cout << "\n";
+                }
             }
             if (dR_j2 < 0.4) 
             {
                 cand_j2 += part;
-                // if constexpr (matched_debug)
-                // {
-                //     std::cout << "\tParticle added to light jet #2\n";
-                //     std::cout << "\tpartIdx = " << partIdx << "\n"
-                //             << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                //             << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                //             << "\tpartStatus = " << partStatus << "\n"
-                //             << "\tdR = " << dR_j2 << "\n";
-                //     std::cout << "\t";
-                //     Print(part);
-                //     std::cout << "\n";
-                // }
+                if constexpr (matched_debug)
+                {
+                    std::cout << "\tParticle added to light jet #2\n";
+                    std::cout << "\tpartIdx = " << partIdx << "\n"
+                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
+                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
+                            << "\tpartStatus = " << partStatus << "\n"
+                            << "\tdR = " << dR_j2 << "\n";
+                    std::cout << "\t";
+                    Print(part);
+                    std::cout << "\n";
+                }
             }
         }
 
