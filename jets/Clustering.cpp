@@ -127,3 +127,27 @@ std::pair<Int_t, Int_t> FindBestMatch(Overlap const& ov, PtEtaPhiMArray const& g
 
     return std::make_pair(partIdx, best_jet);
 }
+
+// std::vector<Int_t> GetDaughtersOf(Int_t mother_pdgId, Int_t mother_idx) {}
+
+Bool_t IsFinal(Int_t pos, Int_t const* motherIdxs, Int_t nGenPart)
+{
+    for (Int_t i = 0; i < nGenPart; ++i)
+    {
+        Int_t mother_idx = motherIdxs[i]; // mother of current particle
+        if (mother_idx == pos) return false;
+    }
+    return true;
+}
+
+Bool_t DecayProductOf(Int_t this_part, Int_t pos, Int_t const* motherIdxs)
+{
+    Int_t current_mother = motherIdxs[this_part]; 
+    while (current_mother != -1)
+    {
+        if (current_mother == pos) return true;
+        this_part = current_mother;
+        current_mother = motherIdxs[this_part];
+    }
+    return false;
+}

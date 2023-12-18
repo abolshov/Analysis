@@ -16,9 +16,6 @@
 #include "Matching.hpp"
 #include "Clustering.hpp"
 
-constexpr bool debug = false;
-constexpr bool matched_debug = false;
-
 constexpr int MAX_GENJET = 16;
 constexpr int MAX_GENPART = 300;
 
@@ -78,13 +75,6 @@ int main(int argc, char* argv[])
     myTree->SetBranchAddress("GenJet_pt", &GenJet_pt);
 
     myTree->SetBranchAddress("GenJet_partonFlavour", &GenJet_partonFlavour);
-    // myTree->SetBranchAddress("GenJet_hadronFlavour", &GenJet_hadronFlavour);
-
-    auto tot_gen_jets = std::make_unique<TH1I>("tot_gen_jets", "Number of gen jets", 19, 0, 19);
-    auto bad_gen_jets = std::make_unique<TH1I>("bad_gen_jets", "Number of bad gen jets", 19, 0, 19);
-    auto tot_cand = std::make_unique<TH1I>("tot_cand", "Number of potential jet constituents", 60, 0, 60);
-    auto unused_cand = std::make_unique<TH1I>("unused_cand", "Number of unused candidates", 60, 0, 60);
-    auto empty_jets = std::make_unique<TH1I>("empty_jets", "Number of empty jets", 19, 0, 19);
 
     int diHiggsSL_cnt = 0;
     int good_matching = 0;
@@ -111,154 +101,106 @@ int main(int argc, char* argv[])
             }
         }
 
-        GenPartIndex idx = IsDiHiggsSL(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_status, nGenPart);
-        if (!idx) continue;
+        GenPartIndex index = IsDiHiggsSL(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_status, nGenPart);
+        if (!index) continue;
+
+        std::cout << "------------------------------------------\n";
+        std::cout << "Event " << i << "\n";
+        std::cout << index << "\n";
 
         PtEtaPhiMArray genPart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, nGenPart};
         PtEtaPhiMArray genJet{GenJet_pt, GenJet_eta, GenJet_phi, GenJet_mass, nGenJet};
 
-        std::vector<Bool_t> candidates = PossibleJetConstituents(GenPart_genPartIdxMother, GenPart_status, nGenPart, idx);
-        Int_t n_cand = std::count(candidates.begin(), candidates.end(), true);
-        Int_t n_unused = n_cand;
-        Int_t n_bad_jets = 0;
-        Int_t n_empty_jets = 0;
-        // std::cout << "n_cand = " << n_cand << "\n";
-        // std::cout << "nGenJet = " << nGenJet << "\n";
+        std::vector<Bool_t> candidates = PossibleJetConstituents(GenPart_genPartIdxMother, GenPart_status, nGenPart, index);
 
+        std::cout << std::boolalpha;
+
+        TLorentzVector p;
         for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
         {
-            std::cout << std::boolalpha;
-            if (candidates[idx]) std::cout << "idx = " << idx
-                                           << ", pdgId = " << GenPart_pdgId[idx] 
-                                           << ", status = " << GenPart_status[idx] 
-                                           << ", mother_idx = " << GenPart_genPartIdxMother[idx] 
-                                           << ", mother_pdgId = " << GenPart_pdgId[GenPart_genPartIdxMother[idx]] << "\n";
-            if (GenPart_pdgId[idx] == 21 && candidates[idx])
+            if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.b2, GenPart_genPartIdxMother))
             {
-                // auto it = std::find(GenPart_genPartIdxMother, GenPart_genPartIdxMother + nGenPart, idx);
-                // std::cout << "\t" << "nGenPart = " << nGenPart << ", it = " << it - GenPart_genPartIdxMother << "\n";
-                TLorentzVector g;
-                g.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
-                std::cout << "\tg = ";
-                Print(g);
+                // std::cout << GenPart_pdgId[idx] << ": " << GenPart_pt[idx] << "\n";
+                TLorentzVector tmp;
+                tmp.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
+                p += tmp;
             }
-            if (GenPart_pdgId[idx] == 2212 && candidates[idx])
-            {
-                TLorentzVector p;
-                p.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
-                std::cout << "\tp = ";
-                Print(p);
-            }
-            // std::cout << "pdgId = " << GenPart_pdgId[idx] << ", status = " << GenPart_status[idx] << ", mother_idx = " << GenPart_genPartIdxMother[idx] << ": " << candidates[idx] << "\n";
-        }   
+            // std::cout << GenPart_pdgId[idx] << ": " 
+            //           << candidates[idx] << ", " 
+            //           << IsFinal(idx, GenPart_genPartIdxMother, nGenPart) << ", "
+            //           << GenPart_pt[idx] << ", "
+            //           << DecayProductOf(idx, index.b2, GenPart_genPartIdxMother) << "\n";
+        }
+        std::cout << "b1 pt = " << GenPart_pt[index.b1] << "\n";
+        std::cout << "b2 pt = " << GenPart_pt[index.b2] << "\n";
+        std::cout << "products pt = " << p.Pt() << "\n";
+        // Double_t pt_sum = 0.0;
+        // for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
+        // {
+        //     if (candidates[idx])
+        //     {
+        //         std::vector<Int_t> decay;
+        //         Int_t part_id = GenPart_pdgId[idx];
+        //         // std::cout << part_id << " ";
+        //         decay.push_back(idx);
+        //         Int_t mother_idx = GenPart_genPartIdxMother[idx];
+        //         while (mother_idx != -1)
+        //         {
+        //             // std::cout << GenPart_pdgId[mother_idx] << " ";
+        //             decay.push_back(mother_idx);
+        //             mother_idx = GenPart_genPartIdxMother[mother_idx];
+        //         }
+
+        //         auto IsQuark = [&GenPart_pdgId](Int_t i) { return GenPart_pdgId[i] == -5; };
+        //         if (std::find_if(decay.begin(), decay.end(), IsQuark) != decay.end())
+        //         {
+        //             if (candidates[decay[0]])
+        //             {
+        //                 pt_sum += GenPart_pt[decay[0]];
+        //             }
+        //             for (auto const& part: decay)
+        //             {
+        //                 std::cout << GenPart_pdgId[part] << " ";
+        //             }
+        //             std::cout << "\n";
+        //             for (auto const& part: decay)
+        //             {
+        //                 std::cout << GenPart_status[part] << " ";
+        //             }
+        //             std::cout << "\n";
+        //             for (auto const& part: decay)
+        //             {
+        //                 // std::cout << GenPart_pt[part] << " ";
+        //                 std::cout << part << " ";
+        //             }
+        //             std::cout << "\n";
+        //             std::cout << "===========================\n";
+        //         }
+        //     }
+        // }
+        // if (pt_sum != 0.0)
+        // {
+        //     std::cout << "Event " << i << ":\n";
+        //     std::cout << "pt_sum = " << pt_sum << "\n";
+        //     std::cout << "index.b1 = " << index.b1 << "\n";
+        //     std::cout << "index.b2 = " << index.b2 << "\n";
+        //     std::cout << "b1_pt = " << GenPart_pt[index.b1] << "\n";
+        //     std::cout << "b2_pt = " << GenPart_pt[index.b2] << "\n";
+        //     std::cout << "===================\n";
+        // }
+
+        // Double_t total_pt = GenPart_pt[51] + GenPart_pt[72] + GenPart_pt[89] + GenPart_pt[90] + GenPart_pt[73]
+        //                   + GenPart_pt[74] + GenPart_pt[75] + GenPart_pt[76] + GenPart_pt[53] + GenPart_pt[94]
+        //                   + GenPart_pt[95] + GenPart_pt[96] + GenPart_pt[87] + GenPart_pt[88] + GenPart_pt[80]
+        //                   + GenPart_pt[91] + GenPart_pt[92] + GenPart_pt[84] + GenPart_pt[85];
+
+        // std::cout << "total_pt = " << total_pt << "\n";
+
         // break;
 
-        tot_gen_jets->Fill(nGenJet);
-        tot_cand->Fill(n_cand);
-
-        if constexpr (debug) std::cout << "----------------------EVENT #" << i << " START-----------------------------\n";
-        std::vector<Overlap> overlaps = FindOverlaps(genJet, genPart, candidates);
-        if constexpr (debug)
-        {
-            std::cout << "Found overlaps:\n";
-            for (auto const& ov: overlaps)
-            {
-                std::cout << ov << "\n";
-            }
-        }
-
-        std::vector<Int_t> used_parts;
-        for (Int_t jetIdx = 0; jetIdx < static_cast<Int_t>(nGenJet); ++jetIdx) // loop over all jets in event
-        {
-            TLorentzVector jet, jet_cand;
-            jet.SetPtEtaPhiM(GenJet_pt[jetIdx], GenJet_eta[jetIdx], GenJet_phi[jetIdx], GenJet_mass[jetIdx]);
-            
-            if constexpr (debug)
-            {
-                std::cout << "----------------------JET #" << jetIdx << " START-------------------------------\n";
-                std::cout << "GenJet = ";
-                Print(jet);
-                std::cout << "\n";
-            }
-
-            Int_t constituent_count = 0;
-
-            for (Int_t partIdx = 0; partIdx < static_cast<Int_t>(nGenPart); ++partIdx)
-            {
-                assert(nGenPart == candidates.size());
-                if (!candidates[partIdx]) continue; // skip all particles that can't potentially constitue jet
-
-                TLorentzVector part;
-                part.SetPtEtaPhiM(GenPart_pt[partIdx], GenPart_eta[partIdx], GenPart_phi[partIdx], GenPart_mass[partIdx]);
-
-                float dR = part.DeltaR(jet);
-                if (dR < 0.4)
-                {   
-                    // if the particle has NOT been used before, add it to jet_cand and mark as used
-                    if (std::find(used_parts.begin(), used_parts.end(), partIdx) != used_parts.end()) 
-                    {
-                        if constexpr (debug)
-                        {
-                            std::cout << "\n\tWARNING! Particle " << partIdx << " has been used before, skipping in " << jetIdx << " with dR = " << dR << "\n";
-                        }  
-                        continue;
-                    }
-
-                    jet_cand += part;
-                    --n_unused;
-                    used_parts.push_back(partIdx);
-                    ++constituent_count;
-
-                    Int_t motherIdx = GenPart_genPartIdxMother[partIdx];
-                    Int_t motherPdgId = (motherIdx == -1) ? 0 : GenPart_pdgId[motherIdx];
-                    Int_t partStatus = GenPart_status[partIdx];
-
-                    if constexpr (debug)
-                    {
-                        std::cout << "\tpartIdx = " << partIdx << "\n"
-                                  << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                                  << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                                  << "\tpartStatus = " << partStatus << "\n"
-                                  << "\tdR = " << dR << "\n";
-                        std::cout << "\t";
-                        Print(part);
-                        std::cout << "\n";
-                    }
-                }
-            }
-
-            if (constituent_count == 0) ++n_empty_jets;
-            constituent_count = 0;
-
-            if constexpr (debug)
-            {
-                std::cout << "jet_cand = ";
-                Print(jet_cand);
-                std::cout << "dR = " << jet.DeltaR(jet_cand) << "\n";
-            }
-            
-            Double_t pt_ratio = jet_cand.Pt()/jet.Pt();
-            if (pt_ratio > 1.1 || pt_ratio < 0.9) ++n_bad_jets;
-
-            if constexpr (debug) std::cout << "----------------------JET #" << jetIdx << " END-------------------------------\n";
-        }
-
-        empty_jets->Fill(n_empty_jets);
-
-        used_parts.clear();
-        // if (overlaps.size() > 1) break;
-
-        unused_cand->Fill(n_unused);
-        bad_gen_jets->Fill(n_bad_jets);
-
-        // std::cout << "n_unused = " << n_unused << "\n";
-        // std::cout << "n_bad_jets = " << n_bad_jets << "\n";
-        if constexpr (debug) std::cout << "----------------------EVENT #" << i << " END-----------------------------\n";
-                
-        // break;
         ++diHiggsSL_cnt;
 
-        GenJetIndex match = Match(idx, genPart, genJet, GenPart_pdgId, GenJet_partonFlavour);
+        GenJetIndex match = Match(index, genPart, genJet, GenPart_pdgId, GenJet_partonFlavour);
 
         if (!match) continue;
         ++good_matching;
@@ -271,177 +213,11 @@ int main(int argc, char* argv[])
         lj2.SetPtEtaPhiM(GenJet_pt[lj2Idx], GenJet_eta[lj2Idx], GenJet_phi[lj2Idx], GenJet_mass[lj2Idx]);
 
         TLorentzVector bq1, bq2, lq1, lq2;
-        bq1.SetPtEtaPhiM(GenPart_pt[idx.b1], GenPart_eta[idx.b1], GenPart_phi[idx.b1], GenPart_mass[idx.b1]);
-        bq2.SetPtEtaPhiM(GenPart_pt[idx.b2], GenPart_eta[idx.b2], GenPart_phi[idx.b2], GenPart_mass[idx.b2]);
-        lq1.SetPtEtaPhiM(GenPart_pt[idx.q1], GenPart_eta[idx.q1], GenPart_phi[idx.q1], GenPart_mass[idx.q1]);
-        lq2.SetPtEtaPhiM(GenPart_pt[idx.q2], GenPart_eta[idx.q2], GenPart_phi[idx.q2], GenPart_mass[idx.q2]);
-
-        if constexpr (matched_debug)
-        {
-            std::cout << "----------------------EVENT #" << i << " MATCHED DEBUG START-----------------------------\n";
-            std::cout << "bj1 = ";
-            Print(bj1);
-            std::cout << "bq1 = ";
-            Print(bq1);
-            std::cout << "bj2 = ";
-            Print(bj2);
-            std::cout << "bq2 = ";
-            Print(bq2);
-            std::cout << "lj1 = ";
-            Print(lj1);
-            std::cout << "lq1 = ";
-            Print(lq1);
-            std::cout << "lj2 = ";
-            Print(lj2);
-            std::cout << "lq2 = ";
-            Print(lq2);
-            std::cout << "\n";
-        }
-
-        TLorentzVector cand_b1, cand_b2, cand_j1, cand_j2;
-        for (Int_t partIdx = 0; partIdx < static_cast<Int_t>(nGenPart); ++partIdx)
-        {
-            if (!candidates[partIdx]) continue;
-
-            TLorentzVector part;
-            part.SetPtEtaPhiM(GenPart_pt[partIdx], GenPart_eta[partIdx], GenPart_phi[partIdx], GenPart_mass[partIdx]);
-
-            Int_t motherIdx = GenPart_genPartIdxMother[partIdx];
-            Int_t motherPdgId = (motherIdx == -1) ? 0 : GenPart_pdgId[motherIdx];
-            Int_t partStatus = GenPart_status[partIdx];
-
-            Float_t dR_b1, dR_b2, dR_j1, dR_j2;
-            dR_b1 = bj1.DeltaR(part);
-            dR_b2 = bj2.DeltaR(part);
-            dR_j1 = lj1.DeltaR(part);
-            dR_j2 = lj2.DeltaR(part);
-
-            if (dR_b1 < 0.4) 
-            {
-                cand_b1 += part;
-                if constexpr (matched_debug)
-                {
-                    std::cout << "\tParticle added to b jet #1\n";
-                    std::cout << "\tpartIdx = " << partIdx << "\n"
-                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                            << "\tpartStatus = " << partStatus << "\n"
-                            << "\tdR = " << dR_b1 << "\n";
-                    std::cout << "\t";
-                    Print(part);
-                    std::cout << "\n";
-                }
-            }
-            if (dR_b2 < 0.4) 
-            {
-                cand_b2 += part;
-                if constexpr (matched_debug)
-                {
-                    std::cout << "\tParticle added to b jet #2\n";
-                    std::cout << "\tpartIdx = " << partIdx << "\n"
-                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                            << "\tpartStatus = " << partStatus << "\n"
-                            << "\tdR = " << dR_b2 << "\n";
-                    std::cout << "\t";
-                    Print(part);
-                    std::cout << "\n";
-                }
-            }
-            if (dR_j1 < 0.4) 
-            {
-                cand_j1 += part;
-                if constexpr (matched_debug)
-                {
-                    std::cout << "\tParticle added to light jet #1\n";
-                    std::cout << "\tpartIdx = " << partIdx << "\n"
-                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                            << "\tpartStatus = " << partStatus << "\n"
-                            << "\tdR = " << dR_j1 << "\n";
-                    std::cout << "\t";
-                    Print(part);
-                    std::cout << "\n";
-                }
-            }
-            if (dR_j2 < 0.4) 
-            {
-                cand_j2 += part;
-                if constexpr (matched_debug)
-                {
-                    std::cout << "\tParticle added to light jet #2\n";
-                    std::cout << "\tpartIdx = " << partIdx << "\n"
-                            << "\tpdgId = " << GenPart_pdgId[partIdx] << "\n"
-                            << "\tmotherPdgId = " << ((motherPdgId == 0) ? "No mother" : std::to_string(motherPdgId)) << "\n"
-                            << "\tpartStatus = " << partStatus << "\n"
-                            << "\tdR = " << dR_j2 << "\n";
-                    std::cout << "\t";
-                    Print(part);
-                    std::cout << "\n";
-                }
-            }
-        }
-
-        if constexpr (matched_debug)
-        {
-            std::cout << "cand_b1 = ";
-            Print(cand_b1);
-            std::cout << "cand_b2 = ";
-            Print(cand_b2);
-            std::cout << "cand_j1 = ";
-            Print(cand_j1);
-            std::cout << "cand_j2 = ";
-            Print(cand_j2);
-            std::cout << "----------------------EVENT #" << i << " MATCHED DEBUG END-----------------------------\n";
-        }
+        bq1.SetPtEtaPhiM(GenPart_pt[index.b1], GenPart_eta[index.b1], GenPart_phi[index.b1], GenPart_mass[index.b1]);
+        bq2.SetPtEtaPhiM(GenPart_pt[index.b2], GenPart_eta[index.b2], GenPart_phi[index.b2], GenPart_mass[index.b2]);
+        lq1.SetPtEtaPhiM(GenPart_pt[index.q1], GenPart_eta[index.q1], GenPart_phi[index.q1], GenPart_mass[index.q1]);
+        lq2.SetPtEtaPhiM(GenPart_pt[index.q2], GenPart_eta[index.q2], GenPart_phi[index.q2], GenPart_mass[index.q2]);
     }
-
-    // auto c1 = std::make_unique<TCanvas>("c1", "c1");
-    // c1->SetGrid();
-    // c1->SetTickx();
-    // c1->SetTicky();
-
-    // auto stack = std::make_unique<THStack>("stack", "Total # of gen jets vs # of bad jets");
-    // auto legend = std::make_unique<TLegend>(0.7, 0.7, 0.9, 0.9);
-
-    // bad_gen_jets->SetLineWidth(3);
-    // bad_gen_jets->SetLineColor(2);
-    // stack->Add(bad_gen_jets.get());
-    // legend->AddEntry(bad_gen_jets.get(), "bad gen jets", "l");
-
-    // tot_gen_jets->SetLineWidth(3);
-    // tot_gen_jets->SetLineColor(4);
-    // stack->Add(tot_gen_jets.get());
-    // legend->AddEntry(tot_gen_jets.get(), "total gen jets", "l");
-
-    // stack->Draw("nostack");
-    // stack->GetXaxis()->SetTitle("Number of gen jets");
-    // legend->Draw();
-    // c1->SaveAs("jet_numbers.png");
-
-    // auto stack = std::make_unique<THStack>("stack", "All potential jet constituents vs # of unused constituents");
-    // auto legend = std::make_unique<TLegend>(0.7, 0.7, 0.9, 0.9);
-
-    // unused_cand->SetLineWidth(3);
-    // unused_cand->SetLineColor(2);
-    // stack->Add(unused_cand.get());
-    // legend->AddEntry(unused_cand.get(), "unused", "l");
-
-    // tot_cand->SetLineWidth(3);
-    // tot_cand->SetLineColor(4);
-    // stack->Add(tot_cand.get());
-    // legend->AddEntry(tot_cand.get(), "all constit", "l");
-
-    // stack->Draw("nostack");
-    // stack->GetXaxis()->SetTitle("Number of gen jet constituents");
-    // legend->Draw();
-    // c1->SaveAs("jet_constituents.png");
-
-    // empty_jets->SetLineWidth(3);
-    // empty_jets->SetLineColor(4);
-    // empty_jets->GetXaxis()->SetTitle("Number of empty jets");
-    // empty_jets->Draw();
-    // c1->SaveAs("empty_jets.png");
 
     std::cout << "diHiggsSL_cnt = " << diHiggsSL_cnt << "\n";
     std::cout << "good_matching = " << good_matching << "\n";

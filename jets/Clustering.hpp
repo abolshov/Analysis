@@ -14,8 +14,11 @@ static const std::set<Int_t> incoming{ 12, 13, 21, 31, 41, 41, 45, 46, 53, 61, 1
 
 std::vector<Int_t> GetFinalParticles(Int_t const* motherIdxs, Int_t const* StatusArr, Int_t nGenPart); // returns positions of final state particles
 std::vector<Bool_t> PossibleJetConstituents(Int_t const* motherIdxs, Int_t const* StatusArr, Int_t nGenPart, GenPartIndex const& idx); // marks all mothers as NOT final state (bc they decay)
+// std::vector<Int_t> GetDaughtersOf(Int_t mother_pdgId, Int_t mother_idx);
 
 inline Bool_t IsIncoming(Int_t status) { return incoming.find(status) != incoming.end(); }
+Bool_t IsFinal(Int_t pos, Int_t const* motherIdxs, Int_t nGenPart);
+Bool_t DecayProductOf(Int_t this_part, Int_t pos, Int_t const* motherIdxs);
 
 void AnalyzeJets(std::unique_ptr<TH1I> const& unused_cand, std::unique_ptr<TH1I> const& bad_jets, PtEtaPhiMArray const& genPart, PtEtaPhiMArray const& genJet, std::vector<Bool_t> candidates, Int_t n_unused);
 
