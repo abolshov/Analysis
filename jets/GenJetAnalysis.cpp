@@ -111,16 +111,27 @@ int main(int argc, char* argv[])
         PtEtaPhiMArray genPart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, nGenPart};
         PtEtaPhiMArray genJet{GenJet_pt, GenJet_eta, GenJet_phi, GenJet_mass, nGenJet};
 
-        std::vector<Bool_t> candidates = PossibleJetConstituents(GenPart_genPartIdxMother, GenPart_status, nGenPart, index);
+        // std::vector<Bool_t> candidates = PossibleJetConstituents(GenPart_genPartIdxMother, GenPart_status, nGenPart, index);
 
         std::cout << std::boolalpha;
-
+        std::cout << "b1 at " << index.b1 << "\n";
+        std::cout << "mother is " << GenPart_pdgId[GenPart_genPartIdxMother[index.b1]] << " at " << GenPart_genPartIdxMother[index.b1] << "\n";
         TLorentzVector p;
         for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
         {
-            if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.b2, GenPart_genPartIdxMother))
+            if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.b1, GenPart_genPartIdxMother))
             {
-                // std::cout << GenPart_pdgId[idx] << ": " << GenPart_pt[idx] << "\n";
+                std::cout << "\t" << GenPart_pdgId[idx] << ": at " << idx << " with pt = " << GenPart_pt[idx] << "\n";
+                std::cout << "\t\t";
+                std::cout << GenPart_pdgId[idx] << "(" << idx << ") ";
+                Int_t cur_mother = GenPart_genPartIdxMother[idx];
+                while (cur_mother != -1)
+                {
+                    std::cout << GenPart_pdgId[cur_mother] << "(" << cur_mother << ") ";
+                    if (cur_mother == index.b1) break;
+                    cur_mother = GenPart_genPartIdxMother[cur_mother];
+                }
+                std::cout << "\n";
                 TLorentzVector tmp;
                 tmp.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
                 p += tmp;
@@ -132,8 +143,19 @@ int main(int argc, char* argv[])
             //           << DecayProductOf(idx, index.b2, GenPart_genPartIdxMother) << "\n";
         }
         std::cout << "b1 pt = " << GenPart_pt[index.b1] << "\n";
-        std::cout << "b2 pt = " << GenPart_pt[index.b2] << "\n";
+        // std::cout << "b2 pt = " << GenPart_pt[index.b2] << "\n";
         std::cout << "products pt = " << p.Pt() << "\n";
+
+        TLorentzVector b1;
+        b1.SetPtEtaPhiM(GenPart_pt[index.b1], GenPart_eta[index.b1], GenPart_phi[index.b1], GenPart_mass[index.b1]);
+
+        for (Int_t jetIdx = 0; jetIdx < static_cast<Int_t>(nGenJet); ++jetIdx)
+        {
+            TLorentzVector jet;
+            jet.SetPtEtaPhiM(GenJet_pt[jetIdx], GenJet_eta[jetIdx], GenJet_phi[jetIdx], GenJet_mass[jetIdx]);
+            std::cout << "dR = " << jet.DeltaR(b1) << ", pt = " << GenJet_pt[jetIdx] << "\n";
+        }
+        // break;
         // Double_t pt_sum = 0.0;
         // for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
         // {

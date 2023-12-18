@@ -130,6 +130,7 @@ std::pair<Int_t, Int_t> FindBestMatch(Overlap const& ov, PtEtaPhiMArray const& g
 
 // std::vector<Int_t> GetDaughtersOf(Int_t mother_pdgId, Int_t mother_idx) {}
 
+// IsFinal == noone's mother
 Bool_t IsFinal(Int_t pos, Int_t const* motherIdxs, Int_t nGenPart)
 {
     for (Int_t i = 0; i < nGenPart; ++i)
@@ -140,6 +141,7 @@ Bool_t IsFinal(Int_t pos, Int_t const* motherIdxs, Int_t nGenPart)
     return true;
 }
 
+// determines whether particle at this_part belongs to decay chain of particle at pos
 Bool_t DecayProductOf(Int_t this_part, Int_t pos, Int_t const* motherIdxs)
 {
     Int_t current_mother = motherIdxs[this_part]; 
