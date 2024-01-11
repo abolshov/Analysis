@@ -18,7 +18,7 @@ std::vector<Bool_t> PossibleJetConstituents(Int_t const* motherIdxs, Int_t const
 
 inline Bool_t IsIncoming(Int_t status) { return incoming.find(status) != incoming.end(); }
 Bool_t IsFinal(Int_t pos, Int_t const* motherIdxs, Int_t nGenPart);
-Bool_t DecayProductOf(Int_t this_part, Int_t pos, Int_t const* motherIdxs);
+Bool_t DecayProductOf(Int_t this_part, Int_t pos, Int_t const* motherIdxs); // is this_part product of decay of particle at pos
 
 void AnalyzeJets(std::unique_ptr<TH1I> const& unused_cand, std::unique_ptr<TH1I> const& bad_jets, PtEtaPhiMArray const& genPart, PtEtaPhiMArray const& genJet, std::vector<Bool_t> candidates, Int_t n_unused);
 

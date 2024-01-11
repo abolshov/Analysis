@@ -18,6 +18,7 @@
 
 constexpr int MAX_GENJET = 16;
 constexpr int MAX_GENPART = 300;
+constexpr double MATCH_PT_THRESH = 3.0;
 
 int main(int argc, char* argv[])
 {
@@ -104,57 +105,53 @@ int main(int argc, char* argv[])
         GenPartIndex index = IsDiHiggsSL(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_status, nGenPart);
         if (!index) continue;
 
-        std::cout << "------------------------------------------\n";
-        std::cout << "Event " << i << "\n";
-        std::cout << index << "\n";
-
         PtEtaPhiMArray genPart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, nGenPart};
         PtEtaPhiMArray genJet{GenJet_pt, GenJet_eta, GenJet_phi, GenJet_mass, nGenJet};
 
         // std::vector<Bool_t> candidates = PossibleJetConstituents(GenPart_genPartIdxMother, GenPart_status, nGenPart, index);
 
-        std::cout << std::boolalpha;
-        std::cout << "b1 at " << index.b1 << "\n";
-        std::cout << "mother is " << GenPart_pdgId[GenPart_genPartIdxMother[index.b1]] << " at " << GenPart_genPartIdxMother[index.b1] << "\n";
-        TLorentzVector p;
-        for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
-        {
-            if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.b1, GenPart_genPartIdxMother))
-            {
-                std::cout << "\t" << GenPart_pdgId[idx] << ": at " << idx << " with pt = " << GenPart_pt[idx] << "\n";
-                std::cout << "\t\t";
-                std::cout << GenPart_pdgId[idx] << "(" << idx << ") ";
-                Int_t cur_mother = GenPart_genPartIdxMother[idx];
-                while (cur_mother != -1)
-                {
-                    std::cout << GenPart_pdgId[cur_mother] << "(" << cur_mother << ") ";
-                    if (cur_mother == index.b1) break;
-                    cur_mother = GenPart_genPartIdxMother[cur_mother];
-                }
-                std::cout << "\n";
-                TLorentzVector tmp;
-                tmp.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
-                p += tmp;
-            }
+        // std::cout << std::boolalpha;
+        // std::cout << "b1 at " << index.b1 << "\n";
+        // std::cout << "mother is " << GenPart_pdgId[GenPart_genPartIdxMother[index.b1]] << " at " << GenPart_genPartIdxMother[index.b1] << "\n";
+        // TLorentzVector p;
+        // for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
+        // {
+            // if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.b1, GenPart_genPartIdxMother))
+            // {
+            //     std::cout << "\t" << GenPart_pdgId[idx] << ": at " << idx << " with pt = " << GenPart_pt[idx] << "\n";
+            //     std::cout << "\t\t";
+            //     std::cout << GenPart_pdgId[idx] << "(" << idx << ") ";
+            //     Int_t cur_mother = GenPart_genPartIdxMother[idx];
+            //     while (cur_mother != -1)
+            //     {
+            //         std::cout << GenPart_pdgId[cur_mother] << "(" << cur_mother << ") ";
+            //         if (cur_mother == index.b1) break;
+            //         cur_mother = GenPart_genPartIdxMother[cur_mother];
+            //     }
+            //     std::cout << "\n";
+            //     TLorentzVector tmp;
+            //     tmp.SetPtEtaPhiM(GenPart_pt[idx], GenPart_eta[idx], GenPart_phi[idx], GenPart_mass[idx]);
+            //     p += tmp;
+            // }
             // std::cout << GenPart_pdgId[idx] << ": " 
             //           << candidates[idx] << ", " 
             //           << IsFinal(idx, GenPart_genPartIdxMother, nGenPart) << ", "
             //           << GenPart_pt[idx] << ", "
             //           << DecayProductOf(idx, index.b2, GenPart_genPartIdxMother) << "\n";
-        }
-        std::cout << "b1 pt = " << GenPart_pt[index.b1] << "\n";
+        // }
+        // std::cout << "b1 pt = " << GenPart_pt[index.b1] << "\n";
         // std::cout << "b2 pt = " << GenPart_pt[index.b2] << "\n";
-        std::cout << "products pt = " << p.Pt() << "\n";
+        // std::cout << "products pt = " << p.Pt() << "\n";
 
-        TLorentzVector b1;
-        b1.SetPtEtaPhiM(GenPart_pt[index.b1], GenPart_eta[index.b1], GenPart_phi[index.b1], GenPart_mass[index.b1]);
+        // TLorentzVector b1;
+        // b1.SetPtEtaPhiM(GenPart_pt[index.b1], GenPart_eta[index.b1], GenPart_phi[index.b1], GenPart_mass[index.b1]);
 
-        for (Int_t jetIdx = 0; jetIdx < static_cast<Int_t>(nGenJet); ++jetIdx)
-        {
-            TLorentzVector jet;
-            jet.SetPtEtaPhiM(GenJet_pt[jetIdx], GenJet_eta[jetIdx], GenJet_phi[jetIdx], GenJet_mass[jetIdx]);
-            std::cout << "dR = " << jet.DeltaR(b1) << ", pt = " << GenJet_pt[jetIdx] << "\n";
-        }
+        // for (Int_t jetIdx = 0; jetIdx < static_cast<Int_t>(nGenJet); ++jetIdx)
+        // {
+        //     TLorentzVector jet;
+        //     jet.SetPtEtaPhiM(GenJet_pt[jetIdx], GenJet_eta[jetIdx], GenJet_phi[jetIdx], GenJet_mass[jetIdx]);
+        //     std::cout << "dR = " << jet.DeltaR(b1) << ", pt = " << GenJet_pt[jetIdx] << "\n";
+        // }
         // break;
         // Double_t pt_sum = 0.0;
         // for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
@@ -211,15 +208,6 @@ int main(int argc, char* argv[])
         //     std::cout << "===================\n";
         // }
 
-        // Double_t total_pt = GenPart_pt[51] + GenPart_pt[72] + GenPart_pt[89] + GenPart_pt[90] + GenPart_pt[73]
-        //                   + GenPart_pt[74] + GenPart_pt[75] + GenPart_pt[76] + GenPart_pt[53] + GenPart_pt[94]
-        //                   + GenPart_pt[95] + GenPart_pt[96] + GenPart_pt[87] + GenPart_pt[88] + GenPart_pt[80]
-        //                   + GenPart_pt[91] + GenPart_pt[92] + GenPart_pt[84] + GenPart_pt[85];
-
-        // std::cout << "total_pt = " << total_pt << "\n";
-
-        // break;
-
         ++diHiggsSL_cnt;
 
         GenJetIndex match = Match(index, genPart, genJet, GenPart_pdgId, GenJet_partonFlavour);
@@ -233,12 +221,107 @@ int main(int argc, char* argv[])
         bj2.SetPtEtaPhiM(GenJet_pt[bj2Idx], GenJet_eta[bj2Idx], GenJet_phi[bj2Idx], GenJet_mass[bj2Idx]);
         lj1.SetPtEtaPhiM(GenJet_pt[lj1Idx], GenJet_eta[lj1Idx], GenJet_phi[lj1Idx], GenJet_mass[lj1Idx]);
         lj2.SetPtEtaPhiM(GenJet_pt[lj2Idx], GenJet_eta[lj2Idx], GenJet_phi[lj2Idx], GenJet_mass[lj2Idx]);
-
+        
         TLorentzVector bq1, bq2, lq1, lq2;
         bq1.SetPtEtaPhiM(GenPart_pt[index.b1], GenPart_eta[index.b1], GenPart_phi[index.b1], GenPart_mass[index.b1]);
         bq2.SetPtEtaPhiM(GenPart_pt[index.b2], GenPart_eta[index.b2], GenPart_phi[index.b2], GenPart_mass[index.b2]);
         lq1.SetPtEtaPhiM(GenPart_pt[index.q1], GenPart_eta[index.q1], GenPart_phi[index.q1], GenPart_mass[index.q1]);
         lq2.SetPtEtaPhiM(GenPart_pt[index.q2], GenPart_eta[index.q2], GenPart_phi[index.q2], GenPart_mass[index.q2]);
+
+        // printing problematic event info
+        bool problematic_b = std::abs(bj1.Pt()/bq1.Pt()) > MATCH_PT_THRESH || std::abs(bj2.Pt()/bq2.Pt()) > MATCH_PT_THRESH;
+        bool problematic_l = std::abs(lj1.Pt()/lq1.Pt()) > MATCH_PT_THRESH || std::abs(lj2.Pt()/lq2.Pt()) > MATCH_PT_THRESH;
+        bool problematic_match = problematic_b || problematic_l;
+        if (problematic_match)
+        {
+            std::cout << "------------------------------------------\n";
+            std::cout << "Event " << i << "\n";
+            std::cout << index << "\n";
+
+            if (problematic_b)
+            {
+                std::cout << "Bad b quark/jet match\n";
+                std::cout << "bj1 = ";
+                Print(bj1);
+                std::cout << "bj2 = ";
+                Print(bj2);
+                std::cout << "bq1 = ";
+                Print(bq1);
+                std::cout << "bq2 = ";
+                Print(bq2);
+
+                // for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
+                // {
+                //     if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.b1, GenPart_genPartIdxMother))
+                //     {
+                //         // std::cout << "\t" << GenPart_pdgId[idx] << ": at " << idx << " with pt = " << GenPart_pt[idx] << "\n";
+                //         std::cout << "\t\t";
+                //         std::cout << GenPart_pdgId[idx] << "(" << idx << ") ";
+                //         Int_t cur_mother = GenPart_genPartIdxMother[idx];
+                //         while (cur_mother != -1)
+                //         {
+                //             std::cout << GenPart_pdgId[cur_mother] << "(" << cur_mother << ") ";
+                //             if (cur_mother == index.b1) break;
+                //             cur_mother = GenPart_genPartIdxMother[cur_mother];
+                //         }
+                //         std::cout << "\n";
+                //     }
+                // }
+            }
+
+            if (problematic_l)
+            {
+                std::cout << "Bad light quark/jet match\n";
+                std::cout << "lj1 = ";
+                Print(lj1);
+                std::cout << "lj2 = ";
+                Print(lj2);
+                std::cout << "lq1 = ";
+                Print(lq1);
+                std::cout << "lq2 = ";
+                Print(lq2);
+
+                std::cout << "q1: pdgId = " << GenPart_pdgId[index.q1] << " at " << index.q1 << "\n";
+                std::cout << "mother is " << GenPart_pdgId[GenPart_genPartIdxMother[index.q1]] << " at " << GenPart_genPartIdxMother[index.q1] << "\n";
+                for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
+                {
+                    if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.q1, GenPart_genPartIdxMother))
+                    {
+                        std::cout << "\tpdgId = " << GenPart_pdgId[idx] << ": at " << idx << " with pt = " << GenPart_pt[idx] << "\n";
+                        std::cout << "\t\t";
+                        std::cout << GenPart_pdgId[idx] << "(" << idx << ") ";
+                        Int_t cur_mother = GenPart_genPartIdxMother[idx];
+                        while (cur_mother != -1)
+                        {
+                            std::cout << GenPart_pdgId[cur_mother] << "(" << cur_mother << ") ";
+                            if (cur_mother == index.q1) break;
+                            cur_mother = GenPart_genPartIdxMother[cur_mother];
+                        }
+                        std::cout << "\n";
+                    }
+                }
+
+                std::cout << "q2: pdgId = " << GenPart_pdgId[index.q2] << " at " << index.q2 << "\n";
+                std::cout << "mother is " << GenPart_pdgId[GenPart_genPartIdxMother[index.q2]] << " at " << GenPart_genPartIdxMother[index.q2] << "\n";
+                for (Int_t idx = 0; idx < static_cast<Int_t>(nGenPart); ++idx)
+                {
+                    if (IsFinal(idx, GenPart_genPartIdxMother, nGenPart) && DecayProductOf(idx, index.q2, GenPart_genPartIdxMother))
+                    {
+                        std::cout << "\tpdgId = " << GenPart_pdgId[idx] << ": at " << idx << " with pt = " << GenPart_pt[idx] << "\n";
+                        std::cout << "\t\t";
+                        std::cout << GenPart_pdgId[idx] << "(" << idx << ") ";
+                        Int_t cur_mother = GenPart_genPartIdxMother[idx];
+                        while (cur_mother != -1)
+                        {
+                            std::cout << GenPart_pdgId[cur_mother] << "(" << cur_mother << ") ";
+                            if (cur_mother == index.q2) break;
+                            cur_mother = GenPart_genPartIdxMother[cur_mother];
+                        }
+                        std::cout << "\n";
+                    }
+                }
+            }
+        }
     }
 
     std::cout << "diHiggsSL_cnt = " << diHiggsSL_cnt << "\n";
