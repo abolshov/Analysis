@@ -30,3 +30,13 @@ std::vector<std::vector<int>> GetDescendants(int part_idx, int const* mothers, i
     }
     return descendants;
 }
+
+std::vector<int> GetFinalParticles(int const* mothers, int n_gen_part)
+{
+    std::vector<int> finals;
+    for (int i = 0; i < n_gen_part; ++i)
+    {
+        if (GetNextGeneration(i, mothers, n_gen_part).empty()) finals.push_back(i);
+    }
+    return finals;
+}
