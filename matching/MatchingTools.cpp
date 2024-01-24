@@ -40,3 +40,40 @@ std::vector<int> GetFinalParticles(int const* mothers, int n_gen_part)
     }
     return finals;
 }
+
+void PrintDecay(std::vector<std::vector<int>> const& decay, int const* pdg_ids, int const* mothers, bool print_idx, std::ostream& stream)
+{
+    for (int gen = 0; gen < static_cast<int>(decay.size()); ++gen)
+    {
+        stream << "generation " << gen << ":\n";
+        stream << "\t";
+        auto cur_gen = decay[gen];
+        for (auto idx: cur_gen)
+        {
+            if (print_idx)
+            {
+                stream << pdg_ids[idx] << "[" << idx << "]" << "(" << mothers[idx] << ") ";
+            }
+            else
+            {
+                stream << pdg_ids[idx] << "(" << mothers[idx] << ") ";
+            }
+            
+        }
+        stream << "\n";
+    }
+}
+
+int FindLast(int target_id, int const* pdg_ids, int n_gen_part)
+{
+    int res = -1;
+    for (int i = n_gen_part - 1; i > -1; --i)
+    {
+        if (pdg_ids[i] == target_id)
+        {
+            res = i;
+            break;
+        }
+    }
+    return res;
+}
