@@ -4,7 +4,25 @@
 #include <vector>
 #include <iostream>
 
+static const std::vector<int> LIGHT_QUARKS = {1, 2, 3, 4};
+static const std::vector<int> LEPTONS = {11, 13};
+static const std::vector<int> NEUTRINOS = {12, 14};
+
+static constexpr int N_SIG_PART = 8;
+
+static constexpr int RADION_ID = 35;
+static constexpr int HIGGS_ID = 25;
+static constexpr int W_ID = 24;
+// static constexpr int WPLUS_ID = 24;
+// static constexpr int WMINUS_ID = -24;
+static constexpr int B_ID = 5;
+// static constexpr int BBAR_ID = -5;
+
+// specifies order of signal (hh->bbWW->bbqqlv) particles
+enum SIG { h1, h2, b1, b2, q1, q2, l, nu };
+
 // finds closest daughters of particle at location part_idx in the event;
+// returns indices of what found
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part);
 
 // finds all descendants of particle at location part_idx in the event;
@@ -20,4 +38,12 @@ void PrintDecay(std::vector<std::vector<int>> const& decay, int const* pdg_ids, 
 
 // returns index of the last occurence of particle with pdgId target_id
 int FindLast(int target_id, int const* pdg_ids, int n_gen_part);
+
+// returns indices of signal (see enum SIG) particles
+// access specific particles via SIG::_
+// head is position of the last heavy higgs, i.e. index where the decay starts 
+std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_part);
+
+// finds daughters of mother at mother_idx with pdg ids in range desc_range
+std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int mother_idx, int const* mothers, int const* pdg_ids, int n_gen_part);
 #endif

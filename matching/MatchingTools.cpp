@@ -77,3 +77,26 @@ int FindLast(int target_id, int const* pdg_ids, int n_gen_part)
     }
     return res;
 }
+
+std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int mother_idx, int const* mothers, int const* pdg_ids, int n_gen_part)
+{
+    std::vector<int> res;
+    auto descendants = GetNextGeneration(mother_idx, mothers, n_gen_part);
+    for (auto const& desc_pdg_id: desc_range)
+    {
+        for (auto const& idx: descendants)
+        {
+            if (desc_pdg_id == pdg_ids[idx]) res.push_back(idx);
+        }
+    }
+    return res;
+}
+
+std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_part)
+{
+    std::vector<int> res;
+    int rad_idx = FindLast(RADION_ID, pdg_ids, n_gen_part);
+    
+    auto gen = GetNextGeneration(rad_idx, mothers, n_gen_part);
+    return res;
+}
