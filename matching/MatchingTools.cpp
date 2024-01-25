@@ -1,5 +1,7 @@
 #include "MatchingTools.hpp"
 
+#include <algorithm>
+
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part)
 {
     std::vector<int> gen;
@@ -7,6 +9,7 @@ std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_p
     {
         if (mothers[i] == part_idx) gen.push_back(i);
     }
+    if (part_idx == -1) gen.clear();
     return gen;
 }
 
@@ -14,7 +17,7 @@ std::vector<std::vector<int>> GetDescendants(int part_idx, int const* mothers, i
 {
     std::vector<std::vector<int>> descendants;
     descendants.push_back({part_idx});
-    int gener_counter = 1;
+    // int gener_counter = 1;
     auto cur_gen = GetNextGeneration(part_idx, mothers, n_gen_part);
     while (!cur_gen.empty())
     {
@@ -25,9 +28,10 @@ std::vector<std::vector<int>> GetDescendants(int part_idx, int const* mothers, i
             auto part_daughters = GetNextGeneration(part, mothers, n_gen_part);
             next_gen.insert(next_gen.end(), part_daughters.begin(), part_daughters.end());
         }
-        ++gener_counter;
+        // ++gener_counter;
         cur_gen = next_gen;
     }
+    if (part_idx == -1) descendants.clear();
     return descendants;
 }
 
@@ -94,9 +98,12 @@ std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int
 
 std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_part)
 {
-    std::vector<int> res;
+    std::vector<int> res(N_SIG_PART, -1);
+    // res.reserve(N_SIG_PART);
     int rad_idx = FindLast(RADION_ID, pdg_ids, n_gen_part);
     
     auto gen = GetNextGeneration(rad_idx, mothers, n_gen_part);
+
+    if (std::any_of(res.begin(), res.end(), [](int x){ return x == -1; })) res.clear();
     return res;
 }

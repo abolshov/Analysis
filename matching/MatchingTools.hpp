@@ -42,6 +42,7 @@ int FindLast(int target_id, int const* pdg_ids, int n_gen_part);
 // returns indices of signal (see enum SIG) particles
 // access specific particles via SIG::_
 // head is position of the last heavy higgs, i.e. index where the decay starts 
+// if any signal particle was not found returns empty vector
 std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_part);
 
 // finds daughters of mother at mother_idx with pdg ids in range desc_range
