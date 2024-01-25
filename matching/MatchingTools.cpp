@@ -1,7 +1,5 @@
 #include "MatchingTools.hpp"
 
-#include <algorithm>
-
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part)
 {
     std::vector<int> gen;
@@ -102,7 +100,56 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
     // res.reserve(N_SIG_PART);
     int rad_idx = FindLast(RADION_ID, pdg_ids, n_gen_part);
     
-    auto gen = GetNextGeneration(rad_idx, mothers, n_gen_part);
+    // auto gen = GetNextGeneration(rad_idx, mothers, n_gen_part);
+    // tmp vector to store generation being examined currently
+    auto tmp1 = FindSpecificDescendants({HIGGS_ID}, rad_idx, mothers, pdg_ids, n_gen_part);
+    // H0->hh only
+    if (tmp1.size() == 2)
+    {
+        res[SIG::h1] = tmp1[0];
+        res[SIG::h2] = tmp1[1];
+    }
+
+    tmp1 = GetNextGeneration(res[SIG::h1], mothers, n_gen_part); 
+    auto tmp2 = GetNextGeneration(res[SIG::h2], mothers, n_gen_part); 
+    tmp1.insert(tmp1.end(), tmp2.begin(), tmp2.end()); // now tmp1 contains indices of all daughters of both higgses or is empty;
+    
+    // hh->bbWW only!
+    int wplus = -1;
+    int wminus = -1;
+    if (tmp1.size() == 4)
+    {
+        for (auto const& idx: tmp1)
+        {
+            if (pdg_ids[idx] == B_ID) res[SIG::b] = idx;
+            if (pdg_ids[idx] == BBAR_ID) res[SIG::bbar] = idx;
+            if (pdg_ids[idx] == WPLUS_ID) wplus = idx;
+            if (pdg_ids[idx] == WMINUS_ID) wminus = idx; 
+        }
+    }
+
+    tmp1 = GetNextGeneration(wplus, mothers, n_gen_part); 
+    tmp2 = GetNextGeneration(wminus, mothers, n_gen_part); 
+    tmp1.insert(tmp1.end(), tmp2.begin(), tmp2.end()); // now tmp1 contains all daughters of both W
+
+    if (tmp1.size() == 4)
+    {
+        // after sorting quarks pdgIds will always be the first two elements 
+        // third elem will laways be lepton as std::abs(lep(pdgId)) < std::abs(nu(pdgId))
+        std::sort(tmp1.begin(), tmp1.end(), [&pdg_ids](int x, int y){ return std::abs(pdg_ids[x]) < std::abs(pdg_ids[y]); });
+
+        res[SIG::q1] = IsLightQuark(pdg_ids[tmp1[0]]) ? tmp1[0] : -1;
+        res[SIG::q2] = IsLightQuark(pdg_ids[tmp1[1]]) ? tmp1[1] : -1;
+        res[SIG::l] = IsLepton(pdg_ids[tmp1[2]]) ? tmp1[2] : -1;
+        res[SIG::nu] = IsNeutrino(pdg_ids[tmp1[3]]) ? tmp1[3] : -1;
+    }
+
+    std::cout << "before the last check:\n";
+    for (auto const& s: res)
+    {
+        std::cout << s << " "; 
+    }
+    std::cout << "\n";
 
     if (std::any_of(res.begin(), res.end(), [](int x){ return x == -1; })) res.clear();
     return res;

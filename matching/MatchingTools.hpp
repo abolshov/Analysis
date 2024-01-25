@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 static const std::vector<int> LIGHT_QUARKS = {1, 2, 3, 4};
 static const std::vector<int> LEPTONS = {11, 13};
@@ -13,13 +14,13 @@ static constexpr int N_SIG_PART = 8;
 static constexpr int RADION_ID = 35;
 static constexpr int HIGGS_ID = 25;
 static constexpr int W_ID = 24;
-// static constexpr int WPLUS_ID = 24;
-// static constexpr int WMINUS_ID = -24;
+static constexpr int WPLUS_ID = 24;
+static constexpr int WMINUS_ID = -24;
 static constexpr int B_ID = 5;
-// static constexpr int BBAR_ID = -5;
+static constexpr int BBAR_ID = -5;
 
 // specifies order of signal (hh->bbWW->bbqqlv) particles
-enum SIG { h1, h2, b1, b2, q1, q2, l, nu };
+enum SIG { h1, h2, b, bbar, q1, q2, l, nu };
 
 // finds closest daughters of particle at location part_idx in the event;
 // returns indices of what found
@@ -47,4 +48,8 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
 
 // finds daughters of mother at mother_idx with pdg ids in range desc_range
 std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int mother_idx, int const* mothers, int const* pdg_ids, int n_gen_part);
+
+inline bool IsLightQuark(int pdg_id) { return std::find(LIGHT_QUARKS.begin(), LIGHT_QUARKS.end(), std::abs(pdg_id)) != LIGHT_QUARKS.end(); }
+inline bool IsLepton(int pdg_id) { return std::find(LEPTONS.begin(), LEPTONS.end(), std::abs(pdg_id)) != LEPTONS.end(); }
+inline bool IsNeutrino(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRINOS.end(), std::abs(pdg_id)) != NEUTRINOS.end(); }
 #endif
