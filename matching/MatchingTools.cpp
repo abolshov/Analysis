@@ -134,7 +134,7 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
 
     if (tmp1.size() == 4)
     {
-        // after sorting quarks pdgIds will always be the first two elements 
+        // after sorting by abs(pdgIds) indices of quarks will always be the first two elements 
         // third elem will laways be lepton as std::abs(lep(pdgId)) < std::abs(nu(pdgId))
         std::sort(tmp1.begin(), tmp1.end(), [&pdg_ids](int x, int y){ return std::abs(pdg_ids[x]) < std::abs(pdg_ids[y]); });
 

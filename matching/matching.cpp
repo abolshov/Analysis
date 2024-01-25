@@ -3,6 +3,7 @@
 #include <numeric>
 #include <cassert>
 #include <memory>
+#include <fstream>
 
 #include "TFile.h"
 #include "TTree.h"
@@ -11,11 +12,13 @@
 #include "TCanvas.h"
 #include "THStack.h"
 #include "TLegend.h"
+#include "TString.h"
 
 #include "MatchingTools.hpp"
 
 static constexpr int MAX_GENJET = 16;
 static constexpr int MAX_GENPART = 270;
+
 // static constexpr double MATCH_PT_THRESH = 3.0;
 
 int main()
@@ -25,7 +28,7 @@ int main()
     TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
 
-    UInt_t           nGenPart;
+    UInt_t          nGenPart;
     Float_t         GenPart_eta[MAX_GENPART];   //[nGenPart]
     Float_t         GenPart_mass[MAX_GENPART];   //[nGenPart]
     Float_t         GenPart_phi[MAX_GENPART];   //[nGenPart]
@@ -69,18 +72,20 @@ int main()
     for (int i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
-        auto descendants = GetDescendants(42, GenPart_genPartIdxMother, nGenPart);
-        for (int gen = 0; gen < static_cast<int>(descendants.size()); ++gen)
+        
+        int rad_idx = FindLast(RADION_ID, GenPart_pdgId, nGenPart);
+        std::cout << "Last radion occurs at " << rad_idx << "\n";
+        auto descendants = GetDescendants(rad_idx, GenPart_genPartIdxMother, nGenPart);
+        // std::cout << descendants.size() << " " << descendants.capacity() << " " << std::boolalpha << descendants.empty() << "\n";
+        PrintDecay(descendants, GenPart_pdgId, GenPart_genPartIdxMother, true);
+        // auto test = FindSpecificDescendants({25}, -1, GenPart_genPartIdxMother, GenPart_pdgId, nGenPart);
+        // std::cout << test.size() << " " << test.capacity() << " " << std::boolalpha << test.empty() << "\n";
+        auto sig  = GetSignal(GenPart_pdgId, GenPart_genPartIdxMother, nGenPart);
+        for (auto const& s: sig)
         {
-            std::cout << "generation " << gen << ":\n";
-            std::cout << "\t";
-            auto cur_gen = descendants[gen];
-            for (auto idx: cur_gen)
-            {
-                std::cout << GenPart_pdgId[idx] << "(@" << idx << ") ";
-            }
-            std::cout << "\n";
+            std::cout << s << " ";
         }
+        std::cout << "\n";
         break;
     }    
     
