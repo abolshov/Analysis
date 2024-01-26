@@ -21,6 +21,8 @@ static constexpr int WMINUS_ID = -24;
 static constexpr int B_ID = 5;
 static constexpr int BBAR_ID = -5;
 
+static constexpr double DR_THRESH = 0.4;
+
 // specifies order of signal (hh->bbWW->bbqqlv) particles
 enum SIG { h1, h2, b, bbar, q1, q2, l, nu };
 
@@ -70,4 +72,9 @@ struct KinematicData
 
 // returns p4 of particle at index idx
 TLorentzVector GetP4(KinematicData const& kd, int idx);
+
+// matches gen jet to gen particle by dR
+// returns index of jet matched to quark
+// if matching fails returns -1
+int Match(int idx, KinematicData const kd_part, KinematicData kd_jet);
 #endif

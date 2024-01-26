@@ -1,5 +1,7 @@
 #include "MatchingTools.hpp"
 
+#include <map>
+
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part)
 {
     std::vector<int> gen;
@@ -232,4 +234,25 @@ TLorentzVector GetP4(KinematicData const& kd, int idx)
     auto const& [pt, eta, phi, m, n] = kd;
     p.SetPtEtaPhiM(pt[idx], eta[idx], phi[idx], m[idx]);
     return p;
+}
+
+int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
+{
+    TLorentzVector ppart = GetP4(kd_part, idx);
+    std::map<double, int> hash;
+    int n_jets = kd_jet.n;
+    for (int i = 0; i < n_jets; ++i)
+    {
+        TLorentzVector pjet = GetP4(kd_jet, i);
+        double dr = ppart.DeltaR(pjet);
+        if (dr < DR_THRESH)
+        {
+            hash.insert({dr, i});
+        }
+    }
+
+    auto best_match = hash.begin();
+
+    if (best_match != hash.end()) return best_match->second;
+    return -1;
 }

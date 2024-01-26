@@ -71,6 +71,8 @@ int main()
 
     int non_empty_sig = 0;
     int valid_sig = 0;
+    int matching_fails = 0;
+
     for (int i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
@@ -79,11 +81,35 @@ int main()
         if (!sig.empty())
         {
             ++non_empty_sig;
-            if (CheckSignal(sig, GenPart_genPartIdxMother, GenPart_pdgId)) ++valid_sig;
+            if (CheckSignal(sig, GenPart_genPartIdxMother, GenPart_pdgId)) 
+            {
+                ++valid_sig;
+
+                KinematicData genpart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, static_cast<int>(nGenPart)};
+                KinematicData genjet{GenJet_pt, GenJet_eta, GenJet_phi, GenJet_mass, static_cast<int>(nGenJet)};
+
+                int b_idx = sig[SIG::b];
+                int bbar_idx = sig[SIG::bbar];
+                int q1_idx = sig[SIG::q1];
+                int q2_idx = sig[SIG::q2];
+
+                int b_match = Match(b_idx, genpart, genjet);
+                int bbar_match = Match(bbar_idx, genpart, genjet);
+                int q1_match = Match(q1_idx, genpart, genjet);
+                int q2_match = Match(q2_idx, genpart, genjet);
+
+                std::vector<int> matches{b_match, bbar_match, q1_match, q2_match};
+                if(std::any_of(matches.begin(), matches.end(), [](int x) { return x == -1;})) ++matching_fails;
+            }
         }
     }    
 
-    std::cout << "From " << nEvents << " events " << non_empty_sig << " contain non-empty signal; from them " << valid_sig << " are valid\n";
-        
+    std::cout << "nEvents =  " << nEvents << "\n" 
+              << "\tnon_empty_sig = " << non_empty_sig << "\n" 
+              << "\tvalid_sig = " << valid_sig << "\n"
+              << "\tmatching_fails = " << matching_fails << "\n";
+    // #ifdef DEBUG
+    // #endif
+
     return 0;
 }
