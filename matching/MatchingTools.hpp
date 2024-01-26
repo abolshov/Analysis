@@ -66,7 +66,7 @@ struct KinematicData
     Float_t* phi = nullptr;
     Float_t* m = nullptr;
     int n = 0;
-}
+};
 
 // returns p4 of particle at index idx
 TLorentzVector GetP4(KinematicData const& kd, int idx);
