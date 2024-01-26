@@ -49,7 +49,11 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
 // finds daughters of mother at mother_idx with pdg ids in range desc_range
 std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int mother_idx, int const* mothers, int const* pdg_ids, int n_gen_part);
 
+// self-explanatory helper functions
 inline bool IsLightQuark(int pdg_id) { return std::find(LIGHT_QUARKS.begin(), LIGHT_QUARKS.end(), std::abs(pdg_id)) != LIGHT_QUARKS.end(); }
 inline bool IsLepton(int pdg_id) { return std::find(LEPTONS.begin(), LEPTONS.end(), std::abs(pdg_id)) != LEPTONS.end(); }
 inline bool IsNeutrino(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRINOS.end(), std::abs(pdg_id)) != NEUTRINOS.end(); }
+
+// check validity of signal particles
+bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids);
 #endif

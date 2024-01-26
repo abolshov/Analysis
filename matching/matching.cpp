@@ -67,27 +67,23 @@ int main()
     myTree->SetBranchAddress("GenJet_partonFlavour", &GenJet_partonFlavour);
 
     int nEvents = myTree->GetEntries();
-    std::cout << "nEvents = " << nEvents << "\n";
+    // std::cout << "nEvents = " << nEvents << "\n";
 
+    int non_empty_sig = 0;
+    int valid_sig = 0;
     for (int i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
         
-        int rad_idx = FindLast(RADION_ID, GenPart_pdgId, nGenPart);
-        std::cout << "Last radion occurs at " << rad_idx << "\n";
-        auto descendants = GetDescendants(rad_idx, GenPart_genPartIdxMother, nGenPart);
-        // std::cout << descendants.size() << " " << descendants.capacity() << " " << std::boolalpha << descendants.empty() << "\n";
-        PrintDecay(descendants, GenPart_pdgId, GenPart_genPartIdxMother, true);
-        // auto test = FindSpecificDescendants({25}, -1, GenPart_genPartIdxMother, GenPart_pdgId, nGenPart);
-        // std::cout << test.size() << " " << test.capacity() << " " << std::boolalpha << test.empty() << "\n";
         auto sig  = GetSignal(GenPart_pdgId, GenPart_genPartIdxMother, nGenPart);
-        for (auto const& s: sig)
+        if (!sig.empty())
         {
-            std::cout << s << " ";
+            ++non_empty_sig;
+            if (CheckSignal(sig, GenPart_genPartIdxMother, GenPart_pdgId)) ++valid_sig;
         }
-        std::cout << "\n";
-        break;
     }    
-    
+
+    std::cout << "From " << nEvents << " events " << non_empty_sig << " contain non-empty signal; from them " << valid_sig << " are valid\n";
+        
     return 0;
 }

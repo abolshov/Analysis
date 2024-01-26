@@ -144,13 +144,84 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
         res[SIG::nu] = IsNeutrino(pdg_ids[tmp1[3]]) ? tmp1[3] : -1;
     }
 
-    std::cout << "before the last check:\n";
-    for (auto const& s: res)
-    {
-        std::cout << s << " "; 
-    }
-    std::cout << "\n";
-
     if (std::any_of(res.begin(), res.end(), [](int x){ return x == -1; })) res.clear();
     return res;
+}
+
+bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids)
+{
+    if (signal.size() != N_SIG_PART) return false;
+    std::vector<int> copy = signal;
+    if (std::unique(copy.begin(), copy.end()) != copy.end()) return false;
+    if (std::any_of(copy.begin(), copy.end(), [](int x){ return x == -1; })) return false;
+
+    int h1 = signal[SIG::h1];
+    int h2 = signal[SIG::h2];
+    int b = signal[SIG::b];
+    int bbar = signal[SIG::bbar];
+    int q1 = signal[SIG::q1];
+    int q2 = signal[SIG::q2];
+    int l = signal[SIG::l];
+    int nu = signal[SIG::nu];
+
+    // std::cout << "h1 = " << h1 << "\n"
+    //           << "h2 = " << h2 << "\n"
+    //           << "b = " << b << "\n"
+    //           << "bbar = " << bbar << "\n"
+    //           << "q1 = " << q1 << "\n"
+    //           << "q2 = " << q2 << "\n"
+    //           << "l = " << l << "\n"
+    //           << "nu = " << nu << "\n";
+              
+
+    bool b_quarks = (std::abs(pdg_ids[b]) == B_ID && std::abs(pdg_ids[bbar]) == B_ID);
+    // std::cout << std::boolalpha;
+    // std::cout << "b_quarks = " << b_quarks << "\n";
+    if (!b_quarks) return false;
+    
+    bool h1tobb = (mothers[b] == h1 && mothers[bbar] == h1);
+    bool h2tobb = (mothers[b] == h2 && mothers[bbar] == h2);
+
+    // std::cout << "h1tobb = " << h1tobb << "\n" 
+    //           << "h2tobb = " << h2tobb << "\n";
+
+    if (!h1tobb && !h2tobb) return false;
+    if (h1tobb && h2tobb) return false;
+
+    int hadr_w = -1;
+    if (mothers[q1] != mothers[q2])
+    {
+        return false;
+    }
+    else
+    {
+        hadr_w = mothers[q1];
+    }
+
+    // std::cout << "hadr_w = " << hadr_w << ", pid = " << pdg_ids[hadr_w] << "\n";
+
+    if (std::abs(pdg_ids[hadr_w]) != W_ID) return false;
+
+    int lep_w = -1;
+    if (mothers[l] != mothers[nu])
+    {
+        return false;
+    }
+    else
+    {
+        lep_w = mothers[l];
+    }
+
+    // std::cout << "lep_w = " << lep_w << ", pid = " << pdg_ids[lep_w] << "\n";
+
+    if (std::abs(pdg_ids[lep_w]) != W_ID) return false;
+
+    if (mothers[lep_w] != mothers[hadr_w]) return false;
+    int h_toWW = mothers[lep_w];
+
+    // std::cout << "h_toWW = " << h_toWW << "\n";
+    // std::cout << "pdg_ids[h_toWW] = " << pdg_ids[h_toWW] << "\n";
+    if (pdg_ids[h_toWW] != HIGGS_ID) return false;
+
+    return true;
 }
