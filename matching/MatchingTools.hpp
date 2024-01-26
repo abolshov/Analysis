@@ -5,6 +5,8 @@
 #include <iostream>
 #include <algorithm>
 
+#include "TLorentzVector.h"
+
 static const std::vector<int> LIGHT_QUARKS = {1, 2, 3, 4};
 static const std::vector<int> LEPTONS = {11, 13};
 static const std::vector<int> NEUTRINOS = {12, 14};
@@ -56,4 +58,16 @@ inline bool IsNeutrino(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRIN
 
 // check validity of signal particles
 bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids);
+
+struct KinematicData
+{
+    Float_t* pt = nullptr;
+    Float_t* eta = nullptr;
+    Float_t* phi = nullptr;
+    Float_t* m = nullptr;
+    int n = 0;
+}
+
+// returns p4 of particle at index idx
+TLorentzVector GetP4(KinematicData const& kd, int idx);
 #endif

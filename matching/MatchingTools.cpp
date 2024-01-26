@@ -225,3 +225,11 @@ bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* 
 
     return true;
 }
+
+TLorentzVector GetP4(KinematicData const& kd, int idx)
+{
+    TLorentzVector p;
+    auto const& [pt, eta, phi, m, n] = kd;
+    p.SetPtPhiEtaM(pt[idx], eta[idx], phi[idx], m[idx]);
+    return p;
+}
