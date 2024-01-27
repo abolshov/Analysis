@@ -236,13 +236,16 @@ TLorentzVector GetP4(KinematicData const& kd, int idx)
     return p;
 }
 
-int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
+int Match(int idx, KinematicData const kd_part, KinematicData kd_jet, int const* pdg_ids, int const* jet_flavors)
 {
     TLorentzVector ppart = GetP4(kd_part, idx);
     std::map<double, int> hash;
     int n_jets = kd_jet.n;
     for (int i = 0; i < n_jets; ++i)
     {
+        // cannot match light quark to jet containing b quark
+        if (std::abs(pdg_ids[idx]) < B_ID && jet_flavors[i] == B_ID) continue;
+
         TLorentzVector pjet = GetP4(kd_jet, i);
         double dr = ppart.DeltaR(pjet);
         if (dr < DR_THRESH)

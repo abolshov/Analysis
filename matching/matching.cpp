@@ -93,10 +93,10 @@ int main()
                 int q1_idx = sig[SIG::q1];
                 int q2_idx = sig[SIG::q2];
 
-                int b_match = Match(b_idx, genpart, genjet);
-                int bbar_match = Match(bbar_idx, genpart, genjet);
-                int q1_match = Match(q1_idx, genpart, genjet);
-                int q2_match = Match(q2_idx, genpart, genjet);
+                int b_match = Match(b_idx, genpart, genjet, GenPart_pdgId, GenJet_partonFlavour);
+                int bbar_match = Match(bbar_idx, genpart, genjet, GenPart_pdgId, GenJet_partonFlavour);
+                int q1_match = Match(q1_idx, genpart, genjet, GenPart_pdgId, GenJet_partonFlavour);
+                int q2_match = Match(q2_idx, genpart, genjet, GenPart_pdgId, GenJet_partonFlavour);
 
                 std::vector<int> matches{b_match, bbar_match, q1_match, q2_match};
                 if(std::any_of(matches.begin(), matches.end(), [](int x) { return x == -1;})) ++matching_fails;
