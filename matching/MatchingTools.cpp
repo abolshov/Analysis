@@ -319,3 +319,16 @@ std::unique_ptr<TGraph> Parton(KinematicData const& kd, int idx)
     }
     return std::make_unique<TGraph>(n_points + 1, phis.data(), etas.data());
 }
+
+std::vector<std::unique_ptr<TGraph>> ConeGraphs(KinematicData const& kd, std::vector<int> const& parts, int color)
+{
+    std::vector<std::unique_ptr<TGraph>> ret;
+    for (auto const& part: parts)
+    {
+        auto&& g = Parton(kd, part);
+        g->SetLineWidth(2);
+        g->SetLineColor(color);
+        ret.push_back(std::move(g));
+    }
+    return ret;
+}

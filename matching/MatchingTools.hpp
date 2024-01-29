@@ -91,4 +91,6 @@ std::unique_ptr<TH2F> EnergyMap(int const event_num, KinematicData const& kd, in
 // Make a graph with a marker centered at particle idx in (eta, phi) space and 0.4 dR circle around it
 std::unique_ptr<TGraph> Parton(KinematicData const& kd, int idx);
 
+// Make circles
+std::vector<std::unique_ptr<TGraph>> ConeGraphs(KinematicData const& kd, std::vector<int> const& parts, int color); 
 #endif

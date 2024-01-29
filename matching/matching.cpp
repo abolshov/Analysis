@@ -225,6 +225,8 @@ int main()
                         auto g3 = Parton(genpart, q1_idx);
                         auto g4 = Parton(genpart, q2_idx);
 
+                        auto&& graphs = ConeGraphs(genjet, matches, 3);
+
                         auto c1 = std::make_unique<TCanvas>("c1", "c1");
                         c1->SetGrid();
                         c1->SetTickx();
@@ -250,6 +252,16 @@ int main()
                         g2->Draw("same");
                         g3->Draw("same");
                         g4->Draw("same");
+
+                        graphs[0]->Draw("same");
+                        graphs[1]->Draw("same");
+                        graphs[2]->Draw("same");
+                        graphs[3]->Draw("same");
+                        
+                        // auto leg = std::make_unique<TLegend>(0.15, 0.1, 0.35, 0.3);
+                        // leg->AddEntry(g1.get(), "b quarks");
+                        // leg->AddEntry(g3.get(), "light quarks");
+                        // leg->Draw();
 
                         c1->SaveAs(Form("Event_%d.png", i));
                         // save_2d_dist(h.get(), Form("Evt_%d_EnergyMap", i), "phi", "eta");
