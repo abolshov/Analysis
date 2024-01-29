@@ -4,8 +4,13 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 #include "TLorentzVector.h"
+#include "TH1.h"
+#include "TH2.h"
+#include "TGraph.h"
+#include "TMultiGraph.h"
 
 static const std::vector<int> LIGHT_QUARKS = {1, 2, 3, 4};
 static const std::vector<int> LEPTONS = {11, 13};
@@ -78,4 +83,12 @@ TLorentzVector GetP4(KinematicData const& kd, int idx);
 // if matching fails returns -1
 int Match(int idx, KinematicData const kd_part, KinematicData kd_jet, int const* pdg_ids, int const* jet_flavors);
 int Match(int idx, KinematicData const kd_part, KinematicData kd_jet);
+
+// compute energy map of an event
+using AxisRange = std::pair<double, double>;
+std::unique_ptr<TH2F> EnergyMap(int const event_num, KinematicData const& kd, int const* mothers, int nbins = 30, AxisRange xrange = {-6.5, 6.5}, AxisRange yrange = {-6.5, 6.5});
+
+// Make a graph with a marker centered at particle idx in (eta, phi) space and 0.4 dR circle around it
+std::unique_ptr<TGraph> Parton(KinematicData const& kd, int idx);
+
 #endif

@@ -13,6 +13,7 @@
 #include "THStack.h"
 #include "TLegend.h"
 #include "TString.h"
+#include "TStyle.h"
 
 #include "MatchingTools.hpp"
 
@@ -74,10 +75,35 @@ void save_1d_stack(std::vector<TH1F*> const& distrs,
     delete c1;
 }
 
-// static constexpr double MATCH_PT_THRESH = 3.0;
+void save_2d_dist(TH2F* dist, 
+                  std::string const& name,
+                  std::string const& title_x,
+                  std::string const& title_y)
+{
+    TCanvas* c1 = new TCanvas("c1", "c1");
+    c1->SetGrid();
+    c1->SetTickx();
+    c1->SetTicky();
+    dist->SetStats(0);
+    TStyle* gStyle = new TStyle();
+    gStyle->SetPalette(kRainBow);
+
+    dist->GetXaxis()->SetTitle(title_x.c_str());
+    dist->GetYaxis()->SetTitle(title_y.c_str());
+    dist->SetLineWidth(3);
+    dist->Draw("colz");
+    c1->SaveAs((name + ".png").c_str());
+
+    delete gStyle;
+    delete c1;
+}
+
+static constexpr double MATCH_PT_THRESH = 3.0;
 
 int main()
 {
+    TStyle* gStyle = new TStyle();
+    gStyle->SetPalette(kRainBow);
     // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
     TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -160,6 +186,8 @@ int main()
                 int bbar_idx = sig[SIG::bbar];
                 int q1_idx = sig[SIG::q1];
                 int q2_idx = sig[SIG::q2];
+
+                std::vector<int> partons{ b_idx, bbar_idx, q1_idx, q2_idx };
                 
                 int b_match = Match(b_idx, genpart, genjet);
                 int bbar_match = Match(bbar_idx, genpart, genjet);
@@ -187,6 +215,45 @@ int main()
 
                     sublead_b_pt_ratio_hist->Fill(subleading_b_pt_ratio);
                     sublead_l_pt_ratio_hist->Fill(subleading_l_pt_ratio);
+
+                    std::vector<double> ratios{ leading_b_pt_ratio, subleading_b_pt_ratio, leading_l_pt_ratio, subleading_l_pt_ratio };
+                    if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > MATCH_PT_THRESH; }))
+                    {
+                        auto h = EnergyMap(i, genpart, GenPart_genPartIdxMother);
+                        auto g1 = Parton(genpart, b_idx);
+                        auto g2 = Parton(genpart, bbar_idx);
+                        auto g3 = Parton(genpart, q1_idx);
+                        auto g4 = Parton(genpart, q2_idx);
+
+                        auto c1 = std::make_unique<TCanvas>("c1", "c1");
+                        c1->SetGrid();
+                        c1->SetTickx();
+                        c1->SetTicky();
+                        c1->SetLeftMargin(0.15);
+                        c1->SetRightMargin(0.15);
+
+                        h->SetStats(0);
+                        h->GetXaxis()->SetTitle("phi");
+                        h->GetYaxis()->SetTitle("eta");
+                        h->Draw("colz");
+
+                        g1->SetLineWidth(2);
+                        g1->SetLineColor(kMagenta);
+                        g2->SetLineWidth(2);
+                        g2->SetLineColor(kMagenta);
+                        g3->SetLineWidth(2);
+                        g3->SetLineColor(kRed);
+                        g4->SetLineWidth(2);
+                        g4->SetLineColor(kRed);
+
+                        g1->Draw("same");
+                        g2->Draw("same");
+                        g3->Draw("same");
+                        g4->Draw("same");
+
+                        c1->SaveAs(Form("Event_%d.png", i));
+                        // save_2d_dist(h.get(), Form("Evt_%d_EnergyMap", i), "phi", "eta");
+                    }
 
                     TLorentzVector bq_p4 = GetP4(genpart, b_idx);
                     TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);

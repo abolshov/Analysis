@@ -1,6 +1,9 @@
 #include "MatchingTools.hpp"
 
 #include <map>
+#include <ranges>
+
+#include "TString.h"
 
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part)
 {
@@ -279,4 +282,40 @@ int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
 
     if (best_match != hash.end()) return best_match->second;
     return -1;
+}
+
+std::unique_ptr<TH2F> EnergyMap(int const event_num, KinematicData const& kd, int const* mothers, int nbins, AxisRange xrange, AxisRange yrange)
+{
+    auto&& [xmin, xmax] = xrange;
+    auto&& [ymin, ymax] = yrange;
+    auto hist = std::make_unique<TH2F>(Form("evt_%d_EM", event_num), Form("Event %d", event_num), nbins, xmin, xmax, nbins, ymin, ymax); 
+    int n_parts = kd.n;
+    std::vector<int> final_parts = GetFinalParticles(mothers, n_parts);
+
+    for (auto const& part_idx: final_parts)
+    {
+        TLorentzVector p4 = GetP4(kd, part_idx);
+        hist->Fill(p4.Phi(), p4.Eta(), p4.E());
+    }
+
+    return hist;   
+}
+
+std::unique_ptr<TGraph> Parton(KinematicData const& kd, int idx)
+{
+    TLorentzVector p4 = GetP4(kd, idx);
+    int n_points = 20;
+    double eta_0 = p4.Eta();
+    double phi_0 = p4.Phi();
+
+    std::vector<double> phis(n_points + 1);
+    std::vector<double> etas(n_points + 1);
+
+    for (int i = 0; i < n_points + 1; ++i)
+    {
+        double t = 2*3.14/(n_points)*i;
+        phis[i] = phi_0 + DR_THRESH*std::cos(t);
+        etas[i] = eta_0 + DR_THRESH*std::sin(t);
+    }
+    return std::make_unique<TGraph>(n_points + 1, phis.data(), etas.data());
 }
