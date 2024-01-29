@@ -243,9 +243,30 @@ int Match(int idx, KinematicData const kd_part, KinematicData kd_jet, int const*
     int n_jets = kd_jet.n;
     for (int i = 0; i < n_jets; ++i)
     {
-        // cannot match light quark to jet containing b quark
-        if (std::abs(pdg_ids[idx]) < B_ID && jet_flavors[i] == B_ID) continue;
+        if (std::abs(pdg_ids[idx]) < B_ID && jet_flavors[i] == B_ID) continue; // cannot match light quark to jet containing b quark; has very small effect on matching
+        // if (std::abs(pdg_ids[idx]) == B_ID && jet_flavors[i] != B_ID) continue;  // cannot match b quark to jet not containing b quarks; completely fails matching
 
+        TLorentzVector pjet = GetP4(kd_jet, i);
+        double dr = ppart.DeltaR(pjet);
+        if (dr < DR_THRESH)
+        {
+            hash.insert({dr, i});
+        }
+    }
+
+    auto best_match = hash.begin();
+
+    if (best_match != hash.end()) return best_match->second;
+    return -1;
+}
+
+int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
+{
+    TLorentzVector ppart = GetP4(kd_part, idx);
+    std::map<double, int> hash;
+    int n_jets = kd_jet.n;
+    for (int i = 0; i < n_jets; ++i)
+    {
         TLorentzVector pjet = GetP4(kd_jet, i);
         double dr = ppart.DeltaR(pjet);
         if (dr < DR_THRESH)

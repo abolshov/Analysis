@@ -77,4 +77,5 @@ TLorentzVector GetP4(KinematicData const& kd, int idx);
 // returns index of jet matched to quark
 // if matching fails returns -1
 int Match(int idx, KinematicData const kd_part, KinematicData kd_jet, int const* pdg_ids, int const* jet_flavors);
+int Match(int idx, KinematicData const kd_part, KinematicData kd_jet);
 #endif
