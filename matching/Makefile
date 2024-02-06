@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS= -c -std=c++20 -O3 -Wall -Wextra -pedantic `root-config --cflags `
+CXXFLAGS= -c -O3 -Wall -Wextra -pedantic `root-config --cflags `
 LDFLAGS= `root-config --glibs ` -lSpectrum
 
 matching.o: matching.cpp
