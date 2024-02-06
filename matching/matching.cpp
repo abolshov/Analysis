@@ -219,52 +219,10 @@ int main()
                     std::vector<double> ratios{ leading_b_pt_ratio, subleading_b_pt_ratio, leading_l_pt_ratio, subleading_l_pt_ratio };
                     if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > MATCH_PT_THRESH; }))
                     {
-                        auto h = EnergyMap(i, genpart, GenPart_genPartIdxMother);
-                        auto g1 = Parton(genpart, b_idx);
-                        auto g2 = Parton(genpart, bbar_idx);
-                        auto g3 = Parton(genpart, q1_idx);
-                        auto g4 = Parton(genpart, q2_idx);
-
-                        auto&& graphs = ConeGraphs(genjet, matches, 3);
-
-                        auto c1 = std::make_unique<TCanvas>("c1", "c1");
-                        c1->SetGrid();
-                        c1->SetTickx();
-                        c1->SetTicky();
-                        c1->SetLeftMargin(0.15);
-                        c1->SetRightMargin(0.15);
-
-                        h->SetStats(0);
-                        h->GetXaxis()->SetTitle("phi");
-                        h->GetYaxis()->SetTitle("eta");
-                        h->Draw("colz");
-
-                        g1->SetLineWidth(2);
-                        g1->SetLineColor(kMagenta);
-                        g2->SetLineWidth(2);
-                        g2->SetLineColor(kMagenta);
-                        g3->SetLineWidth(2);
-                        g3->SetLineColor(kRed);
-                        g4->SetLineWidth(2);
-                        g4->SetLineColor(kRed);
-
-                        g1->Draw("same");
-                        g2->Draw("same");
-                        g3->Draw("same");
-                        g4->Draw("same");
-
-                        graphs[0]->Draw("same");
-                        graphs[1]->Draw("same");
-                        graphs[2]->Draw("same");
-                        graphs[3]->Draw("same");
-                        
-                        // auto leg = std::make_unique<TLegend>(0.15, 0.1, 0.35, 0.3);
-                        // leg->AddEntry(g1.get(), "b quarks");
-                        // leg->AddEntry(g3.get(), "light quarks");
-                        // leg->Draw();
-
-                        c1->SaveAs(Form("Event_%d.png", i));
-                        // save_2d_dist(h.get(), Form("Evt_%d_EnergyMap", i), "phi", "eta");
+                        MatchIndex mi = {{b_idx, b_match}, {bbar_idx, bbar_match}, {q1_idx, q1_match}, {q2_idx, q2_match}};
+                        MatchKinematics mk = {genpart, genjet};
+                        std::pair<int*, int*> ptrs = {GenPart_genPartIdxMother, GenPart_pdgId};
+                        DrawEventMap(mk, mi, i, ptrs);
                     }
 
                     TLorentzVector bq_p4 = GetP4(genpart, b_idx);

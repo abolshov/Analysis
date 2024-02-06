@@ -1,9 +1,10 @@
 #include "MatchingTools.hpp"
 
 #include <map>
-#include <ranges>
 
 #include "TString.h"
+#include "TCanvas.h"
+#include "TLegend.h"
 
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part)
 {
@@ -239,30 +240,6 @@ TLorentzVector GetP4(KinematicData const& kd, int idx)
     return p;
 }
 
-int Match(int idx, KinematicData const kd_part, KinematicData kd_jet, int const* pdg_ids, int const* jet_flavors)
-{
-    TLorentzVector ppart = GetP4(kd_part, idx);
-    std::map<double, int> hash;
-    int n_jets = kd_jet.n;
-    for (int i = 0; i < n_jets; ++i)
-    {
-        if (std::abs(pdg_ids[idx]) < B_ID && jet_flavors[i] == B_ID) continue; // cannot match light quark to jet containing b quark; has very small effect on matching
-        // if (std::abs(pdg_ids[idx]) == B_ID && jet_flavors[i] != B_ID) continue;  // cannot match b quark to jet not containing b quarks; completely fails matching
-
-        TLorentzVector pjet = GetP4(kd_jet, i);
-        double dr = ppart.DeltaR(pjet);
-        if (dr < DR_THRESH)
-        {
-            hash.insert({dr, i});
-        }
-    }
-
-    auto best_match = hash.begin();
-
-    if (best_match != hash.end()) return best_match->second;
-    return -1;
-}
-
 int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
 {
     TLorentzVector ppart = GetP4(kd_part, idx);
@@ -301,34 +278,67 @@ std::unique_ptr<TH2F> EnergyMap(int const event_num, KinematicData const& kd, in
     return hist;   
 }
 
-std::unique_ptr<TGraph> Parton(KinematicData const& kd, int idx)
+std::unique_ptr<TGraph> DRCone(KinematicData const& kd, int idx)
 {
     TLorentzVector p4 = GetP4(kd, idx);
-    int n_points = 20;
     double eta_0 = p4.Eta();
     double phi_0 = p4.Phi();
 
-    std::vector<double> phis(n_points + 1);
-    std::vector<double> etas(n_points + 1);
+    std::vector<double> phis(N_POINTS + 1);
+    std::vector<double> etas(N_POINTS + 1);
 
-    for (int i = 0; i < n_points + 1; ++i)
+    for (int i = 0; i < N_POINTS + 1; ++i)
     {
-        double t = 2*3.14/(n_points)*i;
+        double t = 2*3.14/(N_POINTS)*i;
         phis[i] = phi_0 + DR_THRESH*std::cos(t);
         etas[i] = eta_0 + DR_THRESH*std::sin(t);
     }
-    return std::make_unique<TGraph>(n_points + 1, phis.data(), etas.data());
+    return std::make_unique<TGraph>(N_POINTS + 1, phis.data(), etas.data());
 }
 
-std::vector<std::unique_ptr<TGraph>> ConeGraphs(KinematicData const& kd, std::vector<int> const& parts, int color)
+void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_index, int evt_num, std::pair<int*, int*> ptrs)
 {
-    std::vector<std::unique_ptr<TGraph>> ret;
-    for (auto const& part: parts)
+    auto c1 = std::make_unique<TCanvas>("c1", "c1");
+    c1->SetGrid();
+    c1->SetTickx();
+    c1->SetTicky();
+    c1->SetLeftMargin(0.15);
+    c1->SetRightMargin(0.15);
+
+    auto const& [mothers, pdg_ids] = ptrs;
+    auto const& [genpart, genjet] = match_kin;
+
+    std::unique_ptr<TH2F> en_map = EnergyMap(evt_num, genpart, mothers);   
+    en_map->SetStats(0);
+    en_map->GetXaxis()->SetTitle("phi");
+    en_map->GetYaxis()->SetTitle("eta");
+    en_map->Draw("colz");
+
+    std::vector<std::unique_ptr<TGraph>> part_cones, jet_cones;
+    // cannot draw vectors in the loop as they will go out of scope after the loop is executed, thus need to save them
+    for (auto const& match_idx_pair: match_index)
     {
-        auto&& g = Parton(kd, part);
-        g->SetLineWidth(2);
-        g->SetLineColor(color);
-        ret.push_back(std::move(g));
+        auto [part_idx, jet_idx] = match_idx_pair;
+        auto&& part_cone = DRCone(genpart, part_idx);
+        auto&& jet_cone = DRCone(genjet, jet_idx);
+
+        part_cones.push_back(std::move(part_cone));
+        jet_cones.push_back(std::move(jet_cone));
     }
-    return ret;
+
+    auto leg = std::make_unique<TLegend>(0.15, 0.1, 0.35, 0.3);
+    for (int i = 0; i < static_cast<int>(part_cones.size()); ++i)
+    {
+        auto [part_idx, jet_idx] = match_index[i];
+        part_cones[i]->SetLineWidth(2);
+        part_cones[i]->SetLineColor(i+6);
+        part_cones[i]->Draw("same");
+        jet_cones[i]->SetLineWidth(2);
+        jet_cones[i]->SetLineColor(i+6);
+        jet_cones[i]->Draw("same");
+        leg->AddEntry(part_cones[i].get(), Form("pdg ID = %d", pdg_ids[part_idx]));
+    }
+    leg->Draw();
+
+    c1->SaveAs(Form("EnergyMaps/Event_%d.png", evt_num));
 }
