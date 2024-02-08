@@ -102,10 +102,10 @@ static constexpr double MATCH_PT_THRESH = 3.0;
 
 int main()
 {
-    TStyle* gStyle = new TStyle();
+    auto gStyle = std::make_unique<TStyle>();
     gStyle->SetPalette(kRainBow);
-    // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
-    TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
+    TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
+    // TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
 
     UInt_t          nGenPart;
@@ -126,6 +126,7 @@ int main()
 
     Int_t           GenJet_partonFlavour[MAX_GENJET];   //[nGenJet]
     // UChar_t         GenJet_hadronFlavour[MAX_GENJET];   //[nGenJet] doesn't work for some reason - prints empty spaces
+    Int_t           Jet_genJetIdx[MAX_GENJET];  
 
     myTree->SetBranchAddress("nGenPart", &nGenPart);
     myTree->SetBranchAddress("GenPart_eta", &GenPart_eta);
@@ -145,6 +146,7 @@ int main()
     myTree->SetBranchAddress("GenJet_pt", &GenJet_pt);
 
     myTree->SetBranchAddress("GenJet_partonFlavour", &GenJet_partonFlavour);
+    myTree->SetBranchAddress("Jet_genJetIdx", &Jet_genJetIdx);
 
     int nEvents = myTree->GetEntries();
 
@@ -152,7 +154,11 @@ int main()
     int non_empty_sig = 0;
     int valid_sig = 0;
     int matching_fails = 0;
-    int fill_cnt = 0;
+    int accep_evts = 0;
+
+    int n_q1_exc = 0;
+    int n_q2_exc = 0;
+    int n_any_exc = 0;
 
     // hists
     int nbins = 101;
@@ -166,6 +172,8 @@ int main()
 
     auto h_from_quarks = std::make_unique<TH1F>("h_from_quarks", "Higgs mass from quarks", nbins, 120, 130);
     auto h_from_jets = std::make_unique<TH1F>("h_from_jets", "Higgs mass from jets", nbins/2, 50, 175);
+
+    std::cout << std::boolalpha;
 
     for (int i = 0; i < nEvents; ++i)
     {
@@ -187,7 +195,23 @@ int main()
                 int q1_idx = sig[SIG::q1];
                 int q2_idx = sig[SIG::q2];
 
-                std::vector<int> partons{ b_idx, bbar_idx, q1_idx, q2_idx };
+                // std::cout << IsDescOf(sig[SIG::nu], sig[SIG::h1], GenPart_genPartIdxMother) << "\n";
+                // std::cout << IsDescOf(sig[SIG::nu], sig[SIG::h2], GenPart_genPartIdxMother) << "\n";
+                // std::cout << "=============\n";
+
+                // std::vector<int> partons{ b_idx, bbar_idx, q1_idx, q2_idx };
+                // double min_dr = 0.5;
+                // for (int p1 = 0; p1 < static_cast<int>(partons.size()); ++p1)
+                // {
+                //     TLorentzVector mom1 = GetP4(genpart, partons[p1]);
+                //     for (int p2 = p1 + 1; p2 < static_cast<int>(partons.size()); ++p2)
+                //     {
+                //         TLorentzVector mom2 = GetP4(genpart, partons[p2]);
+                //         double dr = mom1.DeltaR(mom2);
+                //         if (dr < min_dr) min_dr = dr;
+                //     }
+                // }
+                // if (min_dr > DR_THRESH) continue;
                 
                 int b_match = Match(b_idx, genpart, genjet);
                 int bbar_match = Match(bbar_idx, genpart, genjet);
@@ -196,14 +220,40 @@ int main()
 
                 // skip event if matching failed
                 std::vector<int> matches{b_match, bbar_match, q1_match, q2_match};
-                if(std::any_of(matches.begin(), matches.end(), [](int x) { return x == -1;}))
+                if(std::any_of(matches.begin(), matches.end(), [](int x) { return x == -1;}) || std::unique(matches.begin(), matches.end()) != matches.end())
                 {
                     ++matching_fails;
                     continue;
                 } 
                 else
                 {
-                    ++fill_cnt;
+                    ++accep_evts;
+
+                    TLorentzVector bq_p4 = GetP4(genpart, b_idx);
+                    TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
+                    TLorentzVector bj_p4 = GetP4(genjet, b_match);
+                    TLorentzVector bbarj_p4 = GetP4(genjet, bbar_match);
+
+                    TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
+                    TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
+                    TLorentzVector lj1_p4 = GetP4(genjet, q1_match);
+                    TLorentzVector lj2_p4 = GetP4(genjet, q2_match);
+
+                    // TLorentzVector sum_q1, sum_q2;
+                    // for (auto&& idx: GetFinalParticles(GenPart_genPartIdxMother, nGenPart))
+                    // {
+                    //     if (IsDescOf(idx, q1_idx, GenPart_genPartIdxMother)) sum_q1 += GetP4(genpart, idx);
+                    //     if (IsDescOf(idx, q2_idx, GenPart_genPartIdxMother)) sum_q2 += GetP4(genpart, idx);
+                    // }
+
+                    // if (sum_q1.E() > lq1_p4.E()) ++n_q1_exc;
+                    // if (sum_q2.E() > lq2_p4.E()) ++n_q2_exc;
+                    // if (sum_q1.E() > lq1_p4.E() || sum_q2.E() > lq2_p4.E()) 
+                    // {
+                    //     ++n_any_exc;
+                    //     continue;
+                    // }
+
                     double leading_b_pt_ratio = (GenPart_pt[b_idx] > GenPart_pt[bbar_idx]) ? (GenJet_pt[b_match]/GenPart_pt[b_idx]) : (GenJet_pt[bbar_match]/GenPart_pt[bbar_idx]);
                     double leading_l_pt_ratio = (GenPart_pt[q1_idx] > GenPart_pt[q2_idx]) ? (GenJet_pt[q1_match]/GenPart_pt[q1_idx]) : (GenJet_pt[q2_match]/GenPart_pt[q2_idx]);
 
@@ -216,24 +266,16 @@ int main()
                     sublead_b_pt_ratio_hist->Fill(subleading_b_pt_ratio);
                     sublead_l_pt_ratio_hist->Fill(subleading_l_pt_ratio);
 
-                    std::vector<double> ratios{ leading_b_pt_ratio, subleading_b_pt_ratio, leading_l_pt_ratio, subleading_l_pt_ratio };
-                    if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > MATCH_PT_THRESH; }))
-                    {
-                        MatchIndex mi = {{b_idx, b_match}, {bbar_idx, bbar_match}, {q1_idx, q1_match}, {q2_idx, q2_match}};
-                        MatchKinematics mk = {genpart, genjet};
-                        std::pair<int*, int*> ptrs = {GenPart_genPartIdxMother, GenPart_pdgId};
-                        DrawEventMap(mk, mi, i, ptrs);
-                    }
-
-                    TLorentzVector bq_p4 = GetP4(genpart, b_idx);
-                    TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
-                    TLorentzVector bj_p4 = GetP4(genjet, b_match);
-                    TLorentzVector bbarj_p4 = GetP4(genjet, bbar_match);
-
-                    TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
-                    TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
-                    TLorentzVector lj1_p4 = GetP4(genjet, q1_match);
-                    TLorentzVector lj2_p4 = GetP4(genjet, q2_match);
+                    #ifdef DEBUG
+                        std::vector<double> ratios{ leading_b_pt_ratio, subleading_b_pt_ratio, leading_l_pt_ratio, subleading_l_pt_ratio };
+                        if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > MATCH_PT_THRESH; }))
+                        {
+                            MatchIndex mi = {{b_idx, b_match}, {bbar_idx, bbar_match}, {q1_idx, q1_match}, {q2_idx, q2_match}};
+                            MatchKinematics mk = {genpart, genjet};
+                            std::pair<int*, int*> ptrs = {GenPart_genPartIdxMother, GenPart_pdgId};
+                            DrawEventMap(mk, mi, i, ptrs);
+                        }
+                    #endif
 
                     w_from_quarks->Fill((lq1_p4 + lq2_p4).M());
                     w_from_jets->Fill((lj1_p4 + lj2_p4).M());
@@ -259,13 +301,14 @@ int main()
     save_1d_stack({w_from_quarks.get(), w_from_jets.get()}, {"quarks", "jets"}, "w_mass", "Hadronically decaying W boson mass", "[GeV]");
     save_1d_stack({h_from_quarks.get(), h_from_jets.get()}, {"quarks", "jets"}, "h_mass", "Higgs boson mass", "[GeV]");     
 
-    std::cout << "nEvents =  " << nEvents << "\n" 
+    std::cout << "nEvents = " << nEvents << "\n" 
               << "\tnon_empty_sig = " << non_empty_sig << "\n" 
               << "\tvalid_sig = " << valid_sig << "\n"
               << "\tmatching_fails = " << matching_fails << "\n"
-              << "\tfill_cnt = " << fill_cnt << "\n";
-    // #ifdef DEBUG
-    // #endif
+              << "\taccep_evts = " << accep_evts << "\n"
+              << "\tn_q1_exc = " << n_q1_exc << "\n"
+              << "\tn_q2_exc = " << n_q2_exc << "\n"
+              << "\tn_any_exc = " << n_any_exc << "\n";
 
     return 0;
 }

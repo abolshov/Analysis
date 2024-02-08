@@ -232,6 +232,18 @@ bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* 
     return true;
 }
 
+bool IsDescOf(int cand_idx, int parent_idx, int const* mothers)
+{
+    int mother_idx = mothers[cand_idx];
+    while(mother_idx != -1)
+    {
+        if (mother_idx == parent_idx) return true;
+        int new_mother_idx = mothers[mother_idx];
+        mother_idx = new_mother_idx;
+    }
+    return false;
+}
+
 TLorentzVector GetP4(KinematicData const& kd, int idx)
 {
     TLorentzVector p;

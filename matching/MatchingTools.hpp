@@ -65,6 +65,9 @@ inline bool IsNeutrino(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRIN
 // check validity of signal particles
 bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids);
 
+// checks of particle cand_idx is daughter of particle parent_idx
+bool IsDescOf(int cand_idx, int parent_idx, int const* mothers);
+
 struct KinematicData
 {
     Float_t* pt = nullptr;
