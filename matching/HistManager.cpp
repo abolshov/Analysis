@@ -3,6 +3,12 @@
 #include "TCanvas.h"
 #include "THStack.h"
 #include "TLegend.h"
+#include "TString.h"
+
+HistManager::HistManager(int n) 
+{
+    m_hists.reserve(n); 
+}
 
 void HistManager::Add(std::string const& hist_name, std::string const& title, std::pair<std::string, std::string> labels, std::pair<double, double> range, int n_bins)
 {
@@ -15,7 +21,7 @@ void HistManager::Fill(std::string const& hist_name, double value, double weight
 {
     try
     {
-        auto&& [hist, hist_info] = m_hists.at(hist_name); 
+        auto const& [hist, hist_info] = m_hists.at(hist_name); 
         hist->Fill(value, weight);
     }
     catch(...)
@@ -26,26 +32,22 @@ void HistManager::Fill(std::string const& hist_name, double value, double weight
 
 void HistManager::Draw() const
 {
-    for (auto&& [hist_name, hhi_pair]: m_hists)
+    for (auto const& [hist_name, hhi_pair]: m_hists)
     {
-        auto&& [hist, hist_info] = hhi_pair;
-        auto&& [title, labels, range, nbins] = hist_info;
-        auto&& [xlabel, ylabel] = labels;
+        auto const& [ptr_hist, hist_info] = hhi_pair;
+        auto const& [title, labels, range, nbins] = hist_info;
+        auto const& [xlabel, ylabel] = labels;
         auto c1 = std::make_unique<TCanvas>("c1", "c1");
         c1->SetGrid();
         c1->SetTickx();
         c1->SetTicky();
 
-        hist->GetXaxis()->SetTitle(xlabel.c_str());
-        hist->GetYaxis()->SetTitle(ylabel.c_str());
-        hist->SetLineWidth(3);
-        hist->SetStats(1);
-        hist->DrawNormalized();
-        std::string fname = m_path;
-        fname += "/";
-        fname += hist_name;
-        fname += ".png";
-        c1->SaveAs(fname.c_str());
+        ptr_hist->GetXaxis()->SetTitle(xlabel.c_str());
+        ptr_hist->GetYaxis()->SetTitle(ylabel.c_str());
+        ptr_hist->SetLineWidth(3);
+        ptr_hist->SetStats(1);
+        ptr_hist->DrawNormalized();
+        c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
     }
 }
 
@@ -64,17 +66,17 @@ void HistManager::DrawStack(std::vector<std::string> const& names, std::string c
     { 
         try
         {
-            auto&& [hist, hist_info] = m_hists.at(name); 
-            auto&& [title, labels, range, nbins] = hist_info;
-            auto&& [xlabel, ylabel] = labels;
+            auto const& [ptr_hist, hist_info] = m_hists.at(name); 
+            auto const& [title, labels, range, nbins] = hist_info;
+            auto const& [xlabel, ylabel] = labels;
 
-            hist->SetLineWidth(3);
-            hist->GetXaxis()->SetTitle(xlabel.c_str());
-            hist->GetYaxis()->SetTitle(ylabel.c_str());
+            ptr_hist->SetLineWidth(3);
+            ptr_hist->GetXaxis()->SetTitle(xlabel.c_str());
+            ptr_hist->GetYaxis()->SetTitle(ylabel.c_str());
             if (color == 5) ++color;
-            hist->SetLineColor(color++);
-            stack->Add(hist.get());
-            leg->AddEntry(hist.get(), name.c_str(), "l");
+            ptr_hist->SetLineColor(color++);
+            stack->Add(ptr_hist.get());
+            leg->AddEntry(ptr_hist.get(), name.c_str(), "l");
         }
         catch(...)
         {
@@ -84,43 +86,5 @@ void HistManager::DrawStack(std::vector<std::string> const& names, std::string c
 
     stack->Draw("nostack");
     leg->Draw();
-    c1->SaveAs((m_path + "/" + name + ".png").c_str());
-}
-
-void HistManager::DrawStack(std::vector<std::string>&& names, std::string&& title, std::string&& name) const
-{
-    auto c1 = std::make_unique<TCanvas>("c1", "c1");
-    c1->SetGrid();
-    c1->SetTickx();
-    c1->SetTicky();  
-
-    int color = 2;
-    auto stack = std::make_unique<THStack>("stack", std::move(title).c_str());
-    auto leg = std::make_unique<TLegend>(0.7, 0.7, 0.9, 0.9); 
-
-    for (auto&& name: names)
-    { 
-        try
-        {
-            auto&& [hist, hist_info] = m_hists.at(name); 
-            auto&& [title, labels, range, nbins] = hist_info;
-            auto&& [xlabel, ylabel] = labels;
-
-            hist->SetLineWidth(3);
-            hist->GetXaxis()->SetTitle(xlabel.c_str());
-            hist->GetYaxis()->SetTitle(ylabel.c_str());
-            if (color == 5) ++color;
-            hist->SetLineColor(color++);
-            stack->Add(hist.get());
-            leg->AddEntry(hist.get(), name.c_str(), "l");
-        }
-        catch(...)
-        {
-            continue;
-        }
-    }
-
-    stack->Draw("nostack");
-    leg->Draw();
-    c1->SaveAs((m_path + "/" + std::move(name) + ".png").c_str());
+    c1->SaveAs(Form("histograms/%s.png", name.c_str()));
 }
