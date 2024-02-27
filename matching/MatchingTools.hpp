@@ -95,4 +95,23 @@ std::unique_ptr<TGraph> DRCone(KinematicData const& kd, int idx);
 using MatchKinematics = std::pair<KinematicData, KinematicData>;
 using MatchIndex = std::vector<std::pair<int, int>>; // contains pairs: {part_idx, jet_matched_to_part_idx}
 void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_index, int evt_num, std::pair<int*, int*> ptrs);
+
+// returns jet rescaling factor to compensate for double counting of overlapping jet momentum
+// momentum carried by overlap is counted twice by both jets
+// there are two possibilities: 
+// 1. subtract overlap from leading jet and leave subleading untouched (use c_lead to rescale leading jet)
+// 2. subtract overlap from subleading jet and leave leading untouched (use c_lead to rescale subleading jet)
+// so you either rescale only the leading jet, or rescale only the subleading
+// can potentially flip who's leading or who's subleading
+inline double JetOverlapCorrection(TLorentzVector const& j1, TLorentzVector const& j2)
+{
+    // distance between jets
+    double d = j1.DeltaR(j2);
+    // total overlap area
+    double overlap = 2*DR_THRESH*DR_THRESH*std::acos(d/(2*DR_THRESH)) - 0.5*d*std::sqrt(4*DR_THRESH*DR_THRESH - d*d);
+    double total = 2*TMath::Pi()*DR_THRESH*DR_THRESH - overlap;
+    double r = overlap/total;
+
+    return 1-r;
+}
 #endif

@@ -27,7 +27,7 @@ class HistManager
     HistManager& operator=(HistManager const& other) = default;
     HistManager& operator=(HistManager&& other) = default;
 
-    void Add(std::string const& hist_name, std::string const& title, std::pair<std::string, std::string> const& labels, std::pair<double, double> range, int n_bins);
+    void Add(std::string const& hist_name, std::string const& title, std::pair<std::string, std::string> labels, std::pair<double, double> range, int n_bins);
     void Fill(std::string const& hist_name, double value, double weight = 1.0) noexcept;
     void Draw() const;
     void DrawStack(std::vector<std::string> const& names, std::string const& title, std::string const& name) const;

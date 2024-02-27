@@ -45,7 +45,7 @@ void save_2d_dist(TH2F* dist,
     delete c1;
 }
 
-static constexpr double MATCH_PT_THRESH = 3.0;
+static constexpr double MATCH_PT_THRESH = 2.0;
 
 int main()
 {
@@ -103,9 +103,14 @@ int main()
     int matching_fails = 0;
     int accep_evts = 0;
 
-    int n_q1_exc = 0;
-    int n_q2_exc = 0;
-    int n_any_exc = 0;
+    int overlap_jets = 0;
+    int j1lep_overlap = 0;
+    int j2lep_overlap = 0;
+
+    int j1_over_thresh = 0;
+    int j2_over_thresh = 0;
+
+    int failed_parton_cut = 0;
 
     // hists
     HistManager hm(10);
@@ -136,6 +141,9 @@ int main()
     std::string sublead_l_pt_ratio_hist("sublead_l_pt_ratio_hist");
     std::string overlap_pt_ratio_1("overlap_pt_ratio_1");
     std::string overlap_pt_ratio_2("overlap_pt_ratio_2");
+
+    auto pt_cmp_1 = std::make_unique<TH2F>("pt_cmp_1", "quark 1 pt vs jet 1 pt", nbins, 0, 250, nbins, 0, 250);
+    auto pt_cmp_2 = std::make_unique<TH2F>("pt_cmp_2", "quark 2 pt vs jet 2 pt", nbins, 0, 250, nbins, 0, 250);
 
     std::cout << std::boolalpha;
 
@@ -185,23 +193,46 @@ int main()
                     TLorentzVector lj1_p4 = GetP4(genjet, q1_match);
                     TLorentzVector lj2_p4 = GetP4(genjet, q2_match);
 
-                    if (lj1_p4.DeltaR(lj2_p4) < 2*DR_THRESH)
+                    // if (lq1_p4.Pt() < 20 || lq2_p4.Pt() < 20)
+                    // {
+                    //     ++failed_parton_cut;
+                    //     continue;
+                    // }
+
+                    bool overlapping_jets = lj1_p4.DeltaR(lj2_p4) < 2*DR_THRESH;
+                    if (overlapping_jets)
                     {
+                        ++overlap_jets;
                         hm.Fill(overlap_pt_ratio_1, lq1_p4.Pt()/lj1_p4.Pt());
                         hm.Fill(overlap_pt_ratio_2, lq2_p4.Pt()/lj2_p4.Pt());
+                        double overlap_corr = JetOverlapCorrection(lj1_p4, lj2_p4);
+                        if (lj1_p4.Pt() > lj2_p4.Pt())
+                        {
+                            lj1_p4 *= overlap_corr;
+                            // lj2_p4 *= overlap_corr;
+                            // lj1_p4 -= (1-overlap_corr)*(lj1_p4 + lj2_p4);
+                        }
+                        else
+                        {
+                            lj2_p4 *= overlap_corr;
+                            // lj1_p4 *= overlap_corr;
+                            // lj2_p4 -= (1-overlap_corr)*(lj1_p4 + lj2_p4);
+                        }
                     }
 
                     TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
                     double dR_lj1_lep = lj1_p4.DeltaR(l_p4);
                     double dR_lj2_lep = lj2_p4.DeltaR(l_p4);
-                    if (dR_lj1_lep < DR_THRESH && dR_lj2_lep > DR_THRESH)
+                    if (dR_lj1_lep < DR_THRESH && dR_lj2_lep > DR_THRESH && !overlapping_jets)
                     {
+                        ++j1lep_overlap;
                         TLorentzVector tmp = lj1_p4 - l_p4;
                         double resc = tmp.Pt()/lj1_p4.Pt();
                         lj1_p4 *= resc;
                     }
-                    if (dR_lj2_lep < DR_THRESH && dR_lj1_lep > DR_THRESH) 
+                    if (dR_lj2_lep < DR_THRESH && dR_lj1_lep > DR_THRESH && !overlapping_jets) 
                     {
+                        ++j2lep_overlap;
                         TLorentzVector tmp = lj2_p4 - l_p4;
                         double resc = tmp.Pt()/lj2_p4.Pt();
                         lj2_p4 *= resc;
@@ -229,6 +260,12 @@ int main()
                         }
                     #endif
 
+                    if (lj1_p4.Pt()/lq1_p4.Pt() > MATCH_PT_THRESH) ++j1_over_thresh;
+                    if (lj2_p4.Pt()/lq2_p4.Pt() > MATCH_PT_THRESH) ++j2_over_thresh;
+
+                    pt_cmp_1->Fill(lq1_p4.Pt(), lj1_p4.Pt());
+                    pt_cmp_2->Fill(lq2_p4.Pt(), lj2_p4.Pt());
+
                     hm.Fill(w_from_quarks, (lq1_p4 + lq2_p4).M());
                     hm.Fill(w_from_jets, (lj1_p4 + lj2_p4).M());
                     hm.Fill(h_from_quarks, (bq_p4 + bbarq_p4).M());
@@ -249,14 +286,20 @@ int main()
     hm.DrawStack({lead_l_pt_ratio_hist, sublead_l_pt_ratio_hist}, "light pair Pt ratios", "qq_pt_ratios");
     hm.DrawStack({overlap_pt_ratio_1, overlap_pt_ratio_2}, "overlapping light pair Pt ratios", "overlap_qq_pt_ratios");
 
+    save_2d_dist(pt_cmp_1.get(), "pt_cmp_1", "quark pt, [GeV]", "jet pt, [GeV]");
+    save_2d_dist(pt_cmp_2.get(), "pt_cmp_2", "quark pt, [GeV]", "jet pt, [GeV]");
+
     std::cout << "nEvents = " << nEvents << "\n" 
               << "\tnon_empty_sig = " << non_empty_sig << "\n" 
               << "\tvalid_sig = " << valid_sig << "\n"
               << "\tmatching_fails = " << matching_fails << "\n"
               << "\taccep_evts = " << accep_evts << "\n"
-              << "\tn_q1_exc = " << n_q1_exc << "\n"
-              << "\tn_q2_exc = " << n_q2_exc << "\n"
-              << "\tn_any_exc = " << n_any_exc << "\n";
+              << "\tfailed_parton_cut = " << failed_parton_cut << "\n"
+              << "\tj1_over_thresh = " << j1_over_thresh << "\n"
+              << "\tj2_over_thresh = " << j2_over_thresh << "\n"
+              << "\tj1lep_overlap= " << j1lep_overlap << "\n"
+              << "\tj2lep_overlap = " << j2lep_overlap << "\n"
+              << "\toverlap_jets = " << overlap_jets << "\n";
 
     return 0;
 }
