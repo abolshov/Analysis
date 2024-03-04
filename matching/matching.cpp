@@ -45,7 +45,7 @@ void save_2d_dist(TH2F* dist,
     delete c1;
 }
 
-static constexpr double MATCH_PT_THRESH = 2.0;
+static constexpr double MATCH_PT_THRESH = 1.2;
 
 int main()
 {
@@ -106,6 +106,8 @@ int main()
     int overlap_jets = 0;
     int j1lep_overlap = 0;
     int j2lep_overlap = 0;
+    int j1nu_overlap = 0;
+    int j2nu_overlap = 0;
 
     int j1_over_thresh = 0;
     int j2_over_thresh = 0;
@@ -113,7 +115,7 @@ int main()
     int failed_parton_cut = 0;
 
     // hists
-    HistManager hm(10);
+    HistManager hm(10, 2);
 
     int nbins = 101;
     std::pair<double, double> pt_ratio_range{0.0, 6.0};
@@ -205,37 +207,59 @@ int main()
                         ++overlap_jets;
                         hm.Fill(overlap_pt_ratio_1, lq1_p4.Pt()/lj1_p4.Pt());
                         hm.Fill(overlap_pt_ratio_2, lq2_p4.Pt()/lj2_p4.Pt());
-                        double overlap_corr = JetOverlapCorrection(lj1_p4, lj2_p4);
-                        if (lj1_p4.Pt() > lj2_p4.Pt())
-                        {
-                            lj1_p4 *= overlap_corr;
-                            // lj2_p4 *= overlap_corr;
-                            // lj1_p4 -= (1-overlap_corr)*(lj1_p4 + lj2_p4);
-                        }
-                        else
-                        {
-                            lj2_p4 *= overlap_corr;
-                            // lj1_p4 *= overlap_corr;
-                            // lj2_p4 -= (1-overlap_corr)*(lj1_p4 + lj2_p4);
-                        }
+                        // double overlap_corr = JetOverlapCorrection(lj1_p4, lj2_p4);
+                        // if (lj1_p4.Pt() > lj2_p4.Pt())
+                        // {
+                        //     lj1_p4 *= overlap_corr;
+                        //     // lj2_p4 *= overlap_corr;
+                        //     // lj1_p4 -= (1-overlap_corr)*(lj1_p4 + lj2_p4);
+                        // }
+                        // else
+                        // {
+                        //     lj2_p4 *= overlap_corr;
+                        //     // lj1_p4 *= overlap_corr;
+                        //     // lj2_p4 -= (1-overlap_corr)*(lj1_p4 + lj2_p4);
+                        // }
                     }
 
+                    // subtract lepton from jet if they overlap
                     TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
                     double dR_lj1_lep = lj1_p4.DeltaR(l_p4);
                     double dR_lj2_lep = lj2_p4.DeltaR(l_p4);
-                    if (dR_lj1_lep < DR_THRESH && dR_lj2_lep > DR_THRESH && !overlapping_jets)
+                    // if (dR_lj1_lep < DR_THRESH && dR_lj2_lep > DR_THRESH && !overlapping_jets)
+                    if (dR_lj1_lep < DR_THRESH && !overlapping_jets)
                     {
                         ++j1lep_overlap;
-                        TLorentzVector tmp = lj1_p4 - l_p4;
-                        double resc = tmp.Pt()/lj1_p4.Pt();
-                        lj1_p4 *= resc;
+                        // TLorentzVector tmp = lj1_p4 - l_p4;
+                        // double resc = tmp.Pt()/lj1_p4.Pt();
+                        // double resc = (lj1_p4.Pt() - l_p4.Pt())/lj1_p4.Pt();
+                        // lj1_p4 *= resc;
+                        lj1_p4 -= l_p4;
                     }
-                    if (dR_lj2_lep < DR_THRESH && dR_lj1_lep > DR_THRESH && !overlapping_jets) 
+                    // if (dR_lj2_lep < DR_THRESH && dR_lj1_lep > DR_THRESH && !overlapping_jets) 
+                    if (dR_lj2_lep < DR_THRESH && !overlapping_jets) 
                     {
                         ++j2lep_overlap;
-                        TLorentzVector tmp = lj2_p4 - l_p4;
-                        double resc = tmp.Pt()/lj2_p4.Pt();
-                        lj2_p4 *= resc;
+                        // TLorentzVector tmp = lj2_p4 - l_p4;
+                        // double resc = tmp.Pt()/lj2_p4.Pt();
+                        // double resc = (lj2_p4.Pt() - l_p4.Pt())/lj2_p4.Pt();
+                        // lj2_p4 *= resc;
+                        lj2_p4 -= l_p4;
+                    }
+
+                    // subtract neutrino from jet if they overlap
+                    TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
+                    double dR_lj1_nu = lj1_p4.DeltaR(nu_p4);
+                    double dR_lj2_nu = lj2_p4.DeltaR(nu_p4);
+                    if (dR_lj1_nu < DR_THRESH && !overlapping_jets)
+                    {
+                        ++j1nu_overlap;
+                        lj1_p4 -= nu_p4;
+                    }
+                    if (dR_lj2_nu < DR_THRESH && !overlapping_jets) 
+                    {
+                        ++j2nu_overlap;
+                        lj2_p4 -= nu_p4;
                     }
 
                     double leading_b_pt_ratio = (bq_p4.Pt() > bbarq_p4.Pt()) ? (bq_p4.Pt()/bj_p4.Pt()) : (bbarq_p4.Pt()/bbarj_p4.Pt());
@@ -297,8 +321,10 @@ int main()
               << "\tfailed_parton_cut = " << failed_parton_cut << "\n"
               << "\tj1_over_thresh = " << j1_over_thresh << "\n"
               << "\tj2_over_thresh = " << j2_over_thresh << "\n"
-              << "\tj1lep_overlap= " << j1lep_overlap << "\n"
+              << "\tj1lep_overlap = " << j1lep_overlap << "\n"
               << "\tj2lep_overlap = " << j2lep_overlap << "\n"
+              << "\tj1nu_overlap = " << j1nu_overlap << "\n"
+              << "\tj2nu_overlap = " << j2nu_overlap << "\n"
               << "\toverlap_jets = " << overlap_jets << "\n";
 
     return 0;
