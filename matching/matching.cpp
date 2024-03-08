@@ -108,14 +108,17 @@ int main()
     int j2lep_overlap = 0;
     int j1nu_overlap = 0;
     int j2nu_overlap = 0;
+    int jjlep_overlap = 0;
+    int jjnu_overlap = 0;
 
     int j1_over_thresh = 0;
     int j2_over_thresh = 0;
+    int dijet_over_100 = 0;
 
     int failed_parton_cut = 0;
 
     // hists
-    HistManager hm(10, 2);
+    HistManager hm;
 
     int nbins = 101;
     std::pair<double, double> pt_ratio_range{0.0, 6.0};
@@ -262,6 +265,9 @@ int main()
                         lj2_p4 -= nu_p4;
                     }
 
+                    if (dR_lj1_lep < DR_THRESH && dR_lj2_lep < DR_THRESH) ++jjlep_overlap;
+                    if (dR_lj1_nu < DR_THRESH && dR_lj2_nu < DR_THRESH) ++jjnu_overlap;
+
                     double leading_b_pt_ratio = (bq_p4.Pt() > bbarq_p4.Pt()) ? (bq_p4.Pt()/bj_p4.Pt()) : (bbarq_p4.Pt()/bbarj_p4.Pt());
                     double leading_l_pt_ratio = (lq1_p4.Pt() > lq2_p4.Pt()) ? (lq1_p4.Pt()/lj1_p4.Pt()) : (lq2_p4.Pt()/lj2_p4.Pt());
 
@@ -292,8 +298,26 @@ int main()
 
                     hm.Fill(w_from_quarks, (lq1_p4 + lq2_p4).M());
                     hm.Fill(w_from_jets, (lj1_p4 + lj2_p4).M());
+                    // double dijet_mass = overlapping_jets ? ((JetOverlapCorrection(lj1_p4, lj2_p4)*(lj1_p4 + lj2_p4)).M()) : (lj1_p4 + lj2_p4).M();
+                    // hm.Fill(w_from_jets, dijet_mass);
                     hm.Fill(h_from_quarks, (bq_p4 + bbarq_p4).M());
                     hm.Fill(h_from_jets, (bj_p4 + bbarj_p4).M());
+
+                    double dijet_mass = (lj1_p4 + lj2_p4).M();
+                    if (dijet_mass > 90)
+                    {
+                        ++dijet_over_100;
+                        // std::cout << "Event " << i << "\n";
+                        // std::cout << "\tdR(q1, q2) = " << lq1_p4.DeltaR(lq2_p4) << ", dR(j1, j2) = " << lj1_p4.DeltaR(lj2_p4) << "\n\n";
+                        // std::cout << "\tj1_pt = " << lj1_p4.Pt() << ", q1_pt = " << lq1_p4.Pt() << "\n";
+                        // std::cout << "\tdR(q1, l) = " << lq1_p4.DeltaR(l_p4) << ", dR(j1, l) = " << lj1_p4.DeltaR(l_p4) << "\n";
+                        // std::cout << "\tdR(q1, nu) = " << lq1_p4.DeltaR(nu_p4) << ", dR(j1, nu) = " << lj1_p4.DeltaR(nu_p4) << "\n";
+                        // std::cout << "\n";
+                        // std::cout << "\tj2_pt = " << lj2_p4.Pt() << ", q2_pt = " << lq2_p4.Pt() << "\n";
+                        // std::cout << "\tdR(q2, l) = " << lq2_p4.DeltaR(l_p4) << ", dR(j2, l) = " << lj2_p4.DeltaR(l_p4) << "\n";
+                        // std::cout << "\tdR(q2, nu) = " << lq2_p4.DeltaR(nu_p4) << ", dR(j2, nu) = " << lj2_p4.DeltaR(nu_p4) << "\n";
+                        // std::cout << "==============================================================================\n";
+                    }
                 }
             }
         }
@@ -321,11 +345,14 @@ int main()
               << "\tfailed_parton_cut = " << failed_parton_cut << "\n"
               << "\tj1_over_thresh = " << j1_over_thresh << "\n"
               << "\tj2_over_thresh = " << j2_over_thresh << "\n"
+              << "\toverlap_jets = " << overlap_jets << "\n"
               << "\tj1lep_overlap = " << j1lep_overlap << "\n"
               << "\tj2lep_overlap = " << j2lep_overlap << "\n"
               << "\tj1nu_overlap = " << j1nu_overlap << "\n"
               << "\tj2nu_overlap = " << j2nu_overlap << "\n"
-              << "\toverlap_jets = " << overlap_jets << "\n";
+              << "\tjjlep_overlap = " << jjlep_overlap << "\n"
+              << "\tjjnu_overlap = " << jjnu_overlap << "\n"
+              << "\tdijet_over_100 = " << dijet_over_100 << "\n";
 
     return 0;
 }
