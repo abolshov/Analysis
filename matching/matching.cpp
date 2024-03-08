@@ -135,7 +135,13 @@ int main()
     hm.Add("sublead_l_pt_ratio_hist", "subleading light pair pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
     hm.Add("overlap_pt_ratio_1", "pair 1 pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
     hm.Add("overlap_pt_ratio_2", "pair 2 pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
+    hm.Add("heavy_higgs_partons", "Heavy higgs mass from partons", mass_labels, {0, 800}, nbins);
+    hm.Add("heavy_higgs_jets", "Heavy higgs mass from jets with lepton subtraction", mass_labels, {0, 800}, nbins);
+    hm.Add("heavy_higgs_jets_no_corr", "Heavy higgs mass from jets without lepton subtraction", mass_labels, {0, 800}, nbins);
 
+    std::string heavy_higgs_partons("heavy_higgs_partons");
+    std::string heavy_higgs_jets("heavy_higgs_jets");
+    std::string heavy_higgs_jets_no_corr("heavy_higgs_jets_no_corr");
     std::string w_from_quarks("w_from_quarks");
     std::string w_from_jets("w_from_jets");
     std::string h_from_quarks("h_from_quarks");
@@ -198,11 +204,17 @@ int main()
                     TLorentzVector lj1_p4 = GetP4(genjet, q1_match);
                     TLorentzVector lj2_p4 = GetP4(genjet, q2_match);
 
+                    TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
+                    TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
+
                     // if (lq1_p4.Pt() < 20 || lq2_p4.Pt() < 20)
                     // {
                     //     ++failed_parton_cut;
                     //     continue;
                     // }
+
+                    double hh_mass_jets_no_corr = (lj1_p4 + lj2_p4 + l_p4 + nu_p4 + bj_p4 + bbarj_p4).M();
+                    hm.Fill(heavy_higgs_jets_no_corr, hh_mass_jets_no_corr);
 
                     bool overlapping_jets = lj1_p4.DeltaR(lj2_p4) < 2*DR_THRESH;
                     if (overlapping_jets)
@@ -226,7 +238,6 @@ int main()
                     }
 
                     // subtract lepton from jet if they overlap
-                    TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
                     double dR_lj1_lep = lj1_p4.DeltaR(l_p4);
                     double dR_lj2_lep = lj2_p4.DeltaR(l_p4);
                     // if (dR_lj1_lep < DR_THRESH && dR_lj2_lep > DR_THRESH && !overlapping_jets)
@@ -251,7 +262,6 @@ int main()
                     }
 
                     // subtract neutrino from jet if they overlap
-                    TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
                     double dR_lj1_nu = lj1_p4.DeltaR(nu_p4);
                     double dR_lj2_nu = lj2_p4.DeltaR(nu_p4);
                     if (dR_lj1_nu < DR_THRESH && !overlapping_jets)
@@ -318,6 +328,11 @@ int main()
                         // std::cout << "\tdR(q2, nu) = " << lq2_p4.DeltaR(nu_p4) << ", dR(j2, nu) = " << lj2_p4.DeltaR(nu_p4) << "\n";
                         // std::cout << "==============================================================================\n";
                     }
+
+                    double hh_mass_part = (lq1_p4 + lq2_p4 + l_p4 + nu_p4 + bq_p4 + bbarq_p4).M();
+                    hm.Fill(heavy_higgs_partons, hh_mass_part);
+                    double hh_mass_jets = (lj1_p4 + lj2_p4 + l_p4 + nu_p4 + bj_p4 + bbarj_p4).M();
+                    hm.Fill(heavy_higgs_jets, hh_mass_jets);
                 }
             }
         }
@@ -333,6 +348,9 @@ int main()
     hm.DrawStack({lead_b_pt_ratio_hist, sublead_b_pt_ratio_hist}, "bb pair Pt ratios", "bb_pt_ratios");
     hm.DrawStack({lead_l_pt_ratio_hist, sublead_l_pt_ratio_hist}, "light pair Pt ratios", "qq_pt_ratios");
     hm.DrawStack({overlap_pt_ratio_1, overlap_pt_ratio_2}, "overlapping light pair Pt ratios", "overlap_qq_pt_ratios");
+    hm.DrawStack({heavy_higgs_partons, heavy_higgs_jets, heavy_higgs_jets_no_corr}, "Heavy higgs mass", "hh_mass");
+    hm.DrawStack({heavy_higgs_jets, heavy_higgs_jets_no_corr}, "Lepton subtraction effect on hh mass", "hh_mass_jets");
+
 
     save_2d_dist(pt_cmp_1.get(), "pt_cmp_1", "quark pt, [GeV]", "jet pt, [GeV]");
     save_2d_dist(pt_cmp_2.get(), "pt_cmp_2", "quark pt, [GeV]", "jet pt, [GeV]");
