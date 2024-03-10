@@ -354,3 +354,25 @@ void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_inde
 
     c1->SaveAs(Form("EnergyMaps/Event_%d.png", evt_num));
 }
+
+TLorentzVector Cone(int target, int const* mothers, KinematicData const& kd, double rad)
+{
+    int n_gen_part = kd.n;
+    TLorentzVector target_p4 = GetP4(kd, target);
+    std::vector<int> finals = GetFinalParticles(mothers, n_gen_part);
+    TLorentzVector cone;
+    for (auto idx: finals)
+    {
+        TLorentzVector p4 = GetP4(kd, idx);
+        double dR = target_p4.DeltaR(p4);
+        if (dR < rad)
+        {
+            bool belongs_to_decay = IsDescOf(idx, target, mothers);
+            if (belongs_to_decay)
+            {
+                cone += p4;
+            }
+        }
+    }
+    return cone;
+}

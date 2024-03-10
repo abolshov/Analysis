@@ -114,4 +114,8 @@ inline double JetOverlapCorrection(TLorentzVector const& j1, TLorentzVector cons
 
     return 1-r;
 }
+
+// computes sum of 4-momenta of stable particles in a cone of radius R around given particle (target)
+TLorentzVector Cone(int target, int const* mothers, KinematicData const& kd, double rad = DR_THRESH);
+
 #endif
