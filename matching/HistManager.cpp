@@ -1,21 +1,31 @@
 #include "HistManager.hpp"
 
 #include "TCanvas.h"
+#include "TStyle.h"
 #include "THStack.h"
 #include "TLegend.h"
 #include "TString.h"
 
-#include <iostream>
-
-void HistManager::Add(std::string hist_name, std::string const& title, std::pair<std::string, std::string> const& labels, std::pair<double, double> const& range, int n_bins)
+void HistManager::Add(std::string hist_name, std::string const& title, Label const& labels, Range const& range, int n_bins)
 {
     m_hists_1d.insert({std::move(hist_name), MakeItem1D(hist_name, title, labels, range, n_bins)});
 }
 
-void HistManager::Fill(std::string const& hist_name, double value, double weight)
+void HistManager::Add(std::string hist_name, std::string const& title, Label const& labels, Range const& xrange, Range const& yrange, Bins const& bins)
+{
+    m_hists_2d.insert({std::move(hist_name), MakeItem2D(hist_name, title, labels, xrange, yrange, bins)});
+}
+
+void HistManager::Fill(std::string const& hist_name, double value)
 {
     auto const& [hist, hist_info] = m_hists_1d.at(hist_name); 
-    hist->Fill(value, weight);
+    hist->Fill(value);
+}
+
+void HistManager::Fill(std::string const& hist_name, double xval, double yval)
+{
+    auto const& [hist, hist_info] = m_hists_2d.at(hist_name); 
+    hist->Fill(xval, yval);
 }
 
 void HistManager::Draw() const
@@ -35,6 +45,27 @@ void HistManager::Draw() const
         ptr_hist->SetLineWidth(3);
         ptr_hist->SetStats(1);
         ptr_hist->DrawNormalized();
+        c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
+        // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
+    }
+
+    for (auto const& [hist_name, hhi_pair]: m_hists_2d)
+    {
+        auto const& [ptr_hist, hist_info] = hhi_pair;
+        auto const& [title, labels, xrange, yrange, bins] = hist_info;
+        auto const& [xlabel, ylabel] = labels;
+        auto c1 = std::make_unique<TCanvas>("c1", "c1");
+        c1->SetGrid();
+        c1->SetTickx();
+        c1->SetTicky();
+
+        auto gStyle = std::make_unique<TStyle>();
+        gStyle->SetPalette(kRainBow);
+
+        ptr_hist->GetXaxis()->SetTitle(xlabel.c_str());
+        ptr_hist->GetYaxis()->SetTitle(ylabel.c_str());
+        ptr_hist->SetStats(0);
+        ptr_hist->Draw("colz");
         c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
         // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
     }
