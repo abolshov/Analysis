@@ -30,6 +30,8 @@ static constexpr int N_POINTS = 20;
 // specifies order of signal (hh->bbWW->bbqqlv) particles
 enum SIG { h1, h2, b, bbar, q1, q2, l, nu };
 
+void Print(TLorentzVector const& p, bool EXYZ = false);
+
 // finds closest daughters of particle at location part_idx in the event;
 // returns indices of what found
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part);
@@ -40,6 +42,9 @@ std::vector<std::vector<int>> GetDescendants(int part_idx, int const* mothers, i
 
 // finds all particles by index that do not have daughters
 std::vector<int> GetFinalParticles(int const* mothers, int n_gen_part);
+
+// finds stable descendants (that don't have any daughters) of particle at part_idx
+std::vector<int> GetStableDescendants(int part_idx, int const* mothers, int n_gen_part);
 
 // by default onlyh prints pdg_id(mother_idx) (in that format)
 // if print_idx is true, prints pdg_id[idx](mother_idx)
@@ -84,6 +89,9 @@ TLorentzVector GetP4(KinematicData const& kd, int idx);
 // returns index of jet matched to quark
 // if matching fails returns -1
 int Match(int idx, KinematicData const kd_part, KinematicData kd_jet);
+
+// computes min dR between all particles
+double MinDeltaR(std::vector<TLorentzVector> const& parts);
 
 // compute energy map of an event
 using AxisRange = std::pair<double, double>;

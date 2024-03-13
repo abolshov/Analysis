@@ -6,6 +6,18 @@
 #include "TCanvas.h"
 #include "TLegend.h"
 
+void Print(TLorentzVector const& p, bool EXYZ)
+{
+    if (EXYZ) 
+    {
+        std::cout << "(" << p.E() << ", " << p.X() << ", " << p.Y() << ", " << p.Z() << ")\n";
+    }
+    else
+    {
+        std::cout << "(" << p.Pt() << ", " << p.Eta() << ", " << p.Phi() << ", " << p.M() << ")\n";
+    }
+}
+
 std::vector<int> GetNextGeneration(int part_idx, int const* mothers, int n_gen_part)
 {
     std::vector<int> gen;
@@ -47,6 +59,20 @@ std::vector<int> GetFinalParticles(int const* mothers, int n_gen_part)
         if (GetNextGeneration(i, mothers, n_gen_part).empty()) finals.push_back(i);
     }
     return finals;
+}
+
+std::vector<int> GetStableDescendants(int part_idx, int const* mothers, int n_gen_part)
+{
+    std::vector<int> res;
+    auto stable = GetFinalParticles(mothers, n_gen_part);
+    for (auto idx: stable)
+    {
+        if (IsDescOf(idx, part_idx, mothers))
+        {
+            res.push_back(idx);
+        }
+    }
+    return res;
 }
 
 void PrintDecay(std::vector<std::vector<int>> const& decay, int const* pdg_ids, int const* mothers, bool print_idx, std::ostream& stream)
@@ -271,6 +297,24 @@ int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
 
     if (best_match != hash.end()) return best_match->second;
     return -1;
+}
+
+double MinDeltaR(std::vector<TLorentzVector> const& parts)
+{
+    int n = parts.size();
+    double min_dR = parts[0].DeltaR(parts[1]);
+    for (int i = 0; i < n; ++i)
+    {
+        for (int j = i + 1; j < n; ++j)
+        {
+            double dr = parts[i].DeltaR(parts[j]);
+            if (dr < min_dR)
+            {
+                min_dR = dr;
+            }
+        }
+    }
+    return min_dR;
 }
 
 std::unique_ptr<TH2F> EnergyMap(int const event_num, KinematicData const& kd, int const* mothers, int nbins, AxisRange xrange, AxisRange yrange)
