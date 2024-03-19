@@ -20,16 +20,18 @@
 
 static constexpr int MAX_GENJET = 21;
 static constexpr int MAX_GENPART = 270;
-static constexpr double MATCH_PT_THRESH = 1.2;
+static constexpr double UP_PT_THRESH = 1.2;
+static constexpr double LOW_PT_THRESH = 0.8;
 static constexpr double DIJET_MASS_THRESH = 95.0;
+static constexpr double MIN_PARTON_PT = 25.0;
 
 int main()
 {
     auto start = std::chrono::system_clock::now();
     auto gStyle = std::make_unique<TStyle>();
     gStyle->SetPalette(kRainBow);
-    TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
-    // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
+    // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
+    TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
     // TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-600_narrow_13TeV-madgraph.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -81,22 +83,24 @@ int main()
     int valid_sig = 0;
     int matching_fails = 0;
     int matched_events = 0;
+    int accepted_events = 0;
 
     int overlap_jets = 0;
     int j1lep_overlap = 0;
     int j2lep_overlap = 0;
-    int j1nu_overlap = 0;
-    int j2nu_overlap = 0;
-    int jjlep_overlap = 0;
-    int jjnu_overlap = 0;
 
-    int lj1_over_pt_thresh = 0;
-    int lj2_over_pt_thresh = 0;
-    int dijet_over_mass_thresh = 0;
-    int bj_over_pt_thresh = 0;
-    int bbarj_over_pt_thresh = 0;
+    int lj1_above_pt_thresh = 0;
+    int lj2_above_pt_thresh = 0;
+    int dijet_above_mass_thresh = 0;
+    int bj_above_pt_thresh = 0;
+    int bbarj_above_pt_thresh = 0;
+    int lj1_under_pt_thresh = 0;
+    int lj2_under_pt_thresh = 0;
+    int bj_under_pt_thresh = 0;
+    int bbarj_under_pt_thresh = 0;
 
     int failed_min_dR = 0;
+    int failed_parton_cut = 0;
 
     // hists
     HistManager hm;
@@ -109,114 +113,45 @@ int main()
     std::pair<std::string, std::string> dr_labels{"dR", "AU"};
 
     // 1D histograms
-    hm.Add("w_from_quarks", "W mass from quarks", mass_labels, {0, 120}, nbins);
-    hm.Add("w_from_jets", "W mass from jets", mass_labels, {0, 150}, nbins/2);
-    hm.Add("h_from_quarks", "Higgs mass from quarks", mass_labels, {120, 130}, nbins);
-    hm.Add("h_from_jets", "Higgs mass from jets", mass_labels, {50, 175}, nbins/2);
-    hm.Add("lead_b_pt_ratio_hist", "leading b pair pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
-    hm.Add("lead_l_pt_ratio_hist", "leading light pair pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
-    hm.Add("sublead_b_pt_ratio_hist", "subleading b pair pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
-    hm.Add("sublead_l_pt_ratio_hist", "subleading light pair pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
-    hm.Add("overlap_pt_ratio_1", "pair 1 pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
-    hm.Add("overlap_pt_ratio_2", "pair 2 pt ratio", pt_ratio_label_labels, pt_ratio_range, nbins);
-    hm.Add("heavy_higgs_partons", "Heavy higgs mass from partons", mass_labels, {0, 1000}, nbins);
-    hm.Add("heavy_higgs_jets", "Heavy higgs mass from jets with lepton subtraction", mass_labels, {0, 1000}, nbins);
-    hm.Add("heavy_higgs_jets_wnu", "Heavy higgs mass from jets with lepton subtraction and missing neutrinos added", mass_labels, {0, 1000}, nbins);
-    hm.Add("heavy_higgs_jets_no_corr", "Heavy higgs mass from jets without lepton subtraction", mass_labels, {0, 1000}, nbins);
-    hm.Add("jet2_jet1_dR", "dR(j2, j1)", dr_labels, dr_range, 15);
-    hm.Add("jet2_lep_dR", "dR(j2, lep)", dr_labels, dr_range, 15);
-    hm.Add("jet2_nu_dR", "dR(j2, nu)", dr_labels, dr_range, 15);
-    hm.Add("jet2_bj_dR", "dR(j2, bj)", dr_labels, dr_range, 15);
-    hm.Add("jet2_bbarj_dR", "dR(j2, bbarj)", dr_labels, dr_range, 15);
-    hm.Add("jet1_lep_dR", "dR(j1, lep)", dr_labels, dr_range, 15);
-    hm.Add("jet1_nu_dR", "dR(j1, nu)", dr_labels, dr_range, 15);
-    hm.Add("jet1_bj_dR", "dR(j1, bj)", dr_labels, dr_range, 15);
-    hm.Add("jet1_bbarj_dR", "dR(j1, bbarj)", dr_labels, dr_range, 15);
-    hm.Add("lead_jet_lep_dR", "dR(lead_jet, lep)", dr_labels, dr_range, 15);
-    hm.Add("lead_jet_nu_dR", "dR(lead_jet, nu)", dr_labels, dr_range, 15);
-    hm.Add("sublead_jet_lep_dR", "dR(sublead_jet, lep)", dr_labels, dr_range, 15);
-    hm.Add("sublead_jet_nu_dR", "dR(sublead_jet, nu)", dr_labels, dr_range, 15);
-
-    std::string sublead_jet_lep_dR("sublead_jet_lep_dR");
-    std::string sublead_jet_nu_dR("sublead_jet_nu_dR");
-    std::string lead_jet_lep_dR("lead_jet_lep_dR");
-    std::string lead_jet_nu_dR("lead_jet_nu_dR");
-    std::string jet2_jet1_dR("jet2_jet1_dR");
-    std::string jet2_lep_dR("jet2_lep_dR");
-    std::string jet2_nu_dR("jet2_nu_dR");
-    std::string jet2_bj_dR("jet2_bj_dR");
-    std::string jet2_bbarj_dR("jet2_bbarj_dR");
-    std::string jet1_lep_dR("jet1_lep_dR");
-    std::string jet1_nu_dR("jet1_nu_dR");
-    std::string jet1_bj_dR("jet1_bj_dR");
-    std::string jet1_bbarj_dR("jet1_bbarj_dR");
+    std::string response_all("response_all");
+    std::string resolution_all("resolution_all");
     std::string heavy_higgs_partons("heavy_higgs_partons");
     std::string heavy_higgs_jets("heavy_higgs_jets");
     std::string heavy_higgs_jets_wnu("heavy_higgs_jets_wnu");
-    std::string heavy_higgs_jets_no_corr("heavy_higgs_jets_no_corr");
     std::string w_from_quarks("w_from_quarks");
     std::string w_from_jets("w_from_jets");
     std::string h_from_quarks("h_from_quarks");
     std::string h_from_jets("h_from_jets");
-    std::string lead_b_pt_ratio_hist("lead_b_pt_ratio_hist");
-    std::string lead_l_pt_ratio_hist("lead_l_pt_ratio_hist");
-    std::string sublead_b_pt_ratio_hist("sublead_b_pt_ratio_hist");
-    std::string sublead_l_pt_ratio_hist("sublead_l_pt_ratio_hist");
-    std::string overlap_pt_ratio_1("overlap_pt_ratio_1");
-    std::string overlap_pt_ratio_2("overlap_pt_ratio_2");
+    std::string h_from_jets_wnu("h_from_jets_wnu");
+
+    hm.Add(w_from_quarks, "W mass from quarks", mass_labels, {0, 120}, nbins);
+    hm.Add(w_from_jets, "W mass from jets", mass_labels, {0, 150}, nbins);
+    hm.Add(h_from_quarks, "Higgs mass from quarks", mass_labels, {120, 130}, nbins);
+    hm.Add(h_from_jets, "Higgs mass from jets", mass_labels, {0, 200}, nbins);
+    hm.Add(h_from_jets_wnu, "Higgs mass from jets with neutrinos", mass_labels, {0, 200}, nbins);
+    hm.Add(heavy_higgs_partons, "Heavy higgs mass from partons", mass_labels, {0, 800}, nbins);
+    hm.Add(heavy_higgs_jets, "Heavy higgs mass from jets with lepton subtraction", mass_labels, {0, 800}, nbins);
+    hm.Add(heavy_higgs_jets_wnu, "Heavy higgs mass from jets with lepton subtraction and missing neutrinos added", mass_labels, {0, 800}, nbins);
+    hm.Add(response_all, "Response", {"jet pt/quark pt", "AU"}, {0, 2}, nbins);
+    hm.Add(resolution_all, "Resolution", {"(jet pt - quark pt)/quark pt", "AU"}, {-1, 1}, nbins);
+
 
     // 2D histograms
-    std::pair<double, double> pt_range{0, 250};
+    std::pair<double, double> pt_range{0, 350};
     std::pair<int, int> bins{nbins, nbins};
     std::pair<std::string, std::string> pt_label{"quark pt, [GeV]", "jet pt, [GeV]"};
     std::pair<std::string, std::string> dR_ptr_label{"dR", "quark_pt/jet_pt"};
     std::pair<std::string, std::string> dR_pt_label{"dR", "quark_pt"};
 
-    std::string lead_sub_ratios("lead_sub_ratios");
-    std::string lead_sub_ratios_subtr("lead_sub_ratios_subtr");
-    std::string pt_cmp_1("pt_cmp_1");
-    std::string pt_cmp_2("pt_cmp_2");
-    std::string qq_pt_cmp_1("qq_pt_cmp_1");
-    std::string qq_pt_cmp_2("qq_pt_cmp_2");
+    std::string pt_cmp_l1("pt_cmp_l1");
+    std::string pt_cmp_l2("pt_cmp_l2");
     std::string pt_cmp_b("pt_cmp_b");
     std::string pt_cmp_bbar("pt_cmp_bbar");
-    std::string pt_cmp_lead("pt_cmp_lead");
-    std::string pt_cmp_sub("pt_cmp_sub");
-    std::string pt_cmp_lead_b("pt_cmp_lead_b");
-    std::string pt_cmp_sub_b("pt_cmp_sub_b");
-    std::string dR_vs_pt_lead_lep("dR_vs_pt_lead_lep");
-    std::string dR_vs_pt_lead_nu("dR_vs_pt_lead_nu");
-    std::string dR_vs_pt_sublead_lep("dR_vs_pt_sublead_lep");
-    std::string dR_vs_pt_sublead_nu("dR_vs_pt_sublead_nu");
-    std::string dR_vs_pt_sublead_lead("dR_vs_pt_sublead_lead");
-    std::string dR_vs_pt_lead_lead("dR_vs_pt_lead_lead");
-    std::string dR_vs_pt_soft("dR_vs_pt_soft");
-    std::string dR_vs_pt_hard("dR_vs_pt_hard");
-    std::string jjdR_vs_pt_ratio("jjdR_vs_pt_ratio");
-    std::string qqdR_vs_pt_ratio("qqdR_vs_pt_ratio");
 
-    hm.Add(lead_sub_ratios, "lead pair pt ratio vs sublead pair pt ratio", {"lead_q/lead_j pt ratio", "sub_q/sub_j pt ratio"}, pt_ratio_range, pt_ratio_range, bins);
-    hm.Add(lead_sub_ratios_subtr, "lead pair pt ratio vs sublead pair pt ratio after lep subtraction", {"lead_q/lead_j pt ratio", "sub_q/sub_j pt ratio"}, pt_ratio_range, pt_ratio_range, bins);
-    hm.Add(pt_cmp_1, "quark 1 pt vs jet 1 pt", pt_label, pt_range, pt_range, bins);
-    hm.Add(pt_cmp_2, "quark 2 pt vs jet 2 pt", pt_label, pt_range, pt_range, bins);
-    hm.Add(qq_pt_cmp_1, "quark 1 pt vs quark 2 pt if q1/j1 > 1.2", pt_label, pt_range, pt_range, bins);
-    hm.Add(qq_pt_cmp_2, "quark 1 pt vs quark 2 pt if q2/j2 > 1.2", pt_label, pt_range, pt_range, bins);
+    hm.Add(pt_cmp_l1, "quark 1 pt vs jet 1 pt", pt_label, pt_range, pt_range, bins);
+    hm.Add(pt_cmp_l2, "quark 2 pt vs jet 2 pt", pt_label, pt_range, pt_range, bins);
     hm.Add(pt_cmp_b, "b quark pt vs b jet pt", pt_label, pt_range, pt_range, bins);
     hm.Add(pt_cmp_bbar, "bbar quark pt vs bar jet pt", pt_label, pt_range, pt_range, bins);
-    hm.Add(pt_cmp_lead, "Leading quark pt vs leading jet pt", pt_label, pt_range, pt_range, bins);
-    hm.Add(pt_cmp_sub, "Subleading quark pt vs subleading jet pt", pt_label, pt_range, pt_range, bins);
-    hm.Add(pt_cmp_lead_b, "Leading b quark pt vs leading b jet pt", pt_label, pt_range, pt_range, bins);
-    hm.Add(pt_cmp_sub_b, "Subleading b quark pt vs subleading b jet pt", pt_label, pt_range, pt_range, bins);
-    hm.Add(dR_vs_pt_lead_lep, "dR(lead_jet, lep) vs lead_quark_pt/lead_jet_pt", dR_ptr_label, dr_range, dr_range, bins);
-    hm.Add(dR_vs_pt_lead_nu, "dR(lead_jet, nu) vs lead_quark_pt/lead_jet_pt", dR_ptr_label, dr_range, dr_range, bins);
-    hm.Add(dR_vs_pt_sublead_lep, "dR(sublead_jet, lep) vs sublead_quark_pt/sublead_jet_pt", dR_ptr_label, dr_range, dr_range, bins);
-    hm.Add(dR_vs_pt_sublead_nu, "dR(sublead_jet, nu) vs sublead_quark_pt/sublead_jet_pt", dR_ptr_label, dr_range, dr_range, bins);
-    hm.Add(dR_vs_pt_sublead_lead, "dR(sublead_jet, lead_jet) vs sublead_quark_pt/sublead_jet_pt", dR_ptr_label, dr_range, dr_range, bins);
-    hm.Add(dR_vs_pt_lead_lead, "dR(lead_jet, sublead_jet) vs lead_quark_pt/lead_jet_pt", dR_ptr_label, dr_range, dr_range, bins);
-    hm.Add(dR_vs_pt_soft, "dR(sublead_jet, lead_jet) vs sublead quark pt", dR_pt_label, dr_range, pt_range, {50, 50});
-    hm.Add(dR_vs_pt_hard, "dR(sublead_jet, lead_jet) vs lead quark pt", dR_pt_label, dr_range, pt_range, {50, 50});
-    hm.Add(jjdR_vs_pt_ratio, "dR(sublead_jet, lead_jet) vs lead quark pt/ sublead quark pt", {"dR", "lead_quark_pt/sublead_quark_pt"}, dr_range, dr_range, {50, 50});
-    hm.Add(qqdR_vs_pt_ratio, "dR(sublead_q, lead_q) vs lead quark pt/ sublead quark pt", {"dR", "lead_quark_pt/sublead_quark_pt"}, dr_range, dr_range, {50, 50});
 
     std::cout << std::boolalpha;
 
@@ -275,6 +210,13 @@ int main()
                     TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
                     TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
 
+                    std::vector<TLorentzVector> partons{ lq1_p4, lq2_p4, bq_p4, bbarq_p4 };
+                    if (std::any_of(partons.begin(), partons.end(), [](TLorentzVector const& p) { return p.Pt() < MIN_PARTON_PT; }))
+                    {
+                        ++failed_parton_cut;
+                        // continue;
+                    }
+
                     std::vector<TLorentzVector> parts{lj1_p4, lj2_p4, bj_p4, bbarj_p4, l_p4, nu_p4};
                     if (MinDeltaR(parts) < DR_THRESH)
                     {
@@ -282,83 +224,38 @@ int main()
                         // continue;
                     }
 
-                    if (lq1_p4.Pt()/lj1_p4.Pt() > 1.2)
-                    {
-                        hm.Fill(qq_pt_cmp_1, lq1_p4.Pt(), lq2_p4.Pt());
-                    }
-                    if (lq2_p4.Pt()/lj2_p4.Pt() > 1.2)
-                    {
-                        hm.Fill(qq_pt_cmp_2, lq1_p4.Pt(), lq2_p4.Pt());
-                    }
+                    ++accepted_events;
 
-                    hm.Fill(jet1_nu_dR, lj1_p4.DeltaR(nu_p4));
-                    hm.Fill(jet1_lep_dR, lj1_p4.DeltaR(l_p4));
-                    hm.Fill(jet1_bj_dR, lj1_p4.DeltaR(bj_p4));
-                    hm.Fill(jet1_bbarj_dR, lj1_p4.DeltaR(bbarj_p4));
+                    #ifdef DEBUG
+                        TLorentzVector& leading_lj = (lj1_p4.Pt() > lj2_p4.Pt()) ? lj1_p4 : lj2_p4;
+                        TLorentzVector& subleading_lj = (lj1_p4.Pt() < lj2_p4.Pt()) ? lj1_p4 : lj2_p4; 
+                        TLorentzVector& leading_lq = (lq1_p4.Pt() > lq2_p4.Pt()) ? lq1_p4 : lq2_p4;
+                        TLorentzVector& subleading_lq = (lq1_p4.Pt() < lq2_p4.Pt()) ? lq1_p4 : lq2_p4; 
 
-                    hm.Fill(jet2_jet1_dR, lj2_p4.DeltaR(lj1_p4));
-                    hm.Fill(jet2_nu_dR, lj2_p4.DeltaR(nu_p4));
-                    hm.Fill(jet2_lep_dR, lj2_p4.DeltaR(l_p4));
-                    hm.Fill(jet2_bj_dR, lj2_p4.DeltaR(bj_p4));
-                    hm.Fill(jet2_bbarj_dR, lj2_p4.DeltaR(bbarj_p4));
+                        TLorentzVector& leading_bj = (bj_p4.Pt() > bbarj_p4.Pt()) ? bj_p4 : bbarj_p4;
+                        TLorentzVector& subleading_bj = (bj_p4.Pt() < bbarj_p4.Pt()) ? bj_p4 : bbarj_p4;
+                        TLorentzVector& leading_bq = (bq_p4.Pt() > bbarq_p4.Pt()) ? bq_p4 : bbarq_p4;
+                        TLorentzVector& subleading_bq = (bq_p4.Pt() < bbarq_p4.Pt()) ? bq_p4 : bbarq_p4;
 
-                    TLorentzVector leading_lj = (lj1_p4.Pt() > lj2_p4.Pt()) ? lj1_p4 : lj2_p4;
-                    TLorentzVector subleading_lj = (lj1_p4.Pt() < lj2_p4.Pt()) ? lj1_p4 : lj2_p4; 
-                    TLorentzVector leading_lq = (lq1_p4.Pt() > lq2_p4.Pt()) ? lq1_p4 : lq2_p4;
-                    TLorentzVector subleading_lq = (lq1_p4.Pt() < lq2_p4.Pt()) ? lq1_p4 : lq2_p4; 
+                        double leading_b_pt_ratio = leading_bj.Pt()/leading_bq.Pt();
+                        double leading_l_pt_ratio = leading_lj.Pt()/leading_lq.Pt();
+                        double subleading_b_pt_ratio = subleading_bj.Pt()/subleading_bq.Pt();
+                        double subleading_l_pt_ratio = subleading_bj.Pt()/subleading_bq.Pt();
 
-                    // double light_jets_dR = leading_lj.DeltaR(subleading_lj);
-                    hm.Fill(lead_sub_ratios, leading_lq.Pt()/leading_lj.Pt(), subleading_lq.Pt()/subleading_lj.Pt());
-
-                    TLorentzVector leading_bj = (bj_p4.Pt() > bbarj_p4.Pt()) ? bj_p4 : bbarj_p4;
-                    TLorentzVector subleading_bj = (bj_p4.Pt() < bbarj_p4.Pt()) ? bj_p4 : bbarj_p4;
-                    TLorentzVector leading_bq = (bq_p4.Pt() > bbarq_p4.Pt()) ? bq_p4 : bbarq_p4;
-                    TLorentzVector subleading_bq = (bq_p4.Pt() < bbarq_p4.Pt()) ? bq_p4 : bbarq_p4;  
-
-                    hm.Fill(pt_cmp_lead, leading_lq.Pt(), leading_lj.Pt());
-                    hm.Fill(pt_cmp_sub, subleading_lq.Pt(), subleading_lj.Pt());
-
-                    hm.Fill(pt_cmp_lead_b, leading_bq.Pt(), leading_bj.Pt());
-                    hm.Fill(pt_cmp_sub_b, subleading_bq.Pt(), subleading_bj.Pt());
-
-                    hm.Fill(pt_cmp_b, bq_p4.Pt(), bj_p4.Pt());
-                    hm.Fill(pt_cmp_bbar, bbarq_p4.Pt(), bbarj_p4.Pt());
-
-                    double lead_lep_dR = leading_lj.DeltaR(l_p4);
-                    double lead_nu_dR = leading_lj.DeltaR(nu_p4);
-                    double sub_lep_dR = subleading_lj.DeltaR(l_p4);
-                    double sub_nu_dR = subleading_lj.DeltaR(nu_p4);
-
-                    hm.Fill(lead_jet_lep_dR, lead_lep_dR);
-                    hm.Fill(lead_jet_nu_dR, lead_nu_dR);
-                    hm.Fill(sublead_jet_lep_dR, sub_lep_dR);
-                    hm.Fill(sublead_jet_nu_dR, sub_nu_dR);
-
-                    hm.Fill(dR_vs_pt_lead_lep, lead_lep_dR, leading_lq.Pt()/leading_lj.Pt());
-                    hm.Fill(dR_vs_pt_lead_nu, lead_nu_dR, leading_lq.Pt()/leading_lj.Pt());
-                    hm.Fill(dR_vs_pt_sublead_lep, sub_lep_dR, subleading_lq.Pt()/subleading_lj.Pt());
-                    hm.Fill(dR_vs_pt_sublead_nu, sub_nu_dR, subleading_lq.Pt()/subleading_lj.Pt());
-
-                    hm.Fill(dR_vs_pt_sublead_lead, subleading_lj.DeltaR(leading_lj), subleading_lq.Pt()/subleading_lj.Pt());
-                    hm.Fill(dR_vs_pt_lead_lead, leading_lj.DeltaR(subleading_lj), leading_lq.Pt()/leading_lj.Pt());
-
-                    if (subleading_lq.Pt()/subleading_lj.Pt() < 0.6)
-                    {
-                        hm.Fill(dR_vs_pt_soft, subleading_lj.DeltaR(leading_lj), subleading_lq.Pt());
-                        hm.Fill(dR_vs_pt_hard, subleading_lj.DeltaR(leading_lj), leading_lq.Pt());
-                        hm.Fill(jjdR_vs_pt_ratio, subleading_lj.DeltaR(leading_lj), leading_lq.Pt()/subleading_lq.Pt());
-                        hm.Fill(qqdR_vs_pt_ratio, subleading_lq.DeltaR(leading_lq), leading_lq.Pt()/subleading_lq.Pt());
-                    }
-
-                    double hh_mass_jets_no_corr = (lj1_p4 + lj2_p4 + l_p4 + nu_p4 + bj_p4 + bbarj_p4).M();
-                    hm.Fill(heavy_higgs_jets_no_corr, hh_mass_jets_no_corr);
+                        std::vector<double> ratios{ leading_b_pt_ratio, subleading_b_pt_ratio, leading_l_pt_ratio, subleading_l_pt_ratio };
+                        if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > UP_PT_THRESH; }))
+                        {
+                            MatchIndex mi = {{b_idx, b_match}, {bbar_idx, bbar_match}, {q1_idx, q1_match}, {q2_idx, q2_match}};
+                            MatchKinematics mk = {genpart, genjet};
+                            std::pair<int*, int*> ptrs = {GenPart_genPartIdxMother, GenPart_pdgId};
+                            DrawEventMap(mk, mi, i, ptrs);
+                        }
+                    #endif  
 
                     bool overlapping_jets = lj1_p4.DeltaR(lj2_p4) < 2*DR_THRESH;
                     if (overlapping_jets)
                     {
                         ++overlap_jets;
-                        hm.Fill(overlap_pt_ratio_1, lq1_p4.Pt()/lj1_p4.Pt());
-                        hm.Fill(overlap_pt_ratio_2, lq2_p4.Pt()/lj2_p4.Pt());
                     }
 
                     // subtract lepton from jet if they overlap
@@ -375,52 +272,21 @@ int main()
                         if (lj2_p4.E() > l_p4.E()) lj2_p4 -= l_p4;
                     }
 
-                    // subtract neutrino from jet if they overlap
-                    double dR_lj1_nu = lj1_p4.DeltaR(nu_p4);
-                    double dR_lj2_nu = lj2_p4.DeltaR(nu_p4);
-                    if (dR_lj1_nu < DR_THRESH)
-                    {
-                        ++j1nu_overlap;
-                    }
-                    if (dR_lj2_nu < DR_THRESH) 
-                    {
-                        ++j2nu_overlap;
-                    }
+                    // std::vector<double> pt_ratios{bj_p4.Pt()/bq_p4.Pt(), bbarj_p4.Pt()/bbarq_p4.Pt(), lj1_p4.Pt()/lq1_p4.Pt(), lj2_p4.Pt()/lq2_p4.Pt()};
+                    // if (std::any_of(pt_ratios.begin(), pt_ratios.end(), [](double x){ return ((x > 1.4) || (x < 0.6)); }))
+                    // {
+                    //     continue;
+                    // }
 
-                    if (dR_lj1_lep < DR_THRESH && dR_lj2_lep < DR_THRESH) ++jjlep_overlap;
-                    if (dR_lj1_nu < DR_THRESH && dR_lj2_nu < DR_THRESH) ++jjnu_overlap;
+                    hm.Fill(response_all, bj_p4.Pt()/bq_p4.Pt());
+                    hm.Fill(response_all, bbarj_p4.Pt()/bbarq_p4.Pt());
+                    hm.Fill(response_all, lj1_p4.Pt()/lq1_p4.Pt());
+                    hm.Fill(response_all, lj2_p4.Pt()/lq2_p4.Pt());
 
-                    double leading_b_pt_ratio = (bq_p4.Pt() > bbarq_p4.Pt()) ? (bq_p4.Pt()/bj_p4.Pt()) : (bbarq_p4.Pt()/bbarj_p4.Pt());
-                    double leading_l_pt_ratio = (lq1_p4.Pt() > lq2_p4.Pt()) ? (lq1_p4.Pt()/lj1_p4.Pt()) : (lq2_p4.Pt()/lj2_p4.Pt());
-
-                    double subleading_b_pt_ratio = (bq_p4.Pt() > bbarq_p4.Pt()) ? (bbarq_p4.Pt()/bbarj_p4.Pt()) : (bq_p4.Pt()/bj_p4.Pt());
-                    double subleading_l_pt_ratio = (lq1_p4.Pt() > lq2_p4.Pt()) ? (lq2_p4.Pt()/lj2_p4.Pt()) : (lq1_p4.Pt()/lj1_p4.Pt());
-
-                    hm.Fill(lead_b_pt_ratio_hist, leading_b_pt_ratio);
-                    hm.Fill(lead_l_pt_ratio_hist, leading_l_pt_ratio);
-                    hm.Fill(sublead_b_pt_ratio_hist, subleading_b_pt_ratio);
-                    hm.Fill(sublead_l_pt_ratio_hist, subleading_l_pt_ratio);
-
-                    hm.Fill(lead_sub_ratios_subtr, leading_l_pt_ratio, subleading_l_pt_ratio);
-
-                    #ifdef DEBUG
-                        std::vector<double> ratios{ leading_b_pt_ratio, subleading_b_pt_ratio, leading_l_pt_ratio, subleading_l_pt_ratio };
-                        if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > MATCH_PT_THRESH; }))
-                        {
-                            MatchIndex mi = {{b_idx, b_match}, {bbar_idx, bbar_match}, {q1_idx, q1_match}, {q2_idx, q2_match}};
-                            MatchKinematics mk = {genpart, genjet};
-                            std::pair<int*, int*> ptrs = {GenPart_genPartIdxMother, GenPart_pdgId};
-                            DrawEventMap(mk, mi, i, ptrs);
-                        }
-                    #endif
-
-                    lj1_over_pt_thresh += (lj1_p4.Pt()/lq1_p4.Pt() > MATCH_PT_THRESH) ? 1 : 0;
-                    lj2_over_pt_thresh += (lj2_p4.Pt()/lq2_p4.Pt() > MATCH_PT_THRESH) ? 1 : 0;
-                    bj_over_pt_thresh += (bj_p4.Pt()/bq_p4.Pt() > MATCH_PT_THRESH) ? 1 : 0;
-                    bbarj_over_pt_thresh += (bbarj_p4.Pt()/bbarq_p4.Pt() > MATCH_PT_THRESH) ? 1 : 0;
-
-                    hm.Fill(pt_cmp_1, lq1_p4.Pt(), lj1_p4.Pt());
-                    hm.Fill(pt_cmp_2, lq2_p4.Pt(), lj2_p4.Pt());
+                    hm.Fill(resolution_all, (bj_p4.Pt() - bq_p4.Pt())/bq_p4.Pt());
+                    hm.Fill(resolution_all, (bbarj_p4.Pt() - bbarq_p4.Pt())/bbarq_p4.Pt());
+                    hm.Fill(resolution_all, (lj1_p4.Pt() - lq1_p4.Pt())/lq1_p4.Pt());
+                    hm.Fill(resolution_all, (lj2_p4.Pt() - lq2_p4.Pt())/lq2_p4.Pt());
 
                     hm.Fill(w_from_quarks, (lq1_p4 + lq2_p4).M());
                     hm.Fill(w_from_jets, (lj1_p4 + lj2_p4).M());
@@ -428,7 +294,7 @@ int main()
                     hm.Fill(h_from_jets, (bj_p4 + bbarj_p4).M());
 
                     double dijet_mass = (lj1_p4 + lj2_p4).M();
-                    dijet_over_mass_thresh += (dijet_mass > DIJET_MASS_THRESH) ? 1 : 0;
+                    dijet_above_mass_thresh += (dijet_mass > DIJET_MASS_THRESH) ? 1 : 0;
 
                     double hh_mass_part = (lq1_p4 + lq2_p4 + l_p4 + nu_p4 + bq_p4 + bbarq_p4).M();
                     hm.Fill(heavy_higgs_partons, hh_mass_part);
@@ -458,6 +324,41 @@ int main()
                     bbarj_p4 += tot_nu_bbar_p4;
                     hh_mass_jets = (lj1_p4 + lj2_p4 + l_p4 + nu_p4 + bj_p4 + bbarj_p4).M();
                     hm.Fill(heavy_higgs_jets_wnu, hh_mass_jets);
+                    hm.Fill(h_from_jets_wnu, (bj_p4 + bbarj_p4).M());
+
+                    // std::vector<double> pt_ratios{ lj1_p4.Pt()/lq1_p4.Pt(), lj2_p4.Pt()/lq2_p4.Pt(), bj_p4.Pt()/bq_p4.Pt(), bbarj_p4.Pt()/bbarq_p4.Pt() };
+                    // if (std::any_of(pt_ratios.begin(), pt_ratios.end(), [](double x) { return x > UP_PT_THRESH; }))
+                    // {
+                    //     std::cout << "Event " << i << ":\n";
+                    //     std::cout << "Pt:\n";
+                    //     std::cout << "\tpt_j1 = " << lj1_p4.Pt() << ", pt_q1 = " << lq1_p4.Pt() << "\n"
+                    //               << "\tpt_j2 = " << lj2_p4.Pt() << ", pt_q2 = " << lq2_p4.Pt() << "\n"
+                    //               << "\tpt_bj = " << bj_p4.Pt() << ", pt_bq = " << bq_p4.Pt() << "\n"
+                    //               << "\tpt_bbarj = " << bbarj_p4.Pt() << ", pt_bbarq = " << bbarq_p4.Pt() << "\n";
+                    //     std::cout << "DeltaR:\n";
+                    //     std::cout << "\tdR(q1, q2) = " << lq1_p4.DeltaR(lq2_p4) << "\n"
+                    //               << "\tdR(q1, bq) = " << lq1_p4.DeltaR(bq_p4) << "\n"
+                    //               << "\tdR(q2, bq) = " << lq2_p4.DeltaR(bq_p4) << "\n"
+                    //               << "\tdR(q1, bbarq) = " << lq1_p4.DeltaR(bbarq_p4) << "\n"
+                    //               << "\tdR(q2, bbarq) = " << lq2_p4.DeltaR(bbarq_p4) << "\n"
+                    //               << "\tdR(bq, bbarq) = " << bq_p4.DeltaR(bbarq_p4) << "\n";
+                    //     std::cout << "=============================================================================\n";
+                    // }
+
+                    lj1_above_pt_thresh += (lj1_p4.Pt()/lq1_p4.Pt() > UP_PT_THRESH) ? 1 : 0;
+                    lj2_above_pt_thresh += (lj2_p4.Pt()/lq2_p4.Pt() > UP_PT_THRESH) ? 1 : 0;
+                    bj_above_pt_thresh += (bj_p4.Pt()/bq_p4.Pt() > UP_PT_THRESH) ? 1 : 0;
+                    bbarj_above_pt_thresh += (bbarj_p4.Pt()/bbarq_p4.Pt() > UP_PT_THRESH) ? 1 : 0;
+
+                    lj1_under_pt_thresh += (lj1_p4.Pt()/lq1_p4.Pt() < LOW_PT_THRESH) ? 1 : 0;
+                    lj2_under_pt_thresh += (lj2_p4.Pt()/lq2_p4.Pt() < LOW_PT_THRESH) ? 1 : 0;
+                    bj_under_pt_thresh += (bj_p4.Pt()/bq_p4.Pt() < LOW_PT_THRESH) ? 1 : 0;
+                    bbarj_under_pt_thresh += (bbarj_p4.Pt()/bbarq_p4.Pt() < LOW_PT_THRESH) ? 1 : 0;
+
+                    hm.Fill(pt_cmp_l1, lq1_p4.Pt(), lj1_p4.Pt());
+                    hm.Fill(pt_cmp_l2, lq2_p4.Pt(), lj2_p4.Pt());
+                    hm.Fill(pt_cmp_b, bq_p4.Pt(), bj_p4.Pt());
+                    hm.Fill(pt_cmp_bbar, bbarq_p4.Pt(), bbarj_p4.Pt());
                 }
             }
         }
@@ -466,18 +367,8 @@ int main()
     std::cout << "Finished processing\n";
     hm.Draw();
     hm.DrawStack({w_from_quarks, w_from_jets}, "W mass", "w_mass");
-    hm.DrawStack({h_from_quarks, h_from_jets}, "Higgs mass", "higgs_mass");
-    hm.DrawStack({lead_b_pt_ratio_hist, lead_l_pt_ratio_hist, sublead_b_pt_ratio_hist, sublead_l_pt_ratio_hist}, "Pt ratios", "pt_ratios");
-    hm.DrawStack({lead_b_pt_ratio_hist, lead_l_pt_ratio_hist}, "leading pair Pt ratios", "lead_pt_ratios");
-    hm.DrawStack({sublead_b_pt_ratio_hist, sublead_l_pt_ratio_hist}, "subleading pair Pt ratios", "sublead_pt_ratios");
-    hm.DrawStack({lead_b_pt_ratio_hist, sublead_b_pt_ratio_hist}, "bb pair Pt ratios", "bb_pt_ratios");
-    hm.DrawStack({lead_l_pt_ratio_hist, sublead_l_pt_ratio_hist}, "light pair Pt ratios", "qq_pt_ratios");
-    hm.DrawStack({overlap_pt_ratio_1, overlap_pt_ratio_2}, "overlapping light pair Pt ratios", "overlap_qq_pt_ratios");
-    hm.DrawStack({heavy_higgs_partons, heavy_higgs_jets, heavy_higgs_jets_no_corr, heavy_higgs_jets_wnu}, "Heavy higgs mass", "hh_mass");
-    hm.DrawStack({heavy_higgs_jets, heavy_higgs_jets_no_corr, heavy_higgs_jets_wnu}, "Lepton subtraction and neutrino addition effect on hh mass", "hh_mass_jets");
-    hm.DrawStack({jet2_jet1_dR, jet2_lep_dR, jet2_nu_dR, jet2_bj_dR, jet2_bbarj_dR}, "dR(lj2, *)", "jet2_dR");
-    hm.DrawStack({jet2_jet1_dR, jet1_lep_dR, jet1_nu_dR, jet1_bj_dR, jet1_bbarj_dR}, "dR(lj1, *)", "jet1_dR");
-    hm.DrawStack({lead_jet_lep_dR, lead_jet_nu_dR, sublead_jet_lep_dR, sublead_jet_nu_dR}, "dR between jets and leptons", "jets_dR");
+    hm.DrawStack({h_from_jets, h_from_jets_wnu}, "Higgs mass", "higgs_mass");
+    hm.DrawStack({heavy_higgs_jets, heavy_higgs_jets_wnu}, "Heavy higgs mass", "hh_mass");
 
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
@@ -489,17 +380,19 @@ int main()
               << "\tmatching_fails = " << matching_fails << "\n"
               << "\tmatched_events = " << matched_events << "\n"
               << "\tfailed_min_dR = " << failed_min_dR << " (" << 1.0*failed_min_dR/matched_events*100 << "%)" << "\n"
-              << "\tlj1_over_pt_thresh = " << lj1_over_pt_thresh << " (" << 1.0*lj1_over_pt_thresh/matched_events*100 << "%)" << "\n"
-              << "\tlj2_over_pt_thresh = " << lj2_over_pt_thresh << " (" << 1.0*lj2_over_pt_thresh/matched_events*100 << "%)" << "\n"
-              << "\tbj_over_pt_thresh = " << bj_over_pt_thresh << " (" << 1.0*bj_over_pt_thresh/matched_events*100 << "%)" << "\n"
-              << "\tbbarj_over_pt_thresh = " << bbarj_over_pt_thresh << " (" << 1.0*bbarj_over_pt_thresh/matched_events*100 << "%)" << "\n"
-              << "\toverlap_jets = " << overlap_jets << " (" << 1.0*overlap_jets/matched_events*100 << "%)" << "\n"
-              << "\tj1lep_overlap = " << j1lep_overlap << " (" << 1.0*j1lep_overlap/matched_events*100 << "%)" << "\n"
-              << "\tj2lep_overlap = " << j2lep_overlap << " (" << 1.0*j2lep_overlap/matched_events*100 << "%)" << "\n"
-              << "\tj1nu_overlap = " << j1nu_overlap << " (" << 1.0*j1nu_overlap/matched_events*100 << "%)" << "\n"
-              << "\tj2nu_overlap = " << j2nu_overlap << " (" << 1.0*j2nu_overlap/matched_events*100 << "%)" << "\n"
-              << "\tjjlep_overlap = " << jjlep_overlap << "\n"
-              << "\tjjnu_overlap = " << jjnu_overlap << "\n"
-              << "\tdijet_over_mass_thresh = " << dijet_over_mass_thresh << " (" << 1.0*dijet_over_mass_thresh/matched_events*100 << "%)" << "\n";
+              << "\tfailed_parton_cut = " << failed_parton_cut << " (" << 1.0*failed_parton_cut/matched_events*100 << "%)" << "\n"
+              << "\taccepted_events = " << accepted_events << " (" << 1.0*accepted_events/matched_events*100 << "%)" << "\n"
+              << "\tlj1_above_pt_thresh = " << lj1_above_pt_thresh << " (" << 1.0*lj1_above_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\tlj2_above_pt_thresh = " << lj2_above_pt_thresh << " (" << 1.0*lj2_above_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\tbj_above_pt_thresh = " << bj_above_pt_thresh << " (" << 1.0*bj_above_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\tbbarj_above_pt_thresh = " << bbarj_above_pt_thresh << " (" << 1.0*bbarj_above_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\tlj1_under_pt_thresh = " << lj1_under_pt_thresh << " (" << 1.0*lj1_under_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\tlj2_under_pt_thresh = " << lj2_under_pt_thresh << " (" << 1.0*lj2_under_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\tbj_under_pt_thresh = " << bj_under_pt_thresh << " (" << 1.0*bj_under_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\tbbarj_under_pt_thresh = " << bbarj_under_pt_thresh << " (" << 1.0*bbarj_under_pt_thresh/accepted_events*100 << "%)" << "\n"
+              << "\toverlap_jets = " << overlap_jets << " (" << 1.0*overlap_jets/accepted_events*100 << "%)" << "\n"
+              << "\tj1lep_overlap = " << j1lep_overlap << " (" << 1.0*j1lep_overlap/accepted_events*100 << "%)" << "\n"
+              << "\tj2lep_overlap = " << j2lep_overlap << " (" << 1.0*j2lep_overlap/accepted_events*100 << "%)" << "\n"
+              << "\tdijet_above_mass_thresh = " << dijet_above_mass_thresh << " (" << 1.0*dijet_above_mass_thresh/accepted_events*100 << "%)" << "\n";
     return 0;
 }
