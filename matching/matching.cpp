@@ -14,6 +14,9 @@
 #include "TLegend.h"
 #include "TString.h"
 #include "TStyle.h"
+#ifdef DEBUG
+    #include "TError.h"
+#endif
 
 #include "MatchingTools.hpp"
 #include "HistManager.hpp"
@@ -27,11 +30,16 @@ static constexpr double MIN_PARTON_PT = 25.0;
 
 int main()
 {
+    #ifdef DEBUG
+        gErrorIgnoreLevel = 3000;
+    #endif
+    
+    std::cout << std::setprecision(3);
     auto start = std::chrono::system_clock::now();
     auto gStyle = std::make_unique<TStyle>();
     gStyle->SetPalette(kRainBow);
-    // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
-    TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
+    TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
+    // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
     // TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-600_narrow_13TeV-madgraph.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -240,10 +248,10 @@ int main()
                         double leading_b_pt_ratio = leading_bj.Pt()/leading_bq.Pt();
                         double leading_l_pt_ratio = leading_lj.Pt()/leading_lq.Pt();
                         double subleading_b_pt_ratio = subleading_bj.Pt()/subleading_bq.Pt();
-                        double subleading_l_pt_ratio = subleading_bj.Pt()/subleading_bq.Pt();
+                        double subleading_l_pt_ratio = subleading_lj.Pt()/subleading_lq.Pt();
 
                         std::vector<double> ratios{ leading_b_pt_ratio, subleading_b_pt_ratio, leading_l_pt_ratio, subleading_l_pt_ratio };
-                        if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > UP_PT_THRESH; }))
+                        if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return (x > UP_PT_THRESH || x < LOW_PT_THRESH); }))
                         {
                             MatchIndex mi = {{b_idx, b_match}, {bbar_idx, bbar_match}, {q1_idx, q1_match}, {q2_idx, q2_match}};
                             MatchKinematics mk = {genpart, genjet};
@@ -272,12 +280,6 @@ int main()
                         if (lj2_p4.E() > l_p4.E()) lj2_p4 -= l_p4;
                     }
 
-                    // std::vector<double> pt_ratios{bj_p4.Pt()/bq_p4.Pt(), bbarj_p4.Pt()/bbarq_p4.Pt(), lj1_p4.Pt()/lq1_p4.Pt(), lj2_p4.Pt()/lq2_p4.Pt()};
-                    // if (std::any_of(pt_ratios.begin(), pt_ratios.end(), [](double x){ return ((x > 1.4) || (x < 0.6)); }))
-                    // {
-                    //     continue;
-                    // }
-
                     hm.Fill(response_all, bj_p4.Pt()/bq_p4.Pt());
                     hm.Fill(response_all, bbarj_p4.Pt()/bbarq_p4.Pt());
                     hm.Fill(response_all, lj1_p4.Pt()/lq1_p4.Pt());
@@ -302,13 +304,13 @@ int main()
                     hm.Fill(heavy_higgs_jets, hh_mass_jets);
 
                     // determines if particle at index idx is a neutrino
-                    auto IsNu = [&GenPart_pdgId](int idx) { return !IsNeutrino(GenPart_pdgId[idx]); };
+                    auto NotNu = [&GenPart_pdgId](int idx) { return !IsNeutrino(GenPart_pdgId[idx]); };
 
                     // find neutrinos from b jets
                     auto b_neutrinos = GetStableDescendants(b_idx, GenPart_genPartIdxMother, nGenPart);
-                    b_neutrinos.erase(std::remove_if(b_neutrinos.begin(), b_neutrinos.end(), IsNu), b_neutrinos.end());
+                    b_neutrinos.erase(std::remove_if(b_neutrinos.begin(), b_neutrinos.end(), NotNu), b_neutrinos.end());
                     auto bbar_neutrinos = GetStableDescendants(bbar_idx, GenPart_genPartIdxMother, nGenPart);
-                    bbar_neutrinos.erase(std::remove_if(bbar_neutrinos.begin(), bbar_neutrinos.end(), IsNu), bbar_neutrinos.end());
+                    bbar_neutrinos.erase(std::remove_if(bbar_neutrinos.begin(), bbar_neutrinos.end(), NotNu), bbar_neutrinos.end());
 
                     // 4-momentum generator
                     auto GenP4 = [&genpart](int idx) { return GetP4(genpart, idx); };
@@ -326,24 +328,80 @@ int main()
                     hm.Fill(heavy_higgs_jets_wnu, hh_mass_jets);
                     hm.Fill(h_from_jets_wnu, (bj_p4 + bbarj_p4).M());
 
-                    // std::vector<double> pt_ratios{ lj1_p4.Pt()/lq1_p4.Pt(), lj2_p4.Pt()/lq2_p4.Pt(), bj_p4.Pt()/bq_p4.Pt(), bbarj_p4.Pt()/bbarq_p4.Pt() };
-                    // if (std::any_of(pt_ratios.begin(), pt_ratios.end(), [](double x) { return x > UP_PT_THRESH; }))
-                    // {
-                    //     std::cout << "Event " << i << ":\n";
-                    //     std::cout << "Pt:\n";
-                    //     std::cout << "\tpt_j1 = " << lj1_p4.Pt() << ", pt_q1 = " << lq1_p4.Pt() << "\n"
-                    //               << "\tpt_j2 = " << lj2_p4.Pt() << ", pt_q2 = " << lq2_p4.Pt() << "\n"
-                    //               << "\tpt_bj = " << bj_p4.Pt() << ", pt_bq = " << bq_p4.Pt() << "\n"
-                    //               << "\tpt_bbarj = " << bbarj_p4.Pt() << ", pt_bbarq = " << bbarq_p4.Pt() << "\n";
-                    //     std::cout << "DeltaR:\n";
-                    //     std::cout << "\tdR(q1, q2) = " << lq1_p4.DeltaR(lq2_p4) << "\n"
-                    //               << "\tdR(q1, bq) = " << lq1_p4.DeltaR(bq_p4) << "\n"
-                    //               << "\tdR(q2, bq) = " << lq2_p4.DeltaR(bq_p4) << "\n"
-                    //               << "\tdR(q1, bbarq) = " << lq1_p4.DeltaR(bbarq_p4) << "\n"
-                    //               << "\tdR(q2, bbarq) = " << lq2_p4.DeltaR(bbarq_p4) << "\n"
-                    //               << "\tdR(bq, bbarq) = " << bq_p4.DeltaR(bbarq_p4) << "\n";
-                    //     std::cout << "=============================================================================\n";
-                    // }
+                    #ifdef DEBUG
+                        std::vector<double> pt_ratios{ lj1_p4.Pt()/lq1_p4.Pt(), lj2_p4.Pt()/lq2_p4.Pt(), bj_p4.Pt()/bq_p4.Pt(), bbarj_p4.Pt()/bbarq_p4.Pt() };
+                        if (std::any_of(pt_ratios.begin(), pt_ratios.end(), [](double x) { return x > UP_PT_THRESH; }))
+                        {
+                            std::cout << "Event " << i << ":\n";
+                            std::cout << "DeltaR:\n";
+                            std::cout << "dR(q1, q2) = " << lq1_p4.DeltaR(lq2_p4) << "\n"
+                                    << "dR(q1, bq) = " << lq1_p4.DeltaR(bq_p4) << "\n"
+                                    << "dR(q2, bq) = " << lq2_p4.DeltaR(bq_p4) << "\n"
+                                    << "dR(q1, bbarq) = " << lq1_p4.DeltaR(bbarq_p4) << "\n"
+                                    << "dR(q2, bbarq) = " << lq2_p4.DeltaR(bbarq_p4) << "\n"
+                                    << "dR(bq, bbarq) = " << bq_p4.DeltaR(bbarq_p4) << "\n";
+                            std::cout << "\n";
+
+                            std::cout << "j1 = "; Print(lj1_p4);
+                            std::cout << "q1 = "; Print(lq1_p4);
+                            std::cout << "ratio = " << lj1_p4.Pt()/lq1_p4.Pt() << "\n\n";
+
+                            std::cout << "j2 = "; Print(lj2_p4);
+                            std::cout << "q2 = "; Print(lq2_p4);
+                            std::cout << "ratio = " << lj2_p4.Pt()/lq2_p4.Pt() << "\n\n";
+
+                            std::cout << "bj = "; Print(bj_p4);
+                            std::cout << "bq = "; Print(bq_p4);
+                            std::cout << "ratio = " << bj_p4.Pt()/bq_p4.Pt() << "\n\n";
+
+                            std::cout << "bbarj = "; Print(bbarj_p4);
+                            std::cout << "bbarq = "; Print(bbarq_p4);
+                            std::cout << "ratio = " << bbarj_p4.Pt()/bbarq_p4.Pt() << "\n\n";
+
+                            // find stable daughters of all quarks and summ all their momenta
+                            auto PrintP4 = [&genpart](int i)
+                            {
+                                TLorentzVector p4 = GetP4(genpart, i);
+                                std::cout << "\t";
+                                Print(p4);
+                            };
+
+                            TLorentzVector sum;
+                            std::vector<int> b_stable_desc = GetStableDescendants(b_idx, GenPart_genPartIdxMother, nGenPart);
+                            std::cout << "b: ";
+                            std::for_each(b_stable_desc.begin(), b_stable_desc.end(), [&GenPart_pdgId](int i){ std::cout << GenPart_pdgId[i] << " "; });
+                            sum = std::transform_reduce(b_stable_desc.begin(), b_stable_desc.end(), TLorentzVector(), std::plus{}, GenP4);
+                            std::cout << "\n";
+                            std::for_each(b_stable_desc.begin(), b_stable_desc.end(), PrintP4);
+                            std::cout << "sum = "; Print(sum);
+
+                            std::vector<int> bbar_stable_desc = GetStableDescendants(bbar_idx, GenPart_genPartIdxMother, nGenPart);
+                            std::cout << "bbar: ";
+                            std::for_each(bbar_stable_desc.begin(), bbar_stable_desc.end(), [&GenPart_pdgId](int i){ std::cout << GenPart_pdgId[i] << " "; });
+                            sum = std::transform_reduce(bbar_stable_desc.begin(), bbar_stable_desc.end(), TLorentzVector(), std::plus{}, GenP4);
+                            std::cout << "\n";
+                            std::for_each(bbar_stable_desc.begin(), bbar_stable_desc.end(), PrintP4);
+                            std::cout << "sum = "; Print(sum);
+
+                            std::vector<int> q1_stable_desc = GetStableDescendants(q1_idx, GenPart_genPartIdxMother, nGenPart);
+                            std::cout << "q1: ";
+                            std::for_each(q1_stable_desc.begin(), q1_stable_desc.end(), [&GenPart_pdgId](int i){ std::cout << GenPart_pdgId[i] << " "; });
+                            sum = std::transform_reduce(q1_stable_desc.begin(), q1_stable_desc.end(), TLorentzVector(), std::plus{}, GenP4);
+                            std::cout << "\n";
+                            std::for_each(q1_stable_desc.begin(), q1_stable_desc.end(), PrintP4);
+                            std::cout << "sum = "; Print(sum);
+
+                            std::vector<int> q2_stable_desc = GetStableDescendants(q2_idx, GenPart_genPartIdxMother, nGenPart);
+                            std::cout << "q2: ";
+                            std::for_each(q2_stable_desc.begin(), q2_stable_desc.end(), [&GenPart_pdgId](int i){ std::cout << GenPart_pdgId[i] << " "; });
+                            sum = std::transform_reduce(q2_stable_desc.begin(), q2_stable_desc.end(), TLorentzVector(), std::plus{}, GenP4);
+                            std::cout << "\n";
+                            std::for_each(q2_stable_desc.begin(), q2_stable_desc.end(), PrintP4);
+                            std::cout << "sum = "; Print(sum);
+                            
+                            std::cout << "=============================================================================\n";
+                        }
+                    #endif
 
                     lj1_above_pt_thresh += (lj1_p4.Pt()/lq1_p4.Pt() > UP_PT_THRESH) ? 1 : 0;
                     lj2_above_pt_thresh += (lj2_p4.Pt()/lq2_p4.Pt() > UP_PT_THRESH) ? 1 : 0;
@@ -373,7 +431,6 @@ int main()
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 
-    std::cout << std::setprecision(3);
     std::cout << "nEvents = " << nEvents << ", processing time = " << elapsed.count() << " s\n" 
               << "\tnon_empty_sig = " << non_empty_sig << "\n" 
               << "\tvalid_sig = " << valid_sig << "\n"
