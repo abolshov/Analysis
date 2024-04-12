@@ -27,6 +27,12 @@ static constexpr int BBAR_ID = -5;
 static constexpr double DR_THRESH = 0.4;
 static constexpr int N_POINTS = 20;
 
+static constexpr double MIN_GENJET_PT = 25.0;
+static constexpr double MAX_GENJET_ETA = 2.5;
+
+static constexpr double MIN_LEP_PT = 20.0;
+static constexpr double MAX_LEP_ETA = 2.4;
+
 // specifies order of signal (hh->bbWW->bbqqlv) particles
 enum SIG { h1, h2, b, bbar, q1, q2, l, nu };
 
@@ -126,4 +132,27 @@ inline double JetOverlapCorrection(TLorentzVector const& j1, TLorentzVector cons
 // computes sum of 4-momenta of stable particles in a cone of radius R around given particle (target)
 TLorentzVector Cone(int target, int const* mothers, KinematicData const& kd, double rad = DR_THRESH);
 
+// checks if all matched jets pass genjet acceptance cut
+// returns true if all jets satisfy selection criteria
+bool PassGenJetCut(std::vector<TLorentzVector> const& jets);
+
+// checks if lepton passes acceptance cut
+// returns true if lepton satisfies selection criteria
+inline bool PassLeptonCut(TLorentzVector const& lep)
+{
+    return lep.Pt() > MIN_LEP_PT && std::abs(lep.Eta()) < MAX_LEP_ETA;
+}
+
+// checks that lepton is separated from jets by dR
+bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets);
+
+// checks if matched objects preserve relationship between underlying objetcts (pt)
+using MatchedPair = std::pair<TLorentzVector, TLorentzVector>;
+inline bool ConsistentMatch(MatchedPair const& mp1, MatchedPair const& mp2)
+{
+    auto const& [q1, j1] = mp1;
+    auto const& [q2, j2] = mp2;
+
+    return (q1.Pt() > q2.Pt() ? j1.Pt() > j2.Pt() : j1.Pt() < j2.Pt());
+};
 #endif

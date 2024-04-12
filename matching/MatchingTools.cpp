@@ -56,7 +56,8 @@ std::vector<int> GetFinalParticles(int const* mothers, int n_gen_part)
     std::vector<int> finals;
     for (int i = 0; i < n_gen_part; ++i)
     {
-        if (GetNextGeneration(i, mothers, n_gen_part).empty()) finals.push_back(i);
+        if (GetNextGeneration(i, mothers, n_gen_part).empty()) 
+            finals.push_back(i);
     }
     return finals;
 }
@@ -419,4 +420,28 @@ TLorentzVector Cone(int target, int const* mothers, KinematicData const& kd, dou
         }
     }
     return cone;
+}
+
+bool PassGenJetCut(std::vector<TLorentzVector> const& jets)
+{
+    for (auto const& j: jets)
+    {
+        if (j.Pt() < MIN_GENJET_PT || std::abs(j.Eta()) > MAX_GENJET_ETA)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets)
+{
+    for (auto const& j: jets)
+    {
+        if (j.DeltaR(lep) < DR_THRESH)
+        {
+            return false;
+        }
+    }
+    return true;
 }
