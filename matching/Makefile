@@ -1,5 +1,5 @@
-CXX=g++
-CXXFLAGS= -c -O3 -Wall -Wextra -pedantic `root-config --cflags `
+CXX=clang++
+CXXFLAGS= -c -O3 -Wall -Wextra -Wpedantic `root-config --cflags `
 LDFLAGS= `root-config --glibs ` -lSpectrum
 
 matching.o: matching.cpp
@@ -8,7 +8,10 @@ matching.o: matching.cpp
 MatchingTools.o: MatchingTools.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-matching: matching.o MatchingTools.o
+HistManager.o: HistManager.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+matching: matching.o MatchingTools.o HistManager.o
 	g++ $^ -o $@ $(LDFLAGS)
 
 .PHONY: clean
