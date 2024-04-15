@@ -148,113 +148,73 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
     tmp1.insert(tmp1.end(), tmp2.begin(), tmp2.end()); // now tmp1 contains indices of all daughters of both higgses or is empty;
     
     // hh->bbWW only!
-    int wplus = -1;
-    int wminus = -1;
     if (tmp1.size() == 4)
     {
         for (auto const& idx: tmp1)
         {
             if (pdg_ids[idx] == B_ID) res[SIG::b] = idx;
             if (pdg_ids[idx] == BBAR_ID) res[SIG::bbar] = idx;
-            if (pdg_ids[idx] == WPLUS_ID) wplus = idx;
-            if (pdg_ids[idx] == WMINUS_ID) wminus = idx; 
         }
     }
 
-    tmp1 = GetNextGeneration(wplus, mothers, n_gen_part); 
-    tmp2 = GetNextGeneration(wminus, mothers, n_gen_part); 
-    tmp1.insert(tmp1.end(), tmp2.begin(), tmp2.end()); // now tmp1 contains all daughters of both W
+    int wplus = FindLast(WPLUS_ID, pdg_ids, n_gen_part);
+    int wminus = FindLast(WMINUS_ID, pdg_ids, n_gen_part);
+    auto w_plus_daughters = GetNextGeneration(wplus, mothers, n_gen_part);
+    auto w_minus_daughters = GetNextGeneration(wminus, mothers, n_gen_part);
 
-    if (tmp1.size() == 4)
+    if (w_plus_daughters.size() == 2)
     {
-        // after sorting by abs(pdgIds) indices of quarks will always be the first two elements 
-        // third elem will laways be lepton as std::abs(lep(pdgId)) < std::abs(nu(pdgId))
-        std::sort(tmp1.begin(), tmp1.end(), [&pdg_ids](int x, int y){ return std::abs(pdg_ids[x]) < std::abs(pdg_ids[y]); });
+        if (std::abs(pdg_ids[w_plus_daughters[0]]) < B_ID && std::abs(pdg_ids[w_plus_daughters[1]]) < B_ID)
+        {
+            res[SIG::q1] = w_plus_daughters[0];
+            res[SIG::q2] = w_plus_daughters[1];
+        }
+        else if (std::abs(pdg_ids[w_plus_daughters[0]]) > B_ID && std::abs(pdg_ids[w_plus_daughters[1]]) > B_ID)
+        {
+            res[SIG::l] = IsLepton(pdg_ids[w_plus_daughters[0]]) ? w_plus_daughters[0] : w_plus_daughters[1];
+            res[SIG::nu] = IsNeutrino(pdg_ids[w_plus_daughters[1]]) ? w_plus_daughters[1] : w_plus_daughters[0];
+        }
+    }
 
-        res[SIG::q1] = IsLightQuark(pdg_ids[tmp1[0]]) ? tmp1[0] : -1;
-        res[SIG::q2] = IsLightQuark(pdg_ids[tmp1[1]]) ? tmp1[1] : -1;
-        res[SIG::l] = IsLepton(pdg_ids[tmp1[2]]) ? tmp1[2] : -1;
-        res[SIG::nu] = IsNeutrino(pdg_ids[tmp1[3]]) ? tmp1[3] : -1;
+    if (w_minus_daughters.size() == 2)
+    {
+        if (std::abs(pdg_ids[w_minus_daughters[0]]) < B_ID && std::abs(pdg_ids[w_minus_daughters[1]]) < B_ID)
+        {
+            res[SIG::q1] = w_minus_daughters[0];
+            res[SIG::q2] = w_minus_daughters[1];
+        }
+        else if (std::abs(pdg_ids[w_minus_daughters[0]]) > B_ID && std::abs(pdg_ids[w_minus_daughters[1]]) > B_ID)
+        {
+            res[SIG::l] = IsLepton(pdg_ids[w_minus_daughters[0]]) ? w_minus_daughters[0] : w_minus_daughters[1];
+            res[SIG::nu] = IsNeutrino(pdg_ids[w_minus_daughters[1]]) ? w_minus_daughters[1] : w_minus_daughters[0];
+        }
     }
 
     if (std::any_of(res.begin(), res.end(), [](int x){ return x == -1; })) res.clear();
     return res;
 }
 
-bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids)
+bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids, int n_gen_part)
 {
-    if (signal.size() != N_SIG_PART) return false;
-    std::vector<int> copy = signal;
-    if (std::unique(copy.begin(), copy.end()) != copy.end()) return false;
-    if (std::any_of(copy.begin(), copy.end(), [](int x){ return x == -1; })) return false;
-
-    int h1 = signal[SIG::h1];
-    int h2 = signal[SIG::h2];
-    int b = signal[SIG::b];
-    int bbar = signal[SIG::bbar];
-    int q1 = signal[SIG::q1];
-    int q2 = signal[SIG::q2];
-    int l = signal[SIG::l];
-    int nu = signal[SIG::nu];
-
-    // std::cout << "h1 = " << h1 << "\n"
-    //           << "h2 = " << h2 << "\n"
-    //           << "b = " << b << "\n"
-    //           << "bbar = " << bbar << "\n"
-    //           << "q1 = " << q1 << "\n"
-    //           << "q2 = " << q2 << "\n"
-    //           << "l = " << l << "\n"
-    //           << "nu = " << nu << "\n";
-              
-
-    bool b_quarks = (std::abs(pdg_ids[b]) == B_ID && std::abs(pdg_ids[bbar]) == B_ID);
-    // std::cout << std::boolalpha;
-    // std::cout << "b_quarks = " << b_quarks << "\n";
-    if (!b_quarks) return false;
+    if (signal.size() != N_SIG_PART)
+    {
+        return false;
+    }
     
-    bool h1tobb = (mothers[b] == h1 && mothers[bbar] == h1);
-    bool h2tobb = (mothers[b] == h2 && mothers[bbar] == h2);
+    int rad_idx = FindLast(RADION_ID, pdg_ids, n_gen_part);
 
-    // std::cout << "h1tobb = " << h1tobb << "\n" 
-    //           << "h2tobb = " << h2tobb << "\n";
+    for (auto s: signal)
+    {
+        if (!IsDescOf(s, rad_idx, mothers))
+        {
+            return false;
+        }
+    }
 
-    if (!h1tobb && !h2tobb) return false;
-    if (h1tobb && h2tobb) return false;
-
-    int hadr_w = -1;
-    if (mothers[q1] != mothers[q2])
+    if (std::abs(signal[SIG::l]) == TAU_ID || std::abs(signal[SIG::nu]) == NU_TAU_ID)
     {
         return false;
     }
-    else
-    {
-        hadr_w = mothers[q1];
-    }
-
-    // std::cout << "hadr_w = " << hadr_w << ", pid = " << pdg_ids[hadr_w] << "\n";
-
-    if (std::abs(pdg_ids[hadr_w]) != W_ID) return false;
-
-    int lep_w = -1;
-    if (mothers[l] != mothers[nu])
-    {
-        return false;
-    }
-    else
-    {
-        lep_w = mothers[l];
-    }
-
-    // std::cout << "lep_w = " << lep_w << ", pid = " << pdg_ids[lep_w] << "\n";
-
-    if (std::abs(pdg_ids[lep_w]) != W_ID) return false;
-
-    if (mothers[lep_w] != mothers[hadr_w]) return false;
-    int h_toWW = mothers[lep_w];
-
-    // std::cout << "h_toWW = " << h_toWW << "\n";
-    // std::cout << "pdg_ids[h_toWW] = " << pdg_ids[h_toWW] << "\n";
-    if (pdg_ids[h_toWW] != HIGGS_ID) return false;
 
     return true;
 }

@@ -19,6 +19,8 @@ static constexpr int N_SIG_PART = 8;
 static constexpr int RADION_ID = 35;
 static constexpr int HIGGS_ID = 25;
 static constexpr int W_ID = 24;
+static constexpr int TAU_ID = 15;
+static constexpr int NU_TAU_ID = 16;
 static constexpr int WPLUS_ID = 24;
 static constexpr int WMINUS_ID = -24;
 static constexpr int B_ID = 5;
@@ -65,7 +67,7 @@ int FindLast(int target_id, int const* pdg_ids, int n_gen_part);
 // if any signal particle was not found returns empty vector
 std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_part);
 
-// finds daughters of mother at mother_idx with pdg ids in range desc_range
+// finds daughters with pdg ids in range desc_range of mother at mother_idx 
 std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int mother_idx, int const* mothers, int const* pdg_ids, int n_gen_part);
 
 // self-explanatory helper functions
@@ -74,7 +76,7 @@ inline bool IsLepton(int pdg_id) { return std::find(LEPTONS.begin(), LEPTONS.end
 inline bool IsNeutrino(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRINOS.end(), std::abs(pdg_id)) != NEUTRINOS.end(); }
 
 // check validity of signal particles
-bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids);
+bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids, int n_gen_part);
 
 // checks of particle cand_idx is daughter of particle parent_idx
 bool IsDescOf(int cand_idx, int parent_idx, int const* mothers);
@@ -155,4 +157,5 @@ inline bool ConsistentMatch(MatchedPair const& mp1, MatchedPair const& mp2)
 
     return (q1.Pt() > q2.Pt() ? j1.Pt() > j2.Pt() : j1.Pt() < j2.Pt());
 };
+
 #endif
