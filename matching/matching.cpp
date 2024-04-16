@@ -132,6 +132,11 @@ int main()
     std::string jet_vs_quark_q2("jet_vs_quark_q2");
     std::string jet_vs_quark_q1_wnu("jet_vs_quark_q1_wnu");
     std::string jet_vs_quark_q2_wnu("jet_vs_quark_q2_wnu");
+    std::string hadW_vs_lepW("hadW_vs_lepW");
+    // std::string hadWfirst_vs_hadWlast("hadWfirst_vs_hadWlast");
+    // std::string lepWfirst_vs_lepWlast("lepWfirst_vs_lepWlast");
+    // std::string hadWfirst_vs_qq("hadWfirst_vs_qq");
+    // std::string lepWfirst_vs_lv("lepWfirst_vs_lv");
 
     hm.Add(met_vs_all_nu, "MET vs sum of all neutrinos in the event", {"MET pt, [GeV]", "all nu pt, [GeV]"}, {0, 250}, {0, 250}, {50, 50});
     hm.Add(met_vs_all_nu_px, "MET vs sum of all neutrinos in the event", {"MET px, [GeV]", "all nu px, [GeV]"}, {0, 250}, {0, 250}, {50, 50});
@@ -144,6 +149,11 @@ int main()
     hm.Add(jet_vs_quark_q2, "Jet pt vs  quark pt: q2", {"Jet pt, [GeV]", "quark, [GeV]"}, {0, 350}, {0, 350}, {50, 50});
     hm.Add(jet_vs_quark_q1_wnu, "Jet pt vs  quark pt: q1 (neutrino added)", {"Jet pt, [GeV]", "quark, [GeV]"}, {0, 350}, {0, 350}, {50, 50});
     hm.Add(jet_vs_quark_q2_wnu, "Jet pt vs  quark pt: q2 (neutrino added)", {"Jet pt, [GeV]", "quark, [GeV]"}, {0, 350}, {0, 350}, {50, 50});
+    hm.Add(hadW_vs_lepW, "Hadronic W mass vs Leptonic W mass", {"Hadronic W mass, [GeV]", "Leptonic W mass, [GeV]"}, {0, 120}, {0, 120}, {50, 50});
+    // hm.Add(hadWfirst_vs_hadWlast, "First hadronic W vs Last hadronic W", {"First hadronic W mass, [GeV]", "Last hadronic W mass, [GeV]"}, {0, 120}, {0, 120}, {50, 50});
+    // hm.Add(lepWfirst_vs_lepWlast, "First leptonic W vs Last leptonic W", {"First leptonic W mass, [GeV]", "Last leptonic W mass, [GeV]"}, {0, 120}, {0, 120}, {50, 50});
+    // hm.Add(hadWfirst_vs_qq, "First hadronic W vs W->qq", {"First hadronic W mass, [GeV]", "W->qq mass, [GeV]"}, {0, 120}, {0, 120}, {50, 50});
+    // hm.Add(lepWfirst_vs_lv, "First leptonic W vs W->lv", {"First leptonic W mass, [GeV]", "W->lv mass, [GeV]"}, {0, 120}, {0, 120}, {50, 50});
 
     std::cout << std::boolalpha;
 
@@ -152,24 +162,48 @@ int main()
         myTree->GetEntry(i);
         
         auto sig  = GetSignal(GenPart_pdgId, GenPart_genPartIdxMother, nGenPart);
+
         if (!sig.empty())
         {
             if (CheckSignal(sig, GenPart_genPartIdxMother, GenPart_pdgId)) 
             {
                 ++valid_sig;
 
+                hm.Fill(hadW_vs_lepW, GenPart_mass[sig[SIG::HadWlast]], GenPart_mass[sig[SIG::LepWlast]]);
+                // hm.Fill(hadWfirst_vs_hadWlast, GenPart_mass[sig[SIG::HadWfirst]], GenPart_mass[sig[SIG::HadWlast]]);
+                // hm.Fill(lepWfirst_vs_lepWlast, GenPart_mass[sig[SIG::LepWfirst]], GenPart_mass[sig[SIG::LepWlast]]);
+
                 KinematicData genpart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, static_cast<int>(nGenPart)};
                 KinematicData genjet{GenJet_pt, GenJet_eta, GenJet_phi, GenJet_mass, static_cast<int>(nGenJet)};
+
+                // TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
+                // TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
+                // TLorentzVector lq1_p4 = GetP4(genpart, sig[SIG::q1]);
+                // TLorentzVector lq2_p4 = GetP4(genpart, sig[SIG::q2]);
+
+                // hm.Fill(hadWfirst_vs_qq, GenPart_mass[sig[SIG::HadWfirst]], (lq1_p4 + lq2_p4).M());
+                // hm.Fill(lepWfirst_vs_lv, GenPart_mass[sig[SIG::LepWfirst]], (l_p4 + nu_p4).M());
 
                 int b_idx = sig[SIG::b];
                 int bbar_idx = sig[SIG::bbar];
                 int q1_idx = sig[SIG::q1];
                 int q2_idx = sig[SIG::q2];
                 
+                // std::cout << "Event " << i << ":\n";
+                // std::cout << "matching " << GenPart_pdgId[b_idx] << "(pt = " << GenPart_pt[b_idx] << "):\n";
                 int b_match = Match(b_idx, genpart, genjet);
+                // std::cout << "matching " << GenPart_pdgId[bbar_idx] << "(pt = " << GenPart_pt[bbar_idx] << "):\n";
                 int bbar_match = Match(bbar_idx, genpart, genjet);
+                // std::cout << "matching " << GenPart_pdgId[q1_idx] << "(pt = " << GenPart_pt[q1_idx] << "):\n";
                 int q1_match = Match(q1_idx, genpart, genjet);
+                // std::cout << "matching " << GenPart_pdgId[q2_idx] << "(pt = " << GenPart_pt[q2_idx] << "):\n";
                 int q2_match = Match(q2_idx, genpart, genjet);
+                // std::cout << "======================================\n";
+
+                // if (std::cin.get())
+                // {
+                //     continue;
+                // }
 
                 // skip event if matching failed
                 std::vector<int> matches{b_match, bbar_match, q1_match, q2_match};
@@ -256,7 +290,7 @@ int main()
                     #endif
 
                     // determines if particle at index idx is a neutrino
-                    auto NotNu = [&GenPart_pdgId](int idx) { return !IsNeutrino(GenPart_pdgId[idx]); };
+                    auto NotNu = [&GenPart_pdgId](int idx) { return !IsNu(GenPart_pdgId[idx]); };
 
                     auto all_nus = GetFinalParticles(GenPart_genPartIdxMother, nGenPart);
                     all_nus.erase(std::remove_if(all_nus.begin(), all_nus.end(), NotNu), all_nus.end());
