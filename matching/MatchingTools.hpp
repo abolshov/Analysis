@@ -33,7 +33,7 @@ static constexpr int BBAR_ID = -5;
 static constexpr double DR_THRESH = 0.5;
 static constexpr int N_POINTS = 20;
 
-static constexpr double MIN_GENJET_PT = 25.0;
+static constexpr double MIN_GENJET_PT = 20.0;
 static constexpr double MAX_GENJET_ETA = 2.5;
 
 static constexpr double MIN_LEP_PT = 20.0;
@@ -141,5 +141,7 @@ inline bool ConsistentMatch(MatchedPair const& mp1, MatchedPair const& mp2)
 
     return (q1.Pt() > q2.Pt() ? j1.Pt() > j2.Pt() : j1.Pt() < j2.Pt());
 };
+
+std::vector<int> GetMatchableJets(KinematicData const& kd);
 
 #endif
