@@ -10,11 +10,15 @@
 #include "TH2.h"
 #include "TGraph.h"
 
-static const std::vector<int> LIGHT_QUARKS = {1, 2, 3, 4};
-static const std::vector<int> LEPTONS = {11, 13};
-static const std::vector<int> NEUTRINOS = {12, 14};
+// signal does not include tau leptons and neutrinos
+static const std::vector<int> SIG_LIGHT_QUARKS = {1, 2, 3, 4};
+static const std::vector<int> SIG_LEPTONS = {11, 13};
+static const std::vector<int> SIG_NEUTRINOS = {12, 14};
 
-static constexpr int N_SIG_PART = 8;
+static const std::vector<int> LEPTONS = {11, 13, 15};
+static const std::vector<int> NEUTRINOS = {12, 14, 16};
+
+static constexpr int N_SIG_PART = 13;
 
 static constexpr int RADION_ID = 35;
 static constexpr int HIGGS_ID = 25;
@@ -26,7 +30,7 @@ static constexpr int WMINUS_ID = -24;
 static constexpr int B_ID = 5;
 static constexpr int BBAR_ID = -5;
 
-static constexpr double DR_THRESH = 0.4;
+static constexpr double DR_THRESH = 0.5;
 static constexpr int N_POINTS = 20;
 
 static constexpr double MIN_GENJET_PT = 25.0;
@@ -36,7 +40,7 @@ static constexpr double MIN_LEP_PT = 20.0;
 static constexpr double MAX_LEP_ETA = 2.4;
 
 // specifies order of signal (hh->bbWW->bbqqlv) particles
-enum SIG { h1, h2, b, bbar, q1, q2, l, nu };
+enum SIG { X, H1, H2, b, bbar, LepWfirst, HadWfirst, HadWlast, q1, q2, LepWlast, l, nu };
 
 void Print(TLorentzVector const& p, bool EXYZ = false);
 
@@ -71,12 +75,14 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
 std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int mother_idx, int const* mothers, int const* pdg_ids, int n_gen_part);
 
 // self-explanatory helper functions
-inline bool IsLightQuark(int pdg_id) { return std::find(LIGHT_QUARKS.begin(), LIGHT_QUARKS.end(), std::abs(pdg_id)) != LIGHT_QUARKS.end(); }
-inline bool IsLepton(int pdg_id) { return std::find(LEPTONS.begin(), LEPTONS.end(), std::abs(pdg_id)) != LEPTONS.end(); }
-inline bool IsNeutrino(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRINOS.end(), std::abs(pdg_id)) != NEUTRINOS.end(); }
+inline bool IsSigLightQuark(int pdg_id) { return std::find(SIG_LIGHT_QUARKS.begin(), SIG_LIGHT_QUARKS.end(), std::abs(pdg_id)) != SIG_LIGHT_QUARKS.end(); }
+inline bool IsSigLep(int pdg_id) { return std::find(SIG_LEPTONS.begin(), SIG_LEPTONS.end(), std::abs(pdg_id)) != SIG_LEPTONS.end(); }
+inline bool IsSigNu(int pdg_id) { return std::find(SIG_NEUTRINOS.begin(), SIG_NEUTRINOS.end(), std::abs(pdg_id)) != SIG_NEUTRINOS.end(); }
+
+inline bool IsNu(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRINOS.end(), std::abs(pdg_id)) != NEUTRINOS.end(); }
 
 // check validity of signal particles
-bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids, int n_gen_part);
+bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids);
 
 // checks of particle cand_idx is daughter of particle parent_idx
 bool IsDescOf(int cand_idx, int parent_idx, int const* mothers);
@@ -111,28 +117,6 @@ std::unique_ptr<TGraph> DRCone(KinematicData const& kd, int idx);
 using MatchKinematics = std::pair<KinematicData, KinematicData>;
 using MatchIndex = std::vector<std::pair<int, int>>; // contains pairs: {part_idx, jet_matched_to_part_idx}
 void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_index, int evt_num, std::pair<int*, int*> ptrs);
-
-// returns jet rescaling factor to compensate for double counting of overlapping jet momentum
-// momentum carried by overlap is counted twice by both jets
-// there are two possibilities: 
-// 1. subtract overlap from leading jet and leave subleading untouched (use c_lead to rescale leading jet)
-// 2. subtract overlap from subleading jet and leave leading untouched (use c_lead to rescale subleading jet)
-// so you either rescale only the leading jet, or rescale only the subleading
-// can potentially flip who's leading or who's subleading
-inline double JetOverlapCorrection(TLorentzVector const& j1, TLorentzVector const& j2)
-{
-    // distance between jets
-    double d = j1.DeltaR(j2);
-    // total overlap area
-    double overlap = 2*DR_THRESH*DR_THRESH*std::acos(d/(2*DR_THRESH)) - 0.5*d*std::sqrt(4*DR_THRESH*DR_THRESH - d*d);
-    double total = 2*TMath::Pi()*DR_THRESH*DR_THRESH - overlap;
-    double r = overlap/total;
-
-    return 1-r;
-}
-
-// computes sum of 4-momenta of stable particles in a cone of radius R around given particle (target)
-TLorentzVector Cone(int target, int const* mothers, KinematicData const& kd, double rad = DR_THRESH);
 
 // checks if all matched jets pass genjet acceptance cut
 // returns true if all jets satisfy selection criteria

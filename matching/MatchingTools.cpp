@@ -130,30 +130,45 @@ std::vector<int> FindSpecificDescendants(std::vector<int> const& desc_range, int
 std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_part)
 {
     std::vector<int> res(N_SIG_PART, -1);
-    // res.reserve(N_SIG_PART);
     int rad_idx = FindLast(RADION_ID, pdg_ids, n_gen_part);
+    res[SIG::X] = rad_idx;
     
-    // auto gen = GetNextGeneration(rad_idx, mothers, n_gen_part);
     // tmp vector to store generation being examined currently
     auto tmp1 = FindSpecificDescendants({HIGGS_ID}, rad_idx, mothers, pdg_ids, n_gen_part);
     // H0->hh only
     if (tmp1.size() == 2)
     {
-        res[SIG::h1] = tmp1[0];
-        res[SIG::h2] = tmp1[1];
+        res[SIG::H1] = tmp1[0];
+        res[SIG::H2] = tmp1[1];
     }
 
-    tmp1 = GetNextGeneration(res[SIG::h1], mothers, n_gen_part); 
-    auto tmp2 = GetNextGeneration(res[SIG::h2], mothers, n_gen_part); 
+    tmp1 = GetNextGeneration(res[SIG::H1], mothers, n_gen_part); 
+    auto tmp2 = GetNextGeneration(res[SIG::H2], mothers, n_gen_part); 
     tmp1.insert(tmp1.end(), tmp2.begin(), tmp2.end()); // now tmp1 contains indices of all daughters of both higgses or is empty;
     
     // hh->bbWW only!
+    int first_w_plus = -1;
+    int first_w_minus = -1;
     if (tmp1.size() == 4)
     {
         for (auto const& idx: tmp1)
         {
-            if (pdg_ids[idx] == B_ID) res[SIG::b] = idx;
-            if (pdg_ids[idx] == BBAR_ID) res[SIG::bbar] = idx;
+            if (pdg_ids[idx] == B_ID)
+            {
+                res[SIG::b] = idx;
+            }
+            else if (pdg_ids[idx] == BBAR_ID) 
+            {
+                res[SIG::bbar] = idx;
+            }
+            else if (pdg_ids[idx] == WPLUS_ID)
+            {
+                first_w_plus = idx;
+            }
+            else if (pdg_ids[idx] == WMINUS_ID)
+            {
+                first_w_minus = idx;
+            }
         }
     }
 
@@ -168,11 +183,16 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
         {
             res[SIG::q1] = w_plus_daughters[0];
             res[SIG::q2] = w_plus_daughters[1];
+            res[SIG::HadWlast] = wplus;
+            res[SIG::HadWfirst] = (IsDescOf(wplus, first_w_plus, mothers) || wplus == first_w_plus) ? first_w_plus : first_w_minus;
         }
         else if (std::abs(pdg_ids[w_plus_daughters[0]]) > B_ID && std::abs(pdg_ids[w_plus_daughters[1]]) > B_ID)
         {
-            res[SIG::l] = IsLepton(pdg_ids[w_plus_daughters[0]]) ? w_plus_daughters[0] : w_plus_daughters[1];
-            res[SIG::nu] = IsNeutrino(pdg_ids[w_plus_daughters[1]]) ? w_plus_daughters[1] : w_plus_daughters[0];
+            res[SIG::l] = IsSigLep(pdg_ids[w_plus_daughters[0]]) ? w_plus_daughters[0] : w_plus_daughters[1];
+            res[SIG::nu] = IsSigNu(pdg_ids[w_plus_daughters[1]]) ? w_plus_daughters[1] : w_plus_daughters[0];
+            res[SIG::LepWlast] = wplus;
+            res[SIG::HadWfirst] = first_w_plus;
+            res[SIG::LepWfirst] = (IsDescOf(wplus, first_w_plus, mothers) || wplus == first_w_plus) ? first_w_plus : first_w_minus;
         }
     }
 
@@ -182,30 +202,39 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
         {
             res[SIG::q1] = w_minus_daughters[0];
             res[SIG::q2] = w_minus_daughters[1];
+            res[SIG::HadWlast] = wminus;
+            res[SIG::HadWfirst] = (IsDescOf(wminus, first_w_minus, mothers) || wminus == first_w_minus) ? first_w_minus : first_w_plus;
         }
         else if (std::abs(pdg_ids[w_minus_daughters[0]]) > B_ID && std::abs(pdg_ids[w_minus_daughters[1]]) > B_ID)
         {
-            res[SIG::l] = IsLepton(pdg_ids[w_minus_daughters[0]]) ? w_minus_daughters[0] : w_minus_daughters[1];
-            res[SIG::nu] = IsNeutrino(pdg_ids[w_minus_daughters[1]]) ? w_minus_daughters[1] : w_minus_daughters[0];
+            res[SIG::l] = IsSigLep(pdg_ids[w_minus_daughters[0]]) ? w_minus_daughters[0] : w_minus_daughters[1];
+            res[SIG::nu] = IsSigNu(pdg_ids[w_minus_daughters[1]]) ? w_minus_daughters[1] : w_minus_daughters[0];
+            res[SIG::LepWlast] = wminus;
+            res[SIG::LepWfirst] = (IsDescOf(wminus, first_w_minus, mothers) || wminus == first_w_minus) ? first_w_minus : first_w_plus;
         }
     }
 
-    if (std::any_of(res.begin(), res.end(), [](int x){ return x == -1; })) res.clear();
+    if (std::any_of(res.begin(), res.end(), [](int x){ return x == -1; })) 
+    {
+        res.clear();
+    }
     return res;
 }
 
-bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids, int n_gen_part)
+bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids)
 {
     if (signal.size() != N_SIG_PART)
     {
         return false;
     }
     
-    int rad_idx = FindLast(RADION_ID, pdg_ids, n_gen_part);
-
     for (auto s: signal)
     {
-        if (!IsDescOf(s, rad_idx, mothers))
+        if (pdg_ids[s] == RADION_ID)
+        {
+            continue;
+        }
+        if (!IsDescOf(s, signal[SIG::X], mothers))
         {
             return false;
         }
@@ -250,13 +279,17 @@ int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
         double dr = ppart.DeltaR(pjet);
         if (dr < DR_THRESH)
         {
+            // std::cout << "\tpotential match: dR = " << dr << ", pt = " << pjet.Pt() << "\n";
             hash.insert({dr, i});
         }
     }
 
     auto best_match = hash.begin();
 
-    if (best_match != hash.end()) return best_match->second;
+    if (best_match != hash.end())
+    {
+        return best_match->second;
+    }
     return -1;
 }
 
