@@ -443,26 +443,26 @@ std::vector<int> GetMatchableJets(KinematicData const& kd)
 {
     std::vector<int> res;
     auto const& [pt, eta, phi, m, n] = kd;
-    auto IsMatchable = [&eta, &res, i = 0](double j_pt) mutable
-    {
-        if (j_pt > MIN_GENJET_PT && std::abs(eta[i]) < MAX_GENJET_ETA)
-        {
-            res.push_back(i);
-        }
-        ++i;
-    };
-    std::for_each(pt, pt + n, IsMatchable);
-
-    // auto IsMatchable = [i = 0](double j_pt, double j_eta) mutable
+    // auto IsMatchable = [&eta, &res, i = 0](double j_pt) mutable
     // {
-    //     if (j_pt > MIN_GENJET_PT && std::abs(j_eta) < MAX_GENJET_ETA)
+    //     if (j_pt > MIN_GENJET_PT && std::abs(eta[i]) < MAX_GENJET_ETA)
     //     {
-    //         return i;
+    //         res.push_back(i);
     //     }
-    //     return -1;
+    //     ++i;
     // };
-    // std::transform(pt, pt + n, eta, std::back_inserter(res), IsMatchable);
-    // res.erase(std::remove_if(res.begin(), res.end(), [](int x) { return x == -1; }), res.end());
+    // std::for_each(pt, pt + n, IsMatchable);
+
+    auto IsMatchable = [i = 0](double j_pt, double j_eta) mutable
+    {
+        if (j_pt > MIN_GENJET_PT && std::abs(j_eta) < MAX_GENJET_ETA)
+        {
+            return i;
+        }
+        return -1;
+    };
+    std::transform(pt, pt + n, eta, std::back_inserter(res), IsMatchable);
+    res.erase(std::remove_if(res.begin(), res.end(), [](int x) { return x == -1; }), res.end());
 
     return res;
 }
