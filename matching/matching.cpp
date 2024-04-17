@@ -19,7 +19,8 @@
 #include "MatchingTools.hpp"
 #include "HistManager.hpp"
 
-static constexpr int MAX_GENJET = 21;
+static constexpr int MAX_AK4_GENJET = 21;
+static constexpr int MAX_AK8_GENJET = 7;
 static constexpr int MAX_GENPART = 270;
 
 int main()
@@ -42,18 +43,36 @@ int main()
     Int_t           GenPart_pdgId[MAX_GENPART];   //[nGenPart]
     Int_t           GenPart_status[MAX_GENPART];   //[nGenPart]
 
+    // ak4 jets
     UInt_t          nGenJet;
-    Float_t         GenJet_eta[MAX_GENJET];   //[nGenJet]
-    Float_t         GenJet_mass[MAX_GENJET];   //[nGenJet]
-    Float_t         GenJet_phi[MAX_GENJET];   //[nGenJet]
-    Float_t         GenJet_pt[MAX_GENJET];   //[nGenJet]
+    Float_t         GenJetAK4_eta[MAX_AK4_GENJET];   //[nGenJet]
+    Float_t         GenJetAK4_mass[MAX_AK4_GENJET];   //[nGenJet]
+    Float_t         GenJetAK4_phi[MAX_AK4_GENJET];   //[nGenJet]
+    Float_t         GenJetAK4_pt[MAX_AK4_GENJET];   //[nGenJet]
+    Int_t           GenJetAK4_partonFlavour[MAX_AK4_GENJET];   //[nGenJet]
+    UChar_t         GenJetAK4_hadronFlavour[MAX_AK4_GENJET];   //[nGenJet]
+    
+    // ak8 jets
+    UInt_t          nGenJetAK8;
+    Float_t         GenJetAK8_eta[MAX_AK8_GENJET];   //[nGenJetAK8]
+    Float_t         GenJetAK8_mass[MAX_AK8_GENJET];   //[nGenJetAK8]
+    Float_t         GenJetAK8_phi[MAX_AK8_GENJET];   //[nGenJetAK8]
+    Float_t         GenJetAK8_pt[MAX_AK8_GENJET];   //[nGenJetAK8]
+    Int_t           GenJetAK8_partonFlavour[MAX_AK8_GENJET];   //[nGenJetAK8]
+    UChar_t         GenJetAK8_hadronFlavour[MAX_AK8_GENJET];   //[nGenJetAK8]
 
-    Int_t           GenJet_partonFlavour[MAX_GENJET];   //[nGenJet]
-    Int_t           Jet_genJetIdx[MAX_GENJET];  
+    // ak8 subjets
+    UInt_t          nSubGenJetAK8;
+    Float_t         SubGenJetAK8_eta[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
+    Float_t         SubGenJetAK8_mass[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
+    Float_t         SubGenJetAK8_phi[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
+    Float_t         SubGenJetAK8_pt[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
 
     Float_t         GenMET_phi;
     Float_t         GenMET_pt;
 
+
+    // gen particles 
     myTree->SetBranchAddress("nGenPart", &nGenPart);
     myTree->SetBranchAddress("GenPart_eta", &GenPart_eta);
     myTree->SetBranchAddress("GenPart_mass", &GenPart_mass);
@@ -65,14 +84,30 @@ int main()
     myTree->SetBranchAddress("GenPart_phi", &GenPart_phi);
     // myTree->SetBranchAddress("GenPart_statusFlags", &GenPart_statusFlags);
 
+    // ak4 gen jets
     myTree->SetBranchAddress("nGenJet", &nGenJet);
-    myTree->SetBranchAddress("GenJet_eta", &GenJet_eta);
-    myTree->SetBranchAddress("GenJet_mass", &GenJet_mass);
-    myTree->SetBranchAddress("GenJet_phi", &GenJet_phi);
-    myTree->SetBranchAddress("GenJet_pt", &GenJet_pt);
+    myTree->SetBranchAddress("GenJet_eta", &GenJetAK4_eta);
+    myTree->SetBranchAddress("GenJet_mass", &GenJetAK4_mass);
+    myTree->SetBranchAddress("GenJet_phi", &GenJetAK4_phi);
+    myTree->SetBranchAddress("GenJet_pt", &GenJetAK4_pt);
+    myTree->SetBranchAddress("GenJet_partonFlavour", &GenJetAK4_partonFlavour);
+    myTree->SetBranchAddress("GenJet_hadronFlavour", &GenJetAK4_hadronFlavour);
 
-    myTree->SetBranchAddress("GenJet_partonFlavour", &GenJet_partonFlavour);
-    myTree->SetBranchAddress("Jet_genJetIdx", &Jet_genJetIdx);
+    // ak8 gen jets
+    myTree->SetBranchAddress("nGenJetAK8", &nGenJetAK8);
+    myTree->SetBranchAddress("GenJetAK8_eta", &GenJetAK8_eta);
+    myTree->SetBranchAddress("GenJetAK8_mass", &GenJetAK8_mass);
+    myTree->SetBranchAddress("GenJetAK8_phi", &GenJetAK8_phi);
+    myTree->SetBranchAddress("GenJetAK8_pt", &GenJetAK8_pt);
+    myTree->SetBranchAddress("GenJetAK8_partonFlavour", &GenJetAK8_partonFlavour);
+    myTree->SetBranchAddress("GenJetAK8_hadronFlavour", &GenJetAK8_hadronFlavour);
+
+    // ak8 hen subjets
+    myTree->SetBranchAddress("nSubGenJetAK8", &nSubGenJetAK8);
+    myTree->SetBranchAddress("SubGenJetAK8_eta", &SubGenJetAK8_eta);
+    myTree->SetBranchAddress("SubGenJetAK8_mass", &SubGenJetAK8_mass);
+    myTree->SetBranchAddress("SubGenJetAK8_phi", &SubGenJetAK8_phi);
+    myTree->SetBranchAddress("SubGenJetAK8_pt", &SubGenJetAK8_pt);
 
     myTree->SetBranchAddress("GenMET_phi", &GenMET_phi);
     myTree->SetBranchAddress("GenMET_pt", &GenMET_pt);
@@ -156,6 +191,16 @@ int main()
         myTree->GetEntry(i);
         
         auto sig  = GetSignal(GenPart_pdgId, GenPart_genPartIdxMother, nGenPart);
+        for (int i = 0; i < static_cast<int>(nGenJet); ++i)
+        {
+            std::cout << static_cast<char>(GenJetAK4_hadronFlavour[i]) << " ";
+        }
+
+        if (std::cin.get())
+        {
+            std::cout << "\n";
+            continue;
+        }
 
         if (!sig.empty())
         {
@@ -166,7 +211,7 @@ int main()
                 hm.Fill(hadW_vs_lepW, GenPart_mass[sig[SIG::HadWlast]], GenPart_mass[sig[SIG::LepWlast]]);
 
                 KinematicData genpart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, static_cast<int>(nGenPart)};
-                KinematicData genjet{GenJet_pt, GenJet_eta, GenJet_phi, GenJet_mass, static_cast<int>(nGenJet)};
+                KinematicData genjet{GenJetAK4_pt, GenJetAK4_eta, GenJetAK4_phi, GenJetAK4_mass, static_cast<int>(nGenJet)};
 
                 auto matchable_jets = GetMatchableJets(genjet);
                 int n_matchable_jets = matchable_jets.size();
