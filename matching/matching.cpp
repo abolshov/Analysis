@@ -278,7 +278,6 @@ int main()
                 bool same_match = (std::unique(matches.begin(), matches.end()) != matches.end());
                 if(negative_match || same_match)
                 {
-<<<<<<< HEAD
                     // std::cout << "Event " << i << ":\n";
                     // std::cout << "\tmatches: ";
                     // for (auto m: matches_copy)
@@ -316,29 +315,6 @@ int main()
                     // {
                     //     continue;
                     // }
-=======
-                    std::cout << "Event " << i << ":\n";
-                    std::cout << "\tmatches: ";
-                    for (auto m: matches_copy)
-                    {
-                        std::cout << m << " ";
-                    }
-                    std::cout << "\n";
-                    std::cout << "\tmin_dR = " << MinDeltaR({bq_p4, bbarq_p4, lq1_p4, lq2_p4}) << "\n";
-                    std::cout << "\tdR(q, q) = " << lq1_p4.DeltaR(lq2_p4) << "\n";
-                    std::cout << "\tq1_pt = " << lq1_p4.Pt() << "\n";
-                    std::cout << "\tq2_pt = " << lq2_p4.Pt() << "\n";
-                    std::cout << "\tdR(b, b) = " << bq_p4.DeltaR(bbarq_p4) << "\n";
-                    std::cout << "\tb_pt = " << bq_p4.Pt() << "\n";
-                    std::cout << "\tbbar_pt = " << bbarq_p4.Pt() << "\n";
-                    std::cout << "==========================\n";
-                    // continue;
-
-                    if (std::cin.get())
-                    {
-                        continue;
-                    }
->>>>>>> a9b23281d869400dfce86e9650dad307d352ba8e
                 } 
                 else
                 {
