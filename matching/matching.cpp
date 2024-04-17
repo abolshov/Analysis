@@ -28,8 +28,8 @@ int main()
     auto start = std::chrono::system_clock::now();
     auto gStyle = std::make_unique<TStyle>();
     gStyle->SetPalette(kRainBow);
-    TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
-    // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
+    // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
+    TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
     // TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-600_narrow_13TeV-madgraph.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -44,13 +44,13 @@ int main()
     Int_t           GenPart_status[MAX_GENPART];   //[nGenPart]
 
     // ak4 jets
-    UInt_t          nGenJet;
-    Float_t         GenJetAK4_eta[MAX_AK4_GENJET];   //[nGenJet]
-    Float_t         GenJetAK4_mass[MAX_AK4_GENJET];   //[nGenJet]
-    Float_t         GenJetAK4_phi[MAX_AK4_GENJET];   //[nGenJet]
-    Float_t         GenJetAK4_pt[MAX_AK4_GENJET];   //[nGenJet]
-    Int_t           GenJetAK4_partonFlavour[MAX_AK4_GENJET];   //[nGenJet]
-    UChar_t         GenJetAK4_hadronFlavour[MAX_AK4_GENJET];   //[nGenJet]
+    UInt_t          nGenJetAK4;
+    Float_t         GenJetAK4_eta[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Float_t         GenJetAK4_mass[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Float_t         GenJetAK4_phi[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Float_t         GenJetAK4_pt[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Int_t           GenJetAK4_partonFlavour[MAX_AK4_GENJET];   //[nGenJetAK4]
+    UChar_t         GenJetAK4_hadronFlavour[MAX_AK4_GENJET];   //[nGenJetAK4]
     
     // ak8 jets
     UInt_t          nGenJetAK8;
@@ -85,13 +85,18 @@ int main()
     // myTree->SetBranchAddress("GenPart_statusFlags", &GenPart_statusFlags);
 
     // ak4 gen jets
-    myTree->SetBranchAddress("nGenJet", &nGenJet);
+    myTree->SetBranchAddress("nGenJet", &nGenJetAK4);
     myTree->SetBranchAddress("GenJet_eta", &GenJetAK4_eta);
     myTree->SetBranchAddress("GenJet_mass", &GenJetAK4_mass);
     myTree->SetBranchAddress("GenJet_phi", &GenJetAK4_phi);
     myTree->SetBranchAddress("GenJet_pt", &GenJetAK4_pt);
     myTree->SetBranchAddress("GenJet_partonFlavour", &GenJetAK4_partonFlavour);
     myTree->SetBranchAddress("GenJet_hadronFlavour", &GenJetAK4_hadronFlavour);
+
+    // see https://stackoverflow.com/questions/15585267/cout-not-printing-unsigned-char to use GenJet_hadronFlavour
+    // explicitly cast to unsigned
+    // also can be fixed by unary +
+    // unsigned is understood as unsifned int by compiler
 
     // ak8 gen jets
     myTree->SetBranchAddress("nGenJetAK8", &nGenJetAK8);
@@ -191,16 +196,26 @@ int main()
         myTree->GetEntry(i);
         
         auto sig  = GetSignal(GenPart_pdgId, GenPart_genPartIdxMother, nGenPart);
-        for (int i = 0; i < static_cast<int>(nGenJet); ++i)
-        {
-            std::cout << static_cast<char>(GenJetAK4_hadronFlavour[i]) << " ";
-        }
 
-        if (std::cin.get())
-        {
-            std::cout << "\n";
-            continue;
-        }
+        // std::cout << "Event " << i << ":\n";
+        // std::cout << "\tAK8 jets pt: ";
+        // for (int i = 0; i < static_cast<int>(nGenJetAK8); ++i)
+        // {
+        //     std::cout << GenJetAK8_pt[i] << " ";
+        // }
+        // std::cout << "\n";
+        // std::cout << "\tAK8 subjetsjets pt: ";
+        // for (int i = 0; i < static_cast<int>(nSubGenJetAK8); ++i)
+        // {
+        //     std::cout << GenJetAK8_pt[i] << " ";
+        // }
+        
+        // if (std::cin.get())
+        // {
+        //     std::cout << "\n";
+        //     continue;
+        // }
+        // std::cout << "===================================\n";
 
         if (!sig.empty())
         {
@@ -211,33 +226,40 @@ int main()
                 hm.Fill(hadW_vs_lepW, GenPart_mass[sig[SIG::HadWlast]], GenPart_mass[sig[SIG::LepWlast]]);
 
                 KinematicData genpart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, static_cast<int>(nGenPart)};
-                KinematicData genjet{GenJetAK4_pt, GenJetAK4_eta, GenJetAK4_phi, GenJetAK4_mass, static_cast<int>(nGenJet)};
+                KinematicData genjet_ak4{GenJetAK4_pt, GenJetAK4_eta, GenJetAK4_phi, GenJetAK4_mass, static_cast<int>(nGenJetAK4)};
+                KinematicData genjet_ak8{GenJetAK8_pt, GenJetAK8_eta, GenJetAK8_phi, GenJetAK8_mass, static_cast<int>(nGenJetAK8)};
+                KinematicData subgenjet_ak8{SubGenJetAK8_pt, SubGenJetAK8_eta, SubGenJetAK8_phi, SubGenJetAK8_mass, static_cast<int>(nSubGenJetAK8)};
 
-                auto matchable_jets = GetMatchableJets(genjet);
+                auto matchable_jets = GetMatchableJets(genjet_ak4);
                 int n_matchable_jets = matchable_jets.size();
                 if (n_matchable_jets >= 4)
                 {
                     ++have_matchable_jets;
                 }
-                else
-                {
-                    continue;
-                }
+                // else
+                // {
+                //     continue;
+                // }
 
                 int b_idx = sig[SIG::b];
                 int bbar_idx = sig[SIG::bbar];
                 int q1_idx = sig[SIG::q1];
                 int q2_idx = sig[SIG::q2];
+
+                TLorentzVector bq_p4 = GetP4(genpart, b_idx);
+                TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
+                TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
+                TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
                 
                 // std::cout << "Event " << i << ":\n";
                 // std::cout << "matching " << GenPart_pdgId[b_idx] << "(pt = " << GenPart_pt[b_idx] << "):\n";
-                int b_match = Match(b_idx, genpart, genjet);
+                int b_match = Match(b_idx, genpart, genjet_ak4);
                 // std::cout << "matching " << GenPart_pdgId[bbar_idx] << "(pt = " << GenPart_pt[bbar_idx] << "):\n";
-                int bbar_match = Match(bbar_idx, genpart, genjet);
+                int bbar_match = Match(bbar_idx, genpart, genjet_ak4);
                 // std::cout << "matching " << GenPart_pdgId[q1_idx] << "(pt = " << GenPart_pt[q1_idx] << "):\n";
-                int q1_match = Match(q1_idx, genpart, genjet);
+                int q1_match = Match(q1_idx, genpart, genjet_ak4);
                 // std::cout << "matching " << GenPart_pdgId[q2_idx] << "(pt = " << GenPart_pt[q2_idx] << "):\n";
-                int q2_match = Match(q2_idx, genpart, genjet);
+                int q2_match = Match(q2_idx, genpart, genjet_ak4);
                 // std::cout << "======================================\n";
 
                 // if (std::cin.get())
@@ -247,6 +269,7 @@ int main()
 
                 // skip event if matching failed
                 std::vector<int> matches{b_match, bbar_match, q1_match, q2_match};
+                std::vector<int> matches_copy = matches;
                 // need to sort matches before doing unique
                 // unique removes all except the first CONSECUTIVE duplicates 
                 // (see https://en.cppreference.com/w/cpp/algorithm/unique)
@@ -255,21 +278,57 @@ int main()
                 bool same_match = (std::unique(matches.begin(), matches.end()) != matches.end());
                 if(negative_match || same_match)
                 {
+                    // std::cout << "Event " << i << ":\n";
+                    // std::cout << "\tmatches: ";
+                    // for (auto m: matches_copy)
+                    // {
+                    //     std::cout << m << " ";
+                    // }
+                    // std::cout << "\n";
+                    // std::cout << "\tmin_dR = " << MinDeltaR({bq_p4, bbarq_p4, lq1_p4, lq2_p4}) << "\n";
+                    // std::cout << "\tdR(q, q) = " << lq1_p4.DeltaR(lq2_p4) << "\n";
+                    // std::cout << "\tq1_pt = " << lq1_p4.Pt() << "\n";
+                    // std::cout << "\tq2_pt = " << lq2_p4.Pt() << "\n";
+                    // std::cout << "\tHadWlast_pt = " << GenPart_pt[sig[SIG::HadWlast]] << "\n\n";
+
+                    // std::cout << "\tdR(b, b) = " << bq_p4.DeltaR(bbarq_p4) << "\n";
+                    // std::cout << "\tb_pt = " << bq_p4.Pt() << "\n";
+                    // std::cout << "\tbbar_pt = " << bbarq_p4.Pt() << "\n";
+                    // std::cout << "\tH1_pt = " << GenPart_pt[sig[SIG::H1]] << "\n";
+                    // std::cout << "\tH2_pt = " << GenPart_pt[sig[SIG::H2]] << "\n\n";
+
+                    // std::cout << "\tnGenJetAK8 = " << nGenJetAK8 << "\n";
+                    // if (nGenJetAK8 > 0)
+                    // {
+                    //     std::cout << "\tGenJetAK8_pt: ";
+                    //     for (int j = 0; j < static_cast<int>(nGenJetAK8); ++j)
+                    //     {
+                    //         std::cout << GenJetAK8_pt[j] << " ";
+                    //     }
+                    //     std::cout << "\n";
+                    // }
+
+                    // std::cout << "==========================\n";
                     continue;
+
+                    // if (std::cin.get())
+                    // {
+                    //     continue;
+                    // }
                 } 
                 else
                 {
                     ++matched_events;
 
-                    TLorentzVector bq_p4 = GetP4(genpart, b_idx);
-                    TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
-                    TLorentzVector bj_p4 = GetP4(genjet, b_match);
-                    TLorentzVector bbarj_p4 = GetP4(genjet, bbar_match);
+                    // TLorentzVector bq_p4 = GetP4(genpart, b_idx);
+                    // TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
+                    TLorentzVector bj_p4 = GetP4(genjet_ak4, b_match);
+                    TLorentzVector bbarj_p4 = GetP4(genjet_ak4, bbar_match);
 
-                    TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
-                    TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
-                    TLorentzVector lj1_p4 = GetP4(genjet, q1_match);
-                    TLorentzVector lj2_p4 = GetP4(genjet, q2_match);
+                    // TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
+                    // TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
+                    TLorentzVector lj1_p4 = GetP4(genjet_ak4, q1_match);
+                    TLorentzVector lj2_p4 = GetP4(genjet_ak4, q2_match);
 
                     TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
                     TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
@@ -323,7 +382,7 @@ int main()
                         if (std::any_of(ratios.begin(), ratios.end(), [](double x) { return x > MATCH_PT_THRESH; }))
                         {
                             MatchIndex mi = {{b_idx, b_match}, {bbar_idx, bbar_match}, {q1_idx, q1_match}, {q2_idx, q2_match}};
-                            MatchKinematics mk = {genpart, genjet};
+                            MatchKinematics mk = {genpart, genjet_ak4};
                             std::pair<int*, int*> ptrs = {GenPart_genPartIdxMother, GenPart_pdgId};
                             DrawEventMap(mk, mi, i, ptrs);
                         }
@@ -435,7 +494,7 @@ int main()
               << "\tAre signal events: " << valid_sig << "/" << nEvents << " (" << 100.0*valid_sig/nEvents << "%)\n"
               << "\tHave matchable jets: " << have_matchable_jets << "/" << valid_sig << " (" << 100.0*have_matchable_jets/valid_sig << "%)\n"
               << "\tSuccessfully matched all jets: " << matched_events << "/" << have_matchable_jets << " (" << 100.0*matched_events/have_matchable_jets << "%)\n"
-              << "\tFailed genjet cut: " << failed_genjet_cut << "/" << matched_events << " (" << 100.0*failed_genjet_cut/matched_events << "%)\n"
+              << "\tFailed genjet_ak4 cut: " << failed_genjet_cut << "/" << matched_events << " (" << 100.0*failed_genjet_cut/matched_events << "%)\n"
               << "\tFailed lepton cut: " << failed_lepton_cut << "/" << matched_events << " (" << 100.0*failed_lepton_cut/matched_events << "%)\n"
               << "\tNot isolated lepton: " << not_isolated_lepton << "/" << matched_events << " (" << 100.0*not_isolated_lepton/matched_events << "%)\n"
               << "\tInconsistet light jet matching: " << inconsistent_light_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_light_jet_match/matched_events << "%)\n"
