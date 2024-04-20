@@ -37,7 +37,7 @@ static constexpr double MIN_GENJET_PT = 20.0;
 static constexpr double MAX_GENJET_ETA = 2.5;
 
 static constexpr double MIN_LEP_PT = 20.0;
-static constexpr double MAX_LEP_ETA = 2.4;
+static constexpr double MAX_LEP_ETA = 2.5;
 
 // specifies order of signal (hh->bbWW->bbqqlv) particles
 enum SIG { X, H1, H2, b, bbar, LepWfirst, HadWfirst, HadWlast, q1, q2, LepWlast, l, nu };
@@ -80,9 +80,10 @@ inline bool IsSigLep(int pdg_id) { return std::find(SIG_LEPTONS.begin(), SIG_LEP
 inline bool IsSigNu(int pdg_id) { return std::find(SIG_NEUTRINOS.begin(), SIG_NEUTRINOS.end(), std::abs(pdg_id)) != SIG_NEUTRINOS.end(); }
 
 inline bool IsNu(int pdg_id) { return std::find(NEUTRINOS.begin(), NEUTRINOS.end(), std::abs(pdg_id)) != NEUTRINOS.end(); }
+inline bool IsLep(int pdg_id) { return std::find(LEPTONS.begin(), LEPTONS.end(), std::abs(pdg_id)) != LEPTONS.end(); }
 
 // check validity of signal particles
-bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids);
+bool HasOnlyEleMu(std::vector<int> const& signal, int const* mothers, int const* pdg_ids);
 
 // checks of particle cand_idx is daughter of particle parent_idx
 bool IsDescOf(int cand_idx, int parent_idx, int const* mothers);
@@ -94,6 +95,12 @@ struct KinematicData
     Float_t* phi = nullptr;
     Float_t* m = nullptr;
     int n = 0;
+};
+
+struct GenJetFlavorInfo
+{
+    Int_t* parton_flavor = nullptr;
+    UChar_t* hadron_flavor = nullptr;
 };
 
 // returns p4 of particle at index idx
@@ -142,6 +149,7 @@ inline bool ConsistentMatch(MatchedPair const& mp1, MatchedPair const& mp2)
     return (q1.Pt() > q2.Pt() ? j1.Pt() > j2.Pt() : j1.Pt() < j2.Pt());
 };
 
-std::vector<int> GetMatchableJets(KinematicData const& kd);
+// returns indices of jets in acceptance region (pt > 25 and |eta| < 2.5)
+std::vector<int> GetAcceptJets(KinematicData const& kd);
 
 #endif

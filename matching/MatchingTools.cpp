@@ -188,8 +188,10 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
         }
         else if (std::abs(pdg_ids[w_plus_daughters[0]]) > B_ID && std::abs(pdg_ids[w_plus_daughters[1]]) > B_ID)
         {
-            res[SIG::l] = IsSigLep(pdg_ids[w_plus_daughters[0]]) ? w_plus_daughters[0] : w_plus_daughters[1];
-            res[SIG::nu] = IsSigNu(pdg_ids[w_plus_daughters[1]]) ? w_plus_daughters[1] : w_plus_daughters[0];
+            // res[SIG::l] = IsSigLep(pdg_ids[w_plus_daughters[0]]) ? w_plus_daughters[0] : w_plus_daughters[1];
+            // res[SIG::nu] = IsSigNu(pdg_ids[w_plus_daughters[1]]) ? w_plus_daughters[1] : w_plus_daughters[0];
+            res[SIG::l] = IsLep(pdg_ids[w_plus_daughters[0]]) ? w_plus_daughters[0] : w_plus_daughters[1];
+            res[SIG::nu] = IsNu(pdg_ids[w_plus_daughters[1]]) ? w_plus_daughters[1] : w_plus_daughters[0];
             res[SIG::LepWlast] = wplus;
             res[SIG::HadWfirst] = first_w_plus;
             res[SIG::LepWfirst] = (IsDescOf(wplus, first_w_plus, mothers) || wplus == first_w_plus) ? first_w_plus : first_w_minus;
@@ -207,8 +209,10 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
         }
         else if (std::abs(pdg_ids[w_minus_daughters[0]]) > B_ID && std::abs(pdg_ids[w_minus_daughters[1]]) > B_ID)
         {
-            res[SIG::l] = IsSigLep(pdg_ids[w_minus_daughters[0]]) ? w_minus_daughters[0] : w_minus_daughters[1];
-            res[SIG::nu] = IsSigNu(pdg_ids[w_minus_daughters[1]]) ? w_minus_daughters[1] : w_minus_daughters[0];
+            // res[SIG::l] = IsSigLep(pdg_ids[w_minus_daughters[0]]) ? w_minus_daughters[0] : w_minus_daughters[1];
+            // res[SIG::nu] = IsSigNu(pdg_ids[w_minus_daughters[1]]) ? w_minus_daughters[1] : w_minus_daughters[0];
+            res[SIG::l] = IsLep(pdg_ids[w_minus_daughters[0]]) ? w_minus_daughters[0] : w_minus_daughters[1];
+            res[SIG::nu] = IsNu(pdg_ids[w_minus_daughters[1]]) ? w_minus_daughters[1] : w_minus_daughters[0];
             res[SIG::LepWlast] = wminus;
             res[SIG::LepWfirst] = (IsDescOf(wminus, first_w_minus, mothers) || wminus == first_w_minus) ? first_w_minus : first_w_plus;
         }
@@ -221,7 +225,7 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
     return res;
 }
 
-bool CheckSignal(std::vector<int> const& signal, int const* mothers, int const* pdg_ids)
+bool HasOnlyEleMu(std::vector<int> const& signal, int const* mothers, int const* pdg_ids)
 {
     if (signal.size() != N_SIG_PART)
     {
@@ -279,7 +283,6 @@ int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
         double dr = ppart.DeltaR(pjet);
         if (dr < DR_THRESH)
         {
-            // std::cout << "\tpotential match: dR = " << dr << ", pt = " << pjet.Pt() << "\n";
             hash.insert({dr, i});
         }
     }
@@ -393,28 +396,6 @@ void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_inde
     c1->SaveAs(Form("EnergyMaps/Event_%d.png", evt_num));
 }
 
-TLorentzVector Cone(int target, int const* mothers, KinematicData const& kd, double rad)
-{
-    int n_gen_part = kd.n;
-    TLorentzVector target_p4 = GetP4(kd, target);
-    std::vector<int> finals = GetFinalParticles(mothers, n_gen_part);
-    TLorentzVector cone;
-    for (auto idx: finals)
-    {
-        TLorentzVector p4 = GetP4(kd, idx);
-        double dR = target_p4.DeltaR(p4);
-        if (dR < rad)
-        {
-            bool belongs_to_decay = IsDescOf(idx, target, mothers);
-            if (belongs_to_decay)
-            {
-                cone += p4;
-            }
-        }
-    }
-    return cone;
-}
-
 bool PassGenJetCut(std::vector<TLorentzVector> const& jets)
 {
     for (auto const& j: jets)
@@ -439,30 +420,18 @@ bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> con
     return true;
 }
 
-std::vector<int> GetMatchableJets(KinematicData const& kd)
+std::vector<int> GetAcceptJets(KinematicData const& kd)
 {
     std::vector<int> res;
     auto const& [pt, eta, phi, m, n] = kd;
-    // auto IsMatchable = [&eta, &res, i = 0](double j_pt) mutable
-    // {
-    //     if (j_pt > MIN_GENJET_PT && std::abs(eta[i]) < MAX_GENJET_ETA)
-    //     {
-    //         res.push_back(i);
-    //     }
-    //     ++i;
-    // };
-    // std::for_each(pt, pt + n, IsMatchable);
 
-    auto IsMatchable = [i = 0](double j_pt, double j_eta) mutable
+    for (int j_idx = 0; j_idx < n; ++j_idx)
     {
-        if (j_pt > MIN_GENJET_PT && std::abs(j_eta) < MAX_GENJET_ETA)
+        if (pt[j_idx] > MIN_GENJET_PT && std::abs(eta[j_idx]) < MAX_GENJET_ETA)
         {
-            return i;
+            res.push_back(j_idx);
         }
-        return -1;
-    };
-    std::transform(pt, pt + n, eta, std::back_inserter(res), IsMatchable);
-    res.erase(std::remove_if(res.begin(), res.end(), [](int x) { return x == -1; }), res.end());
-
+    }
     return res;
 }
+
