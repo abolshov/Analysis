@@ -28,8 +28,8 @@ int main()
     auto start = std::chrono::system_clock::now();
     auto gStyle = std::make_unique<TStyle>();
     gStyle->SetPalette(kRainBow);
-    // TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
-    TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
+    TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
+    // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
     // TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
     // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-600_narrow_13TeV-madgraph.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -121,11 +121,14 @@ int main()
 
     // counters
 
-    int valid_sig = 0;
-    int have_matchable_jets = 0;
+    int has_bbWW_decay = 0;
+    int has_tau = 0;
+    int has_only_emu = 0;
+    int has_at_least_two_bflav_jets = 0;
+    int has_at_least_two_light_jets = 0;
+    int has_accept_lep = 0;
+    int has_at_least_4_accep_jets = 0;
     int matched_events = 0;
-    int failed_genjet_cut = 0;
-    int failed_lepton_cut = 0;
     int not_isolated_lepton = 0;
     int inconsistent_light_jet_match = 0;
     int inconsistent_b_jet_match = 0;
@@ -147,11 +150,14 @@ int main()
     std::string pt_ratio_2("pt_ratio_2");
     std::string pt_ratio_1_wnu("pt_ratio_1_wnu");
     std::string pt_ratio_2_wnu("pt_ratio_2_wnu");
+    std::string n_bflav_jets("n_bflav_jets");
 
     hm.Add(higgs_mass_jets, "Higgs mass", {"Higgs mass, [GeV]", "Count"}, {40, 160}, 40);
     hm.Add(higgs_mass_jets_wnu, "Higgs mass", {"Higgs mass, [GeV]", "Count"}, {60, 160}, 40);
     hm.Add(w_mass_jets, "W mass", {"W mass, [GeV]", "Count"}, {0, 120}, 40);
     hm.Add(w_mass_jets_wnu, "W mass", {"W mass, [GeV]", "Count"}, {0, 120}, 40);
+
+    hm.Add(n_bflav_jets, "Number of b-flavored jets", {"Number of b-flavored jets", "Count"}, {-0.5, 10.5}, 11);
 
     hm.Add(pt_ratio_b, "(Jet_pt - quark_pt)/quark_pt: b", {"ratio", "Count"}, {-3, 3}, 50);
     hm.Add(pt_ratio_bbar, "(Jet_pt - quark_pt)/quark_pt: bbar", {"ratio", "Count"}, {-3, 3}, 50);
@@ -197,76 +203,71 @@ int main()
         
         auto sig  = GetSignal(GenPart_pdgId, GenPart_genPartIdxMother, nGenPart);
 
-        // std::cout << "Event " << i << ":\n";
-        // std::cout << "\tAK8 jets pt: ";
-        // for (int i = 0; i < static_cast<int>(nGenJetAK8); ++i)
-        // {
-        //     std::cout << GenJetAK8_pt[i] << " ";
-        // }
-        // std::cout << "\n";
-        // std::cout << "\tAK8 subjetsjets pt: ";
-        // for (int i = 0; i < static_cast<int>(nSubGenJetAK8); ++i)
-        // {
-        //     std::cout << GenJetAK8_pt[i] << " ";
-        // }
-        
-        // if (std::cin.get())
-        // {
-        //     std::cout << "\n";
-        //     continue;
-        // }
-        // std::cout << "===================================\n";
-
         if (!sig.empty())
         {
-            if (CheckSignal(sig, GenPart_genPartIdxMother, GenPart_pdgId)) 
+            ++has_bbWW_decay;
+
+            if (HasOnlyEleMu(sig, GenPart_genPartIdxMother, GenPart_pdgId)) 
             {
-                ++valid_sig;
+                ++has_only_emu;
 
                 hm.Fill(hadW_vs_lepW, GenPart_mass[sig[SIG::HadWlast]], GenPart_mass[sig[SIG::LepWlast]]);
 
                 KinematicData genpart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, static_cast<int>(nGenPart)};
                 KinematicData genjet_ak4{GenJetAK4_pt, GenJetAK4_eta, GenJetAK4_phi, GenJetAK4_mass, static_cast<int>(nGenJetAK4)};
-                KinematicData genjet_ak8{GenJetAK8_pt, GenJetAK8_eta, GenJetAK8_phi, GenJetAK8_mass, static_cast<int>(nGenJetAK8)};
-                KinematicData subgenjet_ak8{SubGenJetAK8_pt, SubGenJetAK8_eta, SubGenJetAK8_phi, SubGenJetAK8_mass, static_cast<int>(nSubGenJetAK8)};
+                // KinematicData genjet_ak8{GenJetAK8_pt, GenJetAK8_eta, GenJetAK8_phi, GenJetAK8_mass, static_cast<int>(nGenJetAK8)};
+                // KinematicData subgenjet_ak8{SubGenJetAK8_pt, SubGenJetAK8_eta, SubGenJetAK8_phi, SubGenJetAK8_mass, static_cast<int>(nSubGenJetAK8)};
 
-                auto matchable_jets = GetMatchableJets(genjet_ak4);
-                int n_matchable_jets = matchable_jets.size();
-                if (n_matchable_jets >= 4)
+                TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
+                TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
+
+                // CUTS START
+                if (!PassLeptonCut(l_p4))
                 {
-                    ++have_matchable_jets;
+                    continue;
                 }
-                // else
-                // {
-                //     continue;
-                // }
+                ++has_accept_lep;
+
+                std::vector<int> matchable_jets = GetAcceptJets(genjet_ak4);
+                if (matchable_jets.size() < 4)
+                {
+                    continue;
+                }
+                ++has_at_least_4_accep_jets;
+
+                int num_bflav_jets = std::count_if(matchable_jets.begin(), matchable_jets.end(), [&GenJetAK4_partonFlavour](int idx){ return std::abs(GenJetAK4_partonFlavour[idx]) == 5; });
+                if (num_bflav_jets < 2)
+                {
+                    continue;
+                }
+                ++has_at_least_two_bflav_jets;
+
+                int num_light_jets = std::count_if(matchable_jets.begin(), matchable_jets.end(), [&GenJetAK4_partonFlavour](int idx){ return std::abs(GenJetAK4_partonFlavour[idx]) < 5 && std::abs(GenJetAK4_partonFlavour[idx]) > 0; });
+                if (num_light_jets < 2)
+                {
+                    continue;
+                }
+                ++has_at_least_two_light_jets;
+
+                hm.Fill(n_bflav_jets, num_bflav_jets);
+
+                // remove glounic jets (parton flavor = 21) or ghost jets (parton flavor = 0)
+                auto IsGhostGluonJet = [&GenJetAK4_partonFlavour](int i) { return std::abs(GenJetAK4_partonFlavour[i]) > 5 || GenJetAK4_partonFlavour[i] == 0; };
+                matchable_jets.erase(std::remove_if(matchable_jets.begin(), matchable_jets.end(), IsGhostGluonJet), matchable_jets.end());
+                assert(matchable_jets.size() >= 4);
 
                 int b_idx = sig[SIG::b];
                 int bbar_idx = sig[SIG::bbar];
                 int q1_idx = sig[SIG::q1];
                 int q2_idx = sig[SIG::q2];
 
-                TLorentzVector bq_p4 = GetP4(genpart, b_idx);
-                TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
-                TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
-                TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
+                // DO MATCHING HERE
                 
-                // std::cout << "Event " << i << ":\n";
-                // std::cout << "matching " << GenPart_pdgId[b_idx] << "(pt = " << GenPart_pt[b_idx] << "):\n";
                 int b_match = Match(b_idx, genpart, genjet_ak4);
-                // std::cout << "matching " << GenPart_pdgId[bbar_idx] << "(pt = " << GenPart_pt[bbar_idx] << "):\n";
                 int bbar_match = Match(bbar_idx, genpart, genjet_ak4);
-                // std::cout << "matching " << GenPart_pdgId[q1_idx] << "(pt = " << GenPart_pt[q1_idx] << "):\n";
                 int q1_match = Match(q1_idx, genpart, genjet_ak4);
-                // std::cout << "matching " << GenPart_pdgId[q2_idx] << "(pt = " << GenPart_pt[q2_idx] << "):\n";
                 int q2_match = Match(q2_idx, genpart, genjet_ak4);
-                // std::cout << "======================================\n";
-
-                // if (std::cin.get())
-                // {
-                //     continue;
-                // }
-
+        
                 // skip event if matching failed
                 std::vector<int> matches{b_match, bbar_match, q1_match, q2_match};
                 std::vector<int> matches_copy = matches;
@@ -278,78 +279,26 @@ int main()
                 bool same_match = (std::unique(matches.begin(), matches.end()) != matches.end());
                 if(negative_match || same_match)
                 {
-                    // std::cout << "Event " << i << ":\n";
-                    // std::cout << "\tmatches: ";
-                    // for (auto m: matches_copy)
-                    // {
-                    //     std::cout << m << " ";
-                    // }
-                    // std::cout << "\n";
-                    // std::cout << "\tmin_dR = " << MinDeltaR({bq_p4, bbarq_p4, lq1_p4, lq2_p4}) << "\n";
-                    // std::cout << "\tdR(q, q) = " << lq1_p4.DeltaR(lq2_p4) << "\n";
-                    // std::cout << "\tq1_pt = " << lq1_p4.Pt() << "\n";
-                    // std::cout << "\tq2_pt = " << lq2_p4.Pt() << "\n";
-                    // std::cout << "\tHadWlast_pt = " << GenPart_pt[sig[SIG::HadWlast]] << "\n\n";
-
-                    // std::cout << "\tdR(b, b) = " << bq_p4.DeltaR(bbarq_p4) << "\n";
-                    // std::cout << "\tb_pt = " << bq_p4.Pt() << "\n";
-                    // std::cout << "\tbbar_pt = " << bbarq_p4.Pt() << "\n";
-                    // std::cout << "\tH1_pt = " << GenPart_pt[sig[SIG::H1]] << "\n";
-                    // std::cout << "\tH2_pt = " << GenPart_pt[sig[SIG::H2]] << "\n\n";
-
-                    // std::cout << "\tnGenJetAK8 = " << nGenJetAK8 << "\n";
-                    // if (nGenJetAK8 > 0)
-                    // {
-                    //     std::cout << "\tGenJetAK8_pt: ";
-                    //     for (int j = 0; j < static_cast<int>(nGenJetAK8); ++j)
-                    //     {
-                    //         std::cout << GenJetAK8_pt[j] << " ";
-                    //     }
-                    //     std::cout << "\n";
-                    // }
-
-                    // std::cout << "==========================\n";
                     continue;
-
-                    // if (std::cin.get())
-                    // {
-                    //     continue;
-                    // }
                 } 
                 else
                 {
                     ++matched_events;
 
-                    // TLorentzVector bq_p4 = GetP4(genpart, b_idx);
-                    // TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
+                    TLorentzVector bq_p4 = GetP4(genpart, b_idx);
+                    TLorentzVector bbarq_p4 = GetP4(genpart, bbar_idx);
                     TLorentzVector bj_p4 = GetP4(genjet_ak4, b_match);
                     TLorentzVector bbarj_p4 = GetP4(genjet_ak4, bbar_match);
 
-                    // TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
-                    // TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
+                    TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
+                    TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
                     TLorentzVector lj1_p4 = GetP4(genjet_ak4, q1_match);
                     TLorentzVector lj2_p4 = GetP4(genjet_ak4, q2_match);
-
-                    TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
-                    TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
 
                     TLorentzVector genmet;
                     genmet.SetPtEtaPhiM(GenMET_pt, 0, GenMET_phi, 0);
 
-                    // apply cuts here
                     std::vector<TLorentzVector> jets{lj1_p4, lj2_p4, bj_p4, bbarj_p4};
-
-                    if (!PassGenJetCut(jets))
-                    {
-                        ++failed_genjet_cut;
-                        continue;
-                    }  
-
-                    if (!PassLeptonCut(l_p4))
-                    {
-                        ++failed_lepton_cut;
-                        continue;
-                    } 
 
                     if (!IsIsolatedLepton(l_p4, jets))
                     {
@@ -450,26 +399,11 @@ int main()
                     hm.Fill(pt_ratio_bbar_wnu, (bbarj_p4.Pt() - bbarq_p4.Pt())/bbarq_p4.Pt());
                     hm.Fill(pt_ratio_1_wnu, (lj1_p4.Pt() - lq1_p4.Pt())/lq1_p4.Pt());
                     hm.Fill(pt_ratio_2_wnu, (lj2_p4.Pt() - lq2_p4.Pt())/lq2_p4.Pt());
-
-                    // if (lj1_p4.Pt()/lq1_p4.Pt() > 5)
-                    // {
-                    //     std::cout << "Event " << i << ": light jet 1 too large\n";
-                    //     std::cout << "q1 = "; Print(lq1_p4);
-                    //     std::cout << "q2 = "; Print(lq2_p4);
-                    //     std::cout << "b = "; Print(bq_p4);
-                    //     std::cout << "bbar = "; Print(bbarq_p4);
-                    //     std::cout << "================================\n";
-                    // }
-                    // if (lj2_p4.Pt()/lq2_p4.Pt() > 5)
-                    // {
-                    //     std::cout << "Event " << i << ": light jet 2 too large\n";
-                    //     std::cout << "q1 = "; Print(lq1_p4);
-                    //     std::cout << "q2 = "; Print(lq2_p4);
-                    //     std::cout << "b = "; Print(bq_p4);
-                    //     std::cout << "bbar = "; Print(bbarq_p4);
-                    //     std::cout << "================================\n";
-                    // }
                 }
+            }
+            else
+            {
+                ++has_tau;
             }
         }
     }
@@ -490,12 +424,15 @@ int main()
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 
     std::cout << std::setprecision(3);
-    std::cout << "nEvents = " << nEvents << ", processing time = " << elapsed.count() << " s\n" 
-              << "\tAre signal events: " << valid_sig << "/" << nEvents << " (" << 100.0*valid_sig/nEvents << "%)\n"
-              << "\tHave matchable jets: " << have_matchable_jets << "/" << valid_sig << " (" << 100.0*have_matchable_jets/valid_sig << "%)\n"
-              << "\tSuccessfully matched all jets: " << matched_events << "/" << have_matchable_jets << " (" << 100.0*matched_events/have_matchable_jets << "%)\n"
-              << "\tFailed genjet_ak4 cut: " << failed_genjet_cut << "/" << matched_events << " (" << 100.0*failed_genjet_cut/matched_events << "%)\n"
-              << "\tFailed lepton cut: " << failed_lepton_cut << "/" << matched_events << " (" << 100.0*failed_lepton_cut/matched_events << "%)\n"
+    std::cout << "nEvents = " << nEvents << ", processing time = " << elapsed.count() << " s\n"
+              << "\tHave bbWW decay: " << has_bbWW_decay << "/" << nEvents << " (" << 100.0*has_bbWW_decay/nEvents << "%)\n"
+              << "\tHave tau leptons: " << has_tau << "/" << nEvents << " (" << 100.0*has_tau/nEvents << "%)\n" 
+              << "\tHave only electrons/muons: " << has_only_emu << "/" << nEvents << " (" << 100.0*has_only_emu/nEvents << "%)\n"
+              << "\tHave lepton in acceptance region: " << has_accept_lep << "/" << has_only_emu << " (" << 100.0*has_accept_lep/has_only_emu << "%)\n"
+              << "\tHave at least 4 jets in acceptance region: " << has_at_least_4_accep_jets << "/" << has_accept_lep << " (" << 100.0*has_at_least_4_accep_jets/has_accept_lep << "%)\n"
+              << "\tHave at least 2 b-flavored jets: " << has_at_least_two_bflav_jets << "/" << has_at_least_4_accep_jets << " (" << 100.0*has_at_least_two_bflav_jets/has_at_least_4_accep_jets << "%)\n"
+              << "\tHave at least 2 light jets: " << has_at_least_two_light_jets << "/" << has_at_least_two_bflav_jets << " (" << 100.0*has_at_least_two_light_jets/has_at_least_two_bflav_jets << "%)\n"
+              << "\tSuccessfully matched all jets: " << matched_events << "/" << has_at_least_two_light_jets << " (" << 100.0*matched_events/has_at_least_two_light_jets << "%)\n"
               << "\tNot isolated lepton: " << not_isolated_lepton << "/" << matched_events << " (" << 100.0*not_isolated_lepton/matched_events << "%)\n"
               << "\tInconsistet light jet matching: " << inconsistent_light_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_light_jet_match/matched_events << "%)\n"
               << "\tInconsistet b jet matching: " << inconsistent_b_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_b_jet_match/matched_events << "%)\n"
