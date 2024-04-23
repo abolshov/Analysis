@@ -272,7 +272,7 @@ TLorentzVector GetP4(KinematicData const& kd, int idx)
     return p;
 }
 
-int Match(int idx, KinematicData const kd_part, KinematicData kd_jet)
+int Match(int idx, KinematicData const& kd_part, KinematicData const& kd_jet)
 {
     TLorentzVector ppart = GetP4(kd_part, idx);
     std::map<double, int> hash;
@@ -413,6 +413,20 @@ bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> con
     for (auto const& j: jets)
     {
         if (j.DeltaR(lep) < DR_THRESH)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool IsIsolatedLepton(TLorentzVector const& lep, KinematicData const& kd)
+{
+    auto const& [pt, eta, phi, m, n] = kd;
+    for (int j = 0; j < n; ++j)
+    {
+        TLorentzVector p = GetP4(kd, j);
+        if (p.DeltaR(lep) < DR_THRESH)
         {
             return false;
         }

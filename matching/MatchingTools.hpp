@@ -36,7 +36,7 @@ static constexpr int N_POINTS = 20;
 static constexpr double MIN_GENJET_PT = 20.0;
 static constexpr double MAX_GENJET_ETA = 2.5;
 
-static constexpr double MIN_LEP_PT = 20.0;
+static constexpr double MIN_LEP_PT = 5.0;
 static constexpr double MAX_LEP_ETA = 2.5;
 
 // specifies order of signal (hh->bbWW->bbqqlv) particles
@@ -109,7 +109,7 @@ TLorentzVector GetP4(KinematicData const& kd, int idx);
 // matches gen jet to gen particle by dR
 // returns index of jet matched to quark
 // if matching fails returns -1
-int Match(int idx, KinematicData const kd_part, KinematicData kd_jet);
+int Match(int idx, KinematicData const& kd_part, KinematicData const& kd_jet);
 
 // computes min dR between all particles
 double MinDeltaR(std::vector<TLorentzVector> const& parts);
@@ -138,6 +138,7 @@ inline bool PassLeptonCut(TLorentzVector const& lep)
 
 // checks that lepton is separated from jets by dR
 bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets);
+bool IsIsolatedLepton(TLorentzVector const& lep, KinematicData const& kd);
 
 // checks if matched objects preserve relationship between underlying objetcts (pt)
 using MatchedPair = std::pair<TLorentzVector, TLorentzVector>;
