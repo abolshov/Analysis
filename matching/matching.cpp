@@ -127,9 +127,9 @@ int main()
     int has_at_least_two_bflav_jets = 0;
     int has_at_least_two_light_jets = 0;
     int has_accept_lep = 0;
+    int has_isolated_lep = 0;
     int has_at_least_4_accep_jets = 0;
     int matched_events = 0;
-    int not_isolated_lepton = 0;
     int inconsistent_light_jet_match = 0;
     int inconsistent_b_jet_match = 0;
     int accepted_events = 0;
@@ -242,19 +242,23 @@ int main()
                 }
                 ++has_at_least_two_bflav_jets;
 
-                int num_light_jets = std::count_if(matchable_jets.begin(), matchable_jets.end(), [&GenJetAK4_partonFlavour](int idx){ return std::abs(GenJetAK4_partonFlavour[idx]) < 5 && std::abs(GenJetAK4_partonFlavour[idx]) > 0; });
+                int num_light_jets = std::count_if(matchable_jets.begin(), matchable_jets.end(), [&GenJetAK4_partonFlavour](int idx){ return std::abs(GenJetAK4_partonFlavour[idx]) < 5 || std::abs(GenJetAK4_partonFlavour[idx]) == 21; });
                 if (num_light_jets < 2)
                 {
                     continue;
                 }
                 ++has_at_least_two_light_jets;
 
-                hm.Fill(n_bflav_jets, num_bflav_jets);
+                std::vector<TLorentzVector> jet_momenta;
+                std::transform(matchable_jets.begin(), matchable_jets.end(), std::back_inserter(jet_momenta), [&genjet_ak4](int i){ return GetP4(genjet_ak4, i); });
 
-                // remove glounic jets (parton flavor = 21) or ghost jets (parton flavor = 0)
-                auto IsGhostGluonJet = [&GenJetAK4_partonFlavour](int i) { return std::abs(GenJetAK4_partonFlavour[i]) > 5 || GenJetAK4_partonFlavour[i] == 0; };
-                matchable_jets.erase(std::remove_if(matchable_jets.begin(), matchable_jets.end(), IsGhostGluonJet), matchable_jets.end());
-                assert(matchable_jets.size() >= 4);
+                if (!IsIsolatedLepton(l_p4, jet_momenta))
+                {
+                    continue;
+                }
+                ++has_isolated_lep;
+
+                hm.Fill(n_bflav_jets, num_bflav_jets);
 
                 int b_idx = sig[SIG::b];
                 int bbar_idx = sig[SIG::bbar];
@@ -297,14 +301,6 @@ int main()
 
                     TLorentzVector genmet;
                     genmet.SetPtEtaPhiM(GenMET_pt, 0, GenMET_phi, 0);
-
-                    std::vector<TLorentzVector> jets{lj1_p4, lj2_p4, bj_p4, bbarj_p4};
-
-                    if (!IsIsolatedLepton(l_p4, jets))
-                    {
-                        ++not_isolated_lepton;
-                        continue;
-                    }
 
                     if (!ConsistentMatch({lq1_p4, lj1_p4}, {lq2_p4, lj2_p4}))
                     {
@@ -432,8 +428,8 @@ int main()
               << "\tHave at least 4 jets in acceptance region: " << has_at_least_4_accep_jets << "/" << has_accept_lep << " (" << 100.0*has_at_least_4_accep_jets/has_accept_lep << "%)\n"
               << "\tHave at least 2 b-flavored jets: " << has_at_least_two_bflav_jets << "/" << has_at_least_4_accep_jets << " (" << 100.0*has_at_least_two_bflav_jets/has_at_least_4_accep_jets << "%)\n"
               << "\tHave at least 2 light jets: " << has_at_least_two_light_jets << "/" << has_at_least_two_bflav_jets << " (" << 100.0*has_at_least_two_light_jets/has_at_least_two_bflav_jets << "%)\n"
-              << "\tSuccessfully matched all jets: " << matched_events << "/" << has_at_least_two_light_jets << " (" << 100.0*matched_events/has_at_least_two_light_jets << "%)\n"
-              << "\tNot isolated lepton: " << not_isolated_lepton << "/" << matched_events << " (" << 100.0*not_isolated_lepton/matched_events << "%)\n"
+              << "\tHave isolated lepton: " << has_isolated_lep << "/" << has_at_least_two_light_jets << " (" << 100.0*has_isolated_lep/has_at_least_two_light_jets << "%)\n"
+              << "\tSuccessfully matched all jets: " << matched_events << "/" << has_isolated_lep << " (" << 100.0*matched_events/has_isolated_lep << "%)\n"
               << "\tInconsistet light jet matching: " << inconsistent_light_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_light_jet_match/matched_events << "%)\n"
               << "\tInconsistet b jet matching: " << inconsistent_b_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_b_jet_match/matched_events << "%)\n"
               << "\tEvents passed to HME = " << accepted_events << "\n";
