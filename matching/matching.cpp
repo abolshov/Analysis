@@ -228,6 +228,12 @@ int main()
                 }
                 ++has_accept_lep;
 
+                if (!IsIsolatedLepton(l_p4, genjet_ak4))
+                {
+                    continue;
+                }
+                ++has_isolated_lep;
+
                 std::vector<int> matchable_jets = GetAcceptJets(genjet_ak4);
                 if (matchable_jets.size() < 4)
                 {
@@ -249,14 +255,14 @@ int main()
                 }
                 ++has_at_least_two_light_jets;
 
-                std::vector<TLorentzVector> jet_momenta;
-                std::transform(matchable_jets.begin(), matchable_jets.end(), std::back_inserter(jet_momenta), [&genjet_ak4](int i){ return GetP4(genjet_ak4, i); });
+                // std::vector<TLorentzVector> jet_momenta;
+                // std::transform(matchable_jets.begin(), matchable_jets.end(), std::back_inserter(jet_momenta), [&genjet_ak4](int i){ return GetP4(genjet_ak4, i); });
 
-                if (!IsIsolatedLepton(l_p4, jet_momenta))
-                {
-                    continue;
-                }
-                ++has_isolated_lep;
+                // if (!IsIsolatedLepton(l_p4, jet_momenta))
+                // {
+                //     continue;
+                // }
+                // ++has_isolated_lep;
 
                 hm.Fill(n_bflav_jets, num_bflav_jets);
 
@@ -298,6 +304,15 @@ int main()
                     TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
                     TLorentzVector lj1_p4 = GetP4(genjet_ak4, q1_match);
                     TLorentzVector lj2_p4 = GetP4(genjet_ak4, q2_match);
+
+                    if (lj1_p4.DeltaR(l_p4) < DR_THRESH)
+                    {
+                        lj1_p4 -= l_p4;
+                    }
+                    if (lj2_p4.DeltaR(l_p4) < DR_THRESH)
+                    {
+                        lj2_p4 -= l_p4;
+                    }
 
                     TLorentzVector genmet;
                     genmet.SetPtEtaPhiM(GenMET_pt, 0, GenMET_phi, 0);
@@ -425,11 +440,11 @@ int main()
               << "\tHave tau leptons: " << has_tau << "/" << nEvents << " (" << 100.0*has_tau/nEvents << "%)\n" 
               << "\tHave only electrons/muons: " << has_only_emu << "/" << nEvents << " (" << 100.0*has_only_emu/nEvents << "%)\n"
               << "\tHave lepton in acceptance region: " << has_accept_lep << "/" << has_only_emu << " (" << 100.0*has_accept_lep/has_only_emu << "%)\n"
+              << "\tHave isolated lepton: " << has_isolated_lep << "/" << has_accept_lep << " (" << 100.0*has_isolated_lep/has_accept_lep << "%)\n"
               << "\tHave at least 4 jets in acceptance region: " << has_at_least_4_accep_jets << "/" << has_accept_lep << " (" << 100.0*has_at_least_4_accep_jets/has_accept_lep << "%)\n"
               << "\tHave at least 2 b-flavored jets: " << has_at_least_two_bflav_jets << "/" << has_at_least_4_accep_jets << " (" << 100.0*has_at_least_two_bflav_jets/has_at_least_4_accep_jets << "%)\n"
               << "\tHave at least 2 light jets: " << has_at_least_two_light_jets << "/" << has_at_least_two_bflav_jets << " (" << 100.0*has_at_least_two_light_jets/has_at_least_two_bflav_jets << "%)\n"
-              << "\tHave isolated lepton: " << has_isolated_lep << "/" << has_at_least_two_light_jets << " (" << 100.0*has_isolated_lep/has_at_least_two_light_jets << "%)\n"
-              << "\tSuccessfully matched all jets: " << matched_events << "/" << has_isolated_lep << " (" << 100.0*matched_events/has_isolated_lep << "%)\n"
+              << "\tSuccessfully matched all jets: " << matched_events << "/" << has_at_least_two_light_jets << " (" << 100.0*matched_events/has_at_least_two_light_jets << "%)\n"
               << "\tInconsistet light jet matching: " << inconsistent_light_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_light_jet_match/matched_events << "%)\n"
               << "\tInconsistet b jet matching: " << inconsistent_b_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_b_jet_match/matched_events << "%)\n"
               << "\tEvents passed to HME = " << accepted_events << "\n";

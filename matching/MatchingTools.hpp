@@ -19,6 +19,7 @@ static const std::vector<int> LEPTONS = {11, 13, 15};
 static const std::vector<int> NEUTRINOS = {12, 14, 16};
 
 static constexpr int N_SIG_PART = 13;
+static constexpr int N_JETS_AWAY_FROM_LEP = 4;
 
 static constexpr int RADION_ID = 35;
 static constexpr int HIGGS_ID = 25;
@@ -136,7 +137,7 @@ inline bool PassLeptonCut(TLorentzVector const& lep)
     return lep.Pt() > MIN_LEP_PT && std::abs(lep.Eta()) < MAX_LEP_ETA;
 }
 
-// checks that lepton is separated from jets by dR
+// checks that among passed jets there are at least 4 jets such that the lepton is separated from them by at least dR = 0.4
 bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets);
 bool IsIsolatedLepton(TLorentzVector const& lep, KinematicData const& kd);
 

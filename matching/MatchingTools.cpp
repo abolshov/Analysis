@@ -410,28 +410,30 @@ bool PassGenJetCut(std::vector<TLorentzVector> const& jets)
 
 bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets)
 {
+    int count = jets.size();
     for (auto const& j: jets)
     {
         if (j.DeltaR(lep) < DR_THRESH)
         {
-            return false;
+            
         }
     }
-    return true;
+    return count >= N_JETS_AWAY_FROM_LEP;
 }
 
 bool IsIsolatedLepton(TLorentzVector const& lep, KinematicData const& kd)
 {
     auto const& [pt, eta, phi, m, n] = kd;
+    int count = n;
     for (int j = 0; j < n; ++j)
     {
         TLorentzVector p = GetP4(kd, j);
         if (p.DeltaR(lep) < DR_THRESH)
         {
-            return false;
+            --count;
         }
     }
-    return true;
+    return count >= N_JETS_AWAY_FROM_LEP;
 }
 
 std::vector<int> GetAcceptJets(KinematicData const& kd)
