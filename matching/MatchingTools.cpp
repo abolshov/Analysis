@@ -179,7 +179,7 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
 
     if (w_plus_daughters.size() == 2)
     {
-        if (std::abs(pdg_ids[w_plus_daughters[0]]) < B_ID && std::abs(pdg_ids[w_plus_daughters[1]]) < B_ID)
+        if (std::abs(pdg_ids[w_plus_daughters[0]]) <= B_ID && std::abs(pdg_ids[w_plus_daughters[1]]) <= B_ID)
         {
             res[SIG::q1] = w_plus_daughters[0];
             res[SIG::q2] = w_plus_daughters[1];
@@ -200,7 +200,7 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
 
     if (w_minus_daughters.size() == 2)
     {
-        if (std::abs(pdg_ids[w_minus_daughters[0]]) < B_ID && std::abs(pdg_ids[w_minus_daughters[1]]) < B_ID)
+        if (std::abs(pdg_ids[w_minus_daughters[0]]) <= B_ID && std::abs(pdg_ids[w_minus_daughters[1]]) <= B_ID)
         {
             res[SIG::q1] = w_minus_daughters[0];
             res[SIG::q2] = w_minus_daughters[1];
@@ -396,17 +396,17 @@ void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_inde
     c1->SaveAs(Form("EnergyMaps/Event_%d.png", evt_num));
 }
 
-bool PassGenJetCut(std::vector<TLorentzVector> const& jets)
-{
-    for (auto const& j: jets)
-    {
-        if (j.Pt() < MIN_GENJET_PT || std::abs(j.Eta()) > MAX_GENJET_ETA)
-        {
-            return false;
-        }
-    }
-    return true;
-}
+// bool PassGenJetCut(std::vector<TLorentzVector> const& jets)
+// {
+//     for (auto const& j: jets)
+//     {
+//         if (j.Pt() < MIN_GENJET_PT || std::abs(j.Eta()) > MAX_GENJET_ETA)
+//         {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 
 bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets)
 {
@@ -415,7 +415,7 @@ bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> con
     {
         if (j.DeltaR(lep) < DR_THRESH)
         {
-            
+            --count;
         }
     }
     return count >= N_JETS_AWAY_FROM_LEP;
@@ -436,18 +436,43 @@ bool IsIsolatedLepton(TLorentzVector const& lep, KinematicData const& kd)
     return count >= N_JETS_AWAY_FROM_LEP;
 }
 
-std::vector<int> GetAcceptJets(KinematicData const& kd)
+std::vector<int> GetAcceptJets(GenJetData const& jet_data)
 {
     std::vector<int> res;
-    auto const& [pt, eta, phi, m, n] = kd;
+    auto const& [pt, eta, phi, m, n] = jet_data.kd;
+    auto const& [parton_flavor, hadron_flavor] = jet_data.fi;
 
     for (int j_idx = 0; j_idx < n; ++j_idx)
     {
-        if (pt[j_idx] > MIN_GENJET_PT && std::abs(eta[j_idx]) < MAX_GENJET_ETA)
+        // if (std::abs(parton_flavor[j_idx]) == B_ID)
+        if (static_cast<unsigned>(hadron_flavor[j_idx]) == 5)
         {
-            res.push_back(j_idx);
+            if (pt[j_idx] > MIN_B_GENJET_PT && std::abs(eta[j_idx]) < MAX_GENJET_ETA)
+            {
+                res.push_back(j_idx);
+            }
+        }
+        else 
+        {
+            if (pt[j_idx] > MIN_LIGHT_GENJET_PT && std::abs(eta[j_idx]) < MAX_GENJET_ETA)
+            {
+                res.push_back(j_idx);
+            }
         }
     }
     return res;
 }
 
+std::vector<int> PrimaryJetSelection(KinematicData const& kd)
+{
+    auto const& [pt, eta, phi, m, n] = kd;
+    std::vector<int> res;
+    for (int i = 0; i < n; ++i)
+    {
+        if (pt[i] > PRIMARY_GENJET_PT && std::abs(eta[i]) < PRIMARY_GENJET_ETA)
+        {
+            res.push_back(i);
+        }
+    }
+    return res;
+}

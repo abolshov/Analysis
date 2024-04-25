@@ -31,10 +31,14 @@ static constexpr int WMINUS_ID = -24;
 static constexpr int B_ID = 5;
 static constexpr int BBAR_ID = -5;
 
-static constexpr double DR_THRESH = 0.5;
+static constexpr double DR_THRESH = 0.4;
 static constexpr int N_POINTS = 20;
 
 static constexpr double MIN_GENJET_PT = 20.0;
+static constexpr double MIN_B_GENJET_PT = 20.0;
+static constexpr double MIN_LIGHT_GENJET_PT = 10.0;
+static constexpr double PRIMARY_GENJET_PT = 10.0;
+static constexpr double PRIMARY_GENJET_ETA = 5.0;
 static constexpr double MAX_GENJET_ETA = 2.5;
 
 static constexpr double MIN_LEP_PT = 5.0;
@@ -104,6 +108,18 @@ struct GenJetFlavorInfo
     UChar_t* hadron_flavor = nullptr;
 };
 
+struct GenPartIdInfo
+{
+    Int_t* pdg_id = nullptr;
+    Int_t* mothers = nullptr;
+};
+
+struct GenJetData
+{
+    KinematicData kd;
+    GenJetFlavorInfo fi;
+};
+
 // returns p4 of particle at index idx
 TLorentzVector GetP4(KinematicData const& kd, int idx);
 
@@ -128,7 +144,8 @@ void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_inde
 
 // checks if all matched jets pass genjet acceptance cut
 // returns true if all jets satisfy selection criteria
-bool PassGenJetCut(std::vector<TLorentzVector> const& jets);
+// DEPRECATED
+// bool PassGenJetCut(std::vector<TLorentzVector> const& jets);
 
 // checks if lepton passes acceptance cut
 // returns true if lepton satisfies selection criteria
@@ -152,6 +169,9 @@ inline bool ConsistentMatch(MatchedPair const& mp1, MatchedPair const& mp2)
 };
 
 // returns indices of jets in acceptance region (pt > 25 and |eta| < 2.5)
-std::vector<int> GetAcceptJets(KinematicData const& kd);
+std::vector<int> GetAcceptJets(GenJetData const& jet_data);
+
+// performs selection of jets with pt > 10 and |eta| < 5
+std::vector<int> PrimaryJetSelection(KinematicData const& kd);
 
 #endif

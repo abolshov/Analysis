@@ -53,20 +53,20 @@ int main()
     UChar_t         GenJetAK4_hadronFlavour[MAX_AK4_GENJET];   //[nGenJetAK4]
     
     // ak8 jets
-    UInt_t          nGenJetAK8;
-    Float_t         GenJetAK8_eta[MAX_AK8_GENJET];   //[nGenJetAK8]
-    Float_t         GenJetAK8_mass[MAX_AK8_GENJET];   //[nGenJetAK8]
-    Float_t         GenJetAK8_phi[MAX_AK8_GENJET];   //[nGenJetAK8]
-    Float_t         GenJetAK8_pt[MAX_AK8_GENJET];   //[nGenJetAK8]
-    Int_t           GenJetAK8_partonFlavour[MAX_AK8_GENJET];   //[nGenJetAK8]
-    UChar_t         GenJetAK8_hadronFlavour[MAX_AK8_GENJET];   //[nGenJetAK8]
+    // UInt_t          nGenJetAK8;
+    // Float_t         GenJetAK8_eta[MAX_AK8_GENJET];   //[nGenJetAK8]
+    // Float_t         GenJetAK8_mass[MAX_AK8_GENJET];   //[nGenJetAK8]
+    // Float_t         GenJetAK8_phi[MAX_AK8_GENJET];   //[nGenJetAK8]
+    // Float_t         GenJetAK8_pt[MAX_AK8_GENJET];   //[nGenJetAK8]
+    // Int_t           GenJetAK8_partonFlavour[MAX_AK8_GENJET];   //[nGenJetAK8]
+    // UChar_t         GenJetAK8_hadronFlavour[MAX_AK8_GENJET];   //[nGenJetAK8]
 
     // ak8 subjets
-    UInt_t          nSubGenJetAK8;
-    Float_t         SubGenJetAK8_eta[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
-    Float_t         SubGenJetAK8_mass[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
-    Float_t         SubGenJetAK8_phi[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
-    Float_t         SubGenJetAK8_pt[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
+    // UInt_t          nSubGenJetAK8;
+    // Float_t         SubGenJetAK8_eta[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
+    // Float_t         SubGenJetAK8_mass[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
+    // Float_t         SubGenJetAK8_phi[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
+    // Float_t         SubGenJetAK8_pt[2*MAX_AK8_GENJET];   //[nSubGenJetAK8]
 
     Float_t         GenMET_phi;
     Float_t         GenMET_pt;
@@ -99,20 +99,20 @@ int main()
     // unsigned is understood as unsifned int by compiler
 
     // ak8 gen jets
-    myTree->SetBranchAddress("nGenJetAK8", &nGenJetAK8);
-    myTree->SetBranchAddress("GenJetAK8_eta", &GenJetAK8_eta);
-    myTree->SetBranchAddress("GenJetAK8_mass", &GenJetAK8_mass);
-    myTree->SetBranchAddress("GenJetAK8_phi", &GenJetAK8_phi);
-    myTree->SetBranchAddress("GenJetAK8_pt", &GenJetAK8_pt);
-    myTree->SetBranchAddress("GenJetAK8_partonFlavour", &GenJetAK8_partonFlavour);
-    myTree->SetBranchAddress("GenJetAK8_hadronFlavour", &GenJetAK8_hadronFlavour);
+    // myTree->SetBranchAddress("nGenJetAK8", &nGenJetAK8);
+    // myTree->SetBranchAddress("GenJetAK8_eta", &GenJetAK8_eta);
+    // myTree->SetBranchAddress("GenJetAK8_mass", &GenJetAK8_mass);
+    // myTree->SetBranchAddress("GenJetAK8_phi", &GenJetAK8_phi);
+    // myTree->SetBranchAddress("GenJetAK8_pt", &GenJetAK8_pt);
+    // myTree->SetBranchAddress("GenJetAK8_partonFlavour", &GenJetAK8_partonFlavour);
+    // myTree->SetBranchAddress("GenJetAK8_hadronFlavour", &GenJetAK8_hadronFlavour);
 
     // ak8 hen subjets
-    myTree->SetBranchAddress("nSubGenJetAK8", &nSubGenJetAK8);
-    myTree->SetBranchAddress("SubGenJetAK8_eta", &SubGenJetAK8_eta);
-    myTree->SetBranchAddress("SubGenJetAK8_mass", &SubGenJetAK8_mass);
-    myTree->SetBranchAddress("SubGenJetAK8_phi", &SubGenJetAK8_phi);
-    myTree->SetBranchAddress("SubGenJetAK8_pt", &SubGenJetAK8_pt);
+    // myTree->SetBranchAddress("nSubGenJetAK8", &nSubGenJetAK8);
+    // myTree->SetBranchAddress("SubGenJetAK8_eta", &SubGenJetAK8_eta);
+    // myTree->SetBranchAddress("SubGenJetAK8_mass", &SubGenJetAK8_mass);
+    // myTree->SetBranchAddress("SubGenJetAK8_phi", &SubGenJetAK8_phi);
+    // myTree->SetBranchAddress("SubGenJetAK8_pt", &SubGenJetAK8_pt);
 
     myTree->SetBranchAddress("GenMET_phi", &GenMET_phi);
     myTree->SetBranchAddress("GenMET_pt", &GenMET_pt);
@@ -124,11 +124,12 @@ int main()
     int has_bbWW_decay = 0;
     int has_tau = 0;
     int has_only_emu = 0;
-    int has_at_least_two_bflav_jets = 0;
-    int has_at_least_two_light_jets = 0;
+    int has_at_least_4_primary_jets = 0;
+    int has_at_least_4_clean_jets = 0;
+
+    int has_at_least_1_accep_bflav_jet = 0;
+    int has_at_least_2_accep_bflav_jets = 0;
     int has_accept_lep = 0;
-    int has_isolated_lep = 0;
-    int has_at_least_4_accep_jets = 0;
     int matched_events = 0;
     int inconsistent_light_jet_match = 0;
     int inconsistent_b_jet_match = 0;
@@ -150,15 +151,11 @@ int main()
     std::string pt_ratio_2("pt_ratio_2");
     std::string pt_ratio_1_wnu("pt_ratio_1_wnu");
     std::string pt_ratio_2_wnu("pt_ratio_2_wnu");
-    std::string n_bflav_jets("n_bflav_jets");
 
     hm.Add(higgs_mass_jets, "Higgs mass", {"Higgs mass, [GeV]", "Count"}, {40, 160}, 40);
     hm.Add(higgs_mass_jets_wnu, "Higgs mass", {"Higgs mass, [GeV]", "Count"}, {60, 160}, 40);
     hm.Add(w_mass_jets, "W mass", {"W mass, [GeV]", "Count"}, {0, 120}, 40);
     hm.Add(w_mass_jets_wnu, "W mass", {"W mass, [GeV]", "Count"}, {0, 120}, 40);
-
-    hm.Add(n_bflav_jets, "Number of b-flavored jets", {"Number of b-flavored jets", "Count"}, {-0.5, 10.5}, 11);
-
     hm.Add(pt_ratio_b, "(Jet_pt - quark_pt)/quark_pt: b", {"ratio", "Count"}, {-3, 3}, 50);
     hm.Add(pt_ratio_bbar, "(Jet_pt - quark_pt)/quark_pt: bbar", {"ratio", "Count"}, {-3, 3}, 50);
     hm.Add(pt_ratio_b_wnu, "(Jet_pt - quark_pt)/quark_pt: b (neutrino added)", {"ratio", "Count"}, {-3, 3}, 50);
@@ -196,6 +193,7 @@ int main()
     hm.Add(hadW_vs_lepW, "Hadronic W mass vs Leptonic W mass", {"Hadronic W mass, [GeV]", "Leptonic W mass, [GeV]"}, {0, 120}, {0, 120}, {50, 50});
 
     std::cout << std::boolalpha;
+    int X_mass = 0; 
 
     for (int i = 0; i < nEvents; ++i)
     {
@@ -206,6 +204,10 @@ int main()
         if (!sig.empty())
         {
             ++has_bbWW_decay;
+            X_mass = static_cast<int>(GenPart_mass[sig[SIG::X]]);
+
+            // unsigned int n = std::count_if(GenJetAK4_pt, GenJetAK4_pt + nGenJetAK4, [](double pt){ return pt >= 10.0; });
+            // assert(n == nGenJetAK4);
 
             if (HasOnlyEleMu(sig, GenPart_genPartIdxMother, GenPart_pdgId)) 
             {
@@ -215,11 +217,11 @@ int main()
 
                 KinematicData genpart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, static_cast<int>(nGenPart)};
                 KinematicData genjet_ak4{GenJetAK4_pt, GenJetAK4_eta, GenJetAK4_phi, GenJetAK4_mass, static_cast<int>(nGenJetAK4)};
-                // KinematicData genjet_ak8{GenJetAK8_pt, GenJetAK8_eta, GenJetAK8_phi, GenJetAK8_mass, static_cast<int>(nGenJetAK8)};
-                // KinematicData subgenjet_ak8{SubGenJetAK8_pt, SubGenJetAK8_eta, SubGenJetAK8_phi, SubGenJetAK8_mass, static_cast<int>(nSubGenJetAK8)};
 
                 TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
                 TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
+
+                GenJetData gen_jet_data{genjet_ak4, {GenJetAK4_partonFlavour, GenJetAK4_hadronFlavour}};
 
                 // CUTS START
                 if (!PassLeptonCut(l_p4))
@@ -228,43 +230,44 @@ int main()
                 }
                 ++has_accept_lep;
 
-                if (!IsIsolatedLepton(l_p4, genjet_ak4))
+                std::vector<int> selected_jets = PrimaryJetSelection(genjet_ak4);
+                if (selected_jets.size() < 4)
                 {
                     continue;
                 }
-                ++has_isolated_lep;
+                ++has_at_least_4_primary_jets;   
 
-                std::vector<int> matchable_jets = GetAcceptJets(genjet_ak4);
-                if (matchable_jets.size() < 4)
+                // perform jet cleaning: reject jets overlapping with the lepton
+                auto JetLepOverlap = [&l_p4, &genjet_ak4](int i)
+                { 
+                    TLorentzVector p = GetP4(genjet_ak4, i);
+                    return p.DeltaR(l_p4) < DR_THRESH;
+                };
+                selected_jets.erase(std::remove_if(selected_jets.begin(), selected_jets.end(), JetLepOverlap), selected_jets.end());
+                if (selected_jets.size() < 4)
                 {
                     continue;
                 }
-                ++has_at_least_4_accep_jets;
+                ++has_at_least_4_clean_jets;
 
-                int num_bflav_jets = std::count_if(matchable_jets.begin(), matchable_jets.end(), [&GenJetAK4_partonFlavour](int idx){ return std::abs(GenJetAK4_partonFlavour[idx]) == 5; });
+                auto IsAccepBjet = [&gen_jet_data](int idx) 
+                {
+                    auto const& [pt, eta, phi, m, n] = gen_jet_data.kd;
+                    auto const& [part_flav, hadr_flav] = gen_jet_data.fi;
+                    return (static_cast<unsigned>(hadr_flav[idx]) == 5 && pt[idx] > MIN_GENJET_PT && std::abs(eta[idx]) < MAX_GENJET_ETA);
+                };
+                int num_bflav_jets = std::count_if(selected_jets.begin(), selected_jets.end(), IsAccepBjet);
+                if (num_bflav_jets < 1)
+                {
+                    continue;
+                }
+                ++has_at_least_1_accep_bflav_jet;
+
                 if (num_bflav_jets < 2)
                 {
                     continue;
                 }
-                ++has_at_least_two_bflav_jets;
-
-                int num_light_jets = std::count_if(matchable_jets.begin(), matchable_jets.end(), [&GenJetAK4_partonFlavour](int idx){ return std::abs(GenJetAK4_partonFlavour[idx]) < 5 || std::abs(GenJetAK4_partonFlavour[idx]) == 21; });
-                if (num_light_jets < 2)
-                {
-                    continue;
-                }
-                ++has_at_least_two_light_jets;
-
-                // std::vector<TLorentzVector> jet_momenta;
-                // std::transform(matchable_jets.begin(), matchable_jets.end(), std::back_inserter(jet_momenta), [&genjet_ak4](int i){ return GetP4(genjet_ak4, i); });
-
-                // if (!IsIsolatedLepton(l_p4, jet_momenta))
-                // {
-                //     continue;
-                // }
-                // ++has_isolated_lep;
-
-                hm.Fill(n_bflav_jets, num_bflav_jets);
+                ++has_at_least_2_accep_bflav_jets;
 
                 int b_idx = sig[SIG::b];
                 int bbar_idx = sig[SIG::bbar];
@@ -434,19 +437,68 @@ int main()
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 
+    std::vector<double> rel_eff{ 100.0*has_bbWW_decay/nEvents,
+                                 100.0*has_only_emu/has_bbWW_decay, 
+                                 100.0*has_accept_lep/has_only_emu, 
+                                 100.0*has_at_least_4_primary_jets/has_accept_lep, 
+                                 100.0*has_at_least_4_clean_jets/has_at_least_4_primary_jets,
+                                 100.0*has_at_least_1_accep_bflav_jet/has_at_least_4_clean_jets, 
+                                 100.0*has_at_least_2_accep_bflav_jets/has_at_least_1_accep_bflav_jet };
+                    
+    std::vector<double> abs_eff{ 100.0*has_bbWW_decay/nEvents,
+                                 100.0*has_only_emu/nEvents, 
+                                 100.0*has_accept_lep/nEvents, 
+                                 100.0*has_at_least_4_primary_jets/nEvents, 
+                                 100.0*has_at_least_4_clean_jets/nEvents,
+                                 100.0*has_at_least_1_accep_bflav_jet/nEvents, 
+                                 100.0*has_at_least_2_accep_bflav_jets/nEvents };
+
+    std::vector<char const*> cut_labels{ "has bbWW", 
+                                         "only e(mu)",
+                                         "accepted lep",
+                                         ">= 4 jets", 
+                                         ">= 4 clean jets", 
+                                         ">= 1 b jet",
+                                         ">= 2 b jets"};
+
+    int nx = cut_labels.size();
+    auto rel_eff_hist = std::make_unique<TH1F>("rel_eff_hist", Form("Relative cut efficiency: %d GeV", X_mass), nx, 0, nx);
+    auto abs_eff_hist = std::make_unique<TH1F>("abs_eff_hist", Form("Absolute cut efficiency: %d GeV", X_mass), nx, 0, nx);
+
+    rel_eff_hist->SetStats(0);
+    rel_eff_hist->SetFillStyle(3544);
+    rel_eff_hist->SetFillColorAlpha(kBlue, 0.75);
+    abs_eff_hist->SetStats(0);
+    abs_eff_hist->SetFillStyle(3544);
+    abs_eff_hist->SetFillColorAlpha(kBlue, 0.75);
+
+    auto c1 = std::make_unique<TCanvas>("c1", "c1");
+    c1->SetGrid();
+    c1->SetBottomMargin(0.15);
+
+    for (int b = 1; b <= nx; ++b)
+    {
+        rel_eff_hist->SetBinContent(b, rel_eff[b-1]);
+        rel_eff_hist->GetXaxis()->SetBinLabel(b, cut_labels[b-1]);
+        abs_eff_hist->SetBinContent(b, abs_eff[b-1]);
+        abs_eff_hist->GetXaxis()->SetBinLabel(b, cut_labels[b-1]);
+    }
+
+    rel_eff_hist->Draw();
+    c1->SaveAs("rel_eff_hist.png");
+
+    abs_eff_hist->Draw();
+    c1->SaveAs("abs_eff_hist.png");
+
     std::cout << std::setprecision(3);
     std::cout << "nEvents = " << nEvents << ", processing time = " << elapsed.count() << " s\n"
               << "\tHave bbWW decay: " << has_bbWW_decay << "/" << nEvents << " (" << 100.0*has_bbWW_decay/nEvents << "%)\n"
               << "\tHave tau leptons: " << has_tau << "/" << nEvents << " (" << 100.0*has_tau/nEvents << "%)\n" 
               << "\tHave only electrons/muons: " << has_only_emu << "/" << nEvents << " (" << 100.0*has_only_emu/nEvents << "%)\n"
               << "\tHave lepton in acceptance region: " << has_accept_lep << "/" << has_only_emu << " (" << 100.0*has_accept_lep/has_only_emu << "%)\n"
-              << "\tHave isolated lepton: " << has_isolated_lep << "/" << has_accept_lep << " (" << 100.0*has_isolated_lep/has_accept_lep << "%)\n"
-              << "\tHave at least 4 jets in acceptance region: " << has_at_least_4_accep_jets << "/" << has_accept_lep << " (" << 100.0*has_at_least_4_accep_jets/has_accept_lep << "%)\n"
-              << "\tHave at least 2 b-flavored jets: " << has_at_least_two_bflav_jets << "/" << has_at_least_4_accep_jets << " (" << 100.0*has_at_least_two_bflav_jets/has_at_least_4_accep_jets << "%)\n"
-              << "\tHave at least 2 light jets: " << has_at_least_two_light_jets << "/" << has_at_least_two_bflav_jets << " (" << 100.0*has_at_least_two_light_jets/has_at_least_two_bflav_jets << "%)\n"
-              << "\tSuccessfully matched all jets: " << matched_events << "/" << has_at_least_two_light_jets << " (" << 100.0*matched_events/has_at_least_two_light_jets << "%)\n"
-              << "\tInconsistet light jet matching: " << inconsistent_light_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_light_jet_match/matched_events << "%)\n"
-              << "\tInconsistet b jet matching: " << inconsistent_b_jet_match << "/" << matched_events << " (" << 100.0*inconsistent_b_jet_match/matched_events << "%)\n"
-              << "\tEvents passed to HME = " << accepted_events << "\n";
+              << "\tHave at least 4 primary jets: " << has_at_least_4_primary_jets << "/" << has_accept_lep << " (" << 100.0*has_at_least_4_primary_jets/has_accept_lep << "%)\n"
+              << "\tHave at least 4 clean jets: " << has_at_least_4_clean_jets << "/" << has_at_least_4_primary_jets << " (" << 100.0*has_at_least_4_clean_jets/has_at_least_4_primary_jets << "%)\n"
+              << "\tHave at least 1 b-flavored jet in acceptance region: " << has_at_least_1_accep_bflav_jet << "/" << has_at_least_4_clean_jets << " (" << 100.0*has_at_least_1_accep_bflav_jet/has_at_least_4_clean_jets << "%)\n"
+              << "\tHave at least 2 b-flavored jets in acceptance region: " << has_at_least_2_accep_bflav_jets << "/" << has_at_least_1_accep_bflav_jet << " (" << 100.0*has_at_least_2_accep_bflav_jets/has_at_least_1_accep_bflav_jet << "%)\n";
     return 0;
 }
