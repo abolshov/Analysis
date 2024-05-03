@@ -29,9 +29,6 @@ int main()
     auto gStyle = std::make_unique<TStyle>();
     gStyle->SetPalette(kRainBow);
     TFile *myFile = TFile::Open("NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J.root");
-    // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-450.root");
-    // TFile *myFile = TFile::Open("NanoAOD_600GeV_1000Events.root");
-    // TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-600_narrow_13TeV-madgraph.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
 
     UInt_t          nGenPart;
@@ -127,12 +124,15 @@ int main()
     int has_at_least_4_primary_jets = 0;
     int has_at_least_4_clean_jets = 0;
 
-    int has_at_least_1_accep_bflav_jet = 0;
-    int has_at_least_2_accep_bflav_jets = 0;
+    int has_at_least_1_bflav_jet = 0;
+    int has_at_least_2_bflav_jet = 0;
+    int has_at_least_2_bflav_jet_passing_pt = 0;
+    int has_at_least_2_bflav_jet_passing_eta = 0;
     int has_accept_lep = 0;
+
     int matched_events = 0;
-    int inconsistent_light_jet_match = 0;
     int inconsistent_b_jet_match = 0;
+    int inconsistent_light_jet_match = 0;
     int accepted_events = 0;
 
     // hists
@@ -250,24 +250,44 @@ int main()
                 }
                 ++has_at_least_4_clean_jets;
 
-                auto IsAccepBjet = [&gen_jet_data](int idx) 
+                std::vector<TLorentzVector> b_jets;
+                for (auto j: selected_jets)
                 {
-                    auto const& [pt, eta, phi, m, n] = gen_jet_data.kd;
-                    auto const& [part_flav, hadr_flav] = gen_jet_data.fi;
-                    return (static_cast<unsigned>(hadr_flav[idx]) == 5 && pt[idx] > MIN_GENJET_PT && std::abs(eta[idx]) < MAX_GENJET_ETA);
-                };
-                int num_bflav_jets = std::count_if(selected_jets.begin(), selected_jets.end(), IsAccepBjet);
+                    unsigned flav = static_cast<unsigned>(GenJetAK4_hadronFlavour[j]);
+                    if (flav == 5)
+                    {
+                        b_jets.push_back(GetP4(genjet_ak4, j));
+                    }
+                }
+
+                int num_bflav_jets = b_jets.size();
                 if (num_bflav_jets < 1)
                 {
                     continue;
                 }
-                ++has_at_least_1_accep_bflav_jet;
+                ++has_at_least_1_bflav_jet;
 
                 if (num_bflav_jets < 2)
                 {
                     continue;
                 }
-                ++has_at_least_2_accep_bflav_jets;
+                ++has_at_least_2_bflav_jet;
+
+                auto PtCut = [](TLorentzVector const& p) { return p.Pt() > MIN_B_GENJET_PT; };
+                int num_bjets_passing_pt = std::count_if(b_jets.begin(), b_jets.end(), PtCut);
+                if (num_bjets_passing_pt < 2)
+                {
+                    continue;
+                }
+                ++has_at_least_2_bflav_jet_passing_pt;
+
+                auto EtaCut = [](TLorentzVector const& p) { return std::abs(p.Eta()) < MAX_GENJET_ETA; };
+                int num_bjets_passing_eta = std::count_if(b_jets.begin(), b_jets.end(), EtaCut);
+                if (num_bjets_passing_eta < 2)
+                {
+                    continue;
+                }
+                ++has_at_least_2_bflav_jet_passing_eta;
 
                 int b_idx = sig[SIG::b];
                 int bbar_idx = sig[SIG::bbar];
@@ -442,16 +462,20 @@ int main()
                                  100.0*has_accept_lep/has_only_emu, 
                                  100.0*has_at_least_4_primary_jets/has_accept_lep, 
                                  100.0*has_at_least_4_clean_jets/has_at_least_4_primary_jets,
-                                 100.0*has_at_least_1_accep_bflav_jet/has_at_least_4_clean_jets, 
-                                 100.0*has_at_least_2_accep_bflav_jets/has_at_least_1_accep_bflav_jet };
+                                 100.0*has_at_least_1_bflav_jet/has_at_least_4_clean_jets, 
+                                 100.0*has_at_least_2_bflav_jet/has_at_least_1_bflav_jet,
+                                 100.0*has_at_least_2_bflav_jet_passing_pt/has_at_least_2_bflav_jet,
+                                 100.0*has_at_least_2_bflav_jet_passing_eta/has_at_least_2_bflav_jet_passing_pt };
                     
     std::vector<double> abs_eff{ 100.0*has_bbWW_decay/nEvents,
                                  100.0*has_only_emu/nEvents, 
                                  100.0*has_accept_lep/nEvents, 
                                  100.0*has_at_least_4_primary_jets/nEvents, 
                                  100.0*has_at_least_4_clean_jets/nEvents,
-                                 100.0*has_at_least_1_accep_bflav_jet/nEvents, 
-                                 100.0*has_at_least_2_accep_bflav_jets/nEvents };
+                                 100.0*has_at_least_1_bflav_jet/nEvents,
+                                 100.0*has_at_least_2_bflav_jet/nEvents, 
+                                 100.0*has_at_least_2_bflav_jet_passing_pt/nEvents,
+                                 100.0*has_at_least_2_bflav_jet_passing_eta/nEvents };
 
     std::vector<char const*> cut_labels{ "has bbWW", 
                                          "only e(mu)",
@@ -459,7 +483,9 @@ int main()
                                          ">= 4 jets", 
                                          ">= 4 clean jets", 
                                          ">= 1 b jet",
-                                         ">= 2 b jets"};
+                                         ">= 2 b jets",
+                                         ">= 2 b jets pt > 20",
+                                         ">= 2 b jets |eta| < 2.5" };
 
     int nx = cut_labels.size();
     auto rel_eff_hist = std::make_unique<TH1F>("rel_eff_hist", Form("Relative cut efficiency: %d GeV", X_mass), nx, 0, nx);
@@ -498,7 +524,9 @@ int main()
               << "\tHave lepton in acceptance region: " << has_accept_lep << "/" << has_only_emu << " (" << 100.0*has_accept_lep/has_only_emu << "%)\n"
               << "\tHave at least 4 primary jets: " << has_at_least_4_primary_jets << "/" << has_accept_lep << " (" << 100.0*has_at_least_4_primary_jets/has_accept_lep << "%)\n"
               << "\tHave at least 4 clean jets: " << has_at_least_4_clean_jets << "/" << has_at_least_4_primary_jets << " (" << 100.0*has_at_least_4_clean_jets/has_at_least_4_primary_jets << "%)\n"
-              << "\tHave at least 1 b-flavored jet in acceptance region: " << has_at_least_1_accep_bflav_jet << "/" << has_at_least_4_clean_jets << " (" << 100.0*has_at_least_1_accep_bflav_jet/has_at_least_4_clean_jets << "%)\n"
-              << "\tHave at least 2 b-flavored jets in acceptance region: " << has_at_least_2_accep_bflav_jets << "/" << has_at_least_1_accep_bflav_jet << " (" << 100.0*has_at_least_2_accep_bflav_jets/has_at_least_1_accep_bflav_jet << "%)\n";
+              << "\tHave at least 1 b-flavored jet: " << has_at_least_1_bflav_jet << "/" << has_at_least_4_clean_jets << " (" << 100.0*has_at_least_1_bflav_jet/has_at_least_4_clean_jets << "%)\n"
+              << "\tHave at least 2 b-flavored jets: " << has_at_least_2_bflav_jet << "/" << has_at_least_1_bflav_jet << " (" << 100.0*has_at_least_2_bflav_jet/has_at_least_1_bflav_jet << "%)\n"
+              << "\tHave at least 2 b-flavored jets passing pt cut: " << has_at_least_2_bflav_jet_passing_pt << "/" << has_at_least_2_bflav_jet << " (" << 100.0*has_at_least_2_bflav_jet_passing_pt/has_at_least_2_bflav_jet << "%)\n"
+              << "\tHave at least 2 b-flavored jets passing eta cut: " << has_at_least_2_bflav_jet_passing_eta << "/" << has_at_least_2_bflav_jet_passing_pt << " (" << 100.0*has_at_least_2_bflav_jet_passing_eta/has_at_least_2_bflav_jet_passing_pt << "%)\n";
     return 0;
 }
