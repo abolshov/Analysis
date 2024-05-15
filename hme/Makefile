@@ -1,40 +1,23 @@
-ROOTCFLAGS    = $(shell $(ROOTSYS)/bin/root-config --cflags)
-ROOTLIBS      = $(shell $(ROOTSYS)/bin/root-config --libs)
-ROOTGLIBS     = $(shell $(ROOTSYS)/bin/root-config --glibs)
+CXX=clang++
+CXXFLAGS= -c -O3 -std=c++17 -Wall -Wextra -pedantic `root-config --cflags `
+LDFLAGS= `root-config --glibs ` -lSpectrum
 
-#ROOTCFLAGS    = $(shell /usr/bin/root-config --cflags)
-#ROOTLIBS      = $(shell /usr/bin/root-config --libs)
-#ROOTGLIBS     = $(shell /usr/bin/root-config --glibs)
+hme.o: hme.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-CXX           = g++
-CXXFLAGS      = -g -Wall -fPIC -Wno-deprecated
+EstimatorTools.o: EstimatorTools.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-NGLIBS         = $(ROOTGLIBS)
-NGLIBS        += -lMinuit
+HistManager.o: HistManager.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-CXXFLAGS      += $(ROOTCFLAGS)
-CXX           += -I./
-LIBS           = $(ROOTLIBS)
+MatchingTools.o: MatchingTools.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-GLIBS          = $(filter-out -lNew, $(NGLIBS))
+hme: hme.o EstimatorTools.o HistManager.o MatchingTools.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
 
-CXX	      += -I./obj/
-OUTLIB	      = ./obj/
-.SUFFIXES: .C
-.PREFIXES: ./obj/
-
-#----------------------------------------------------#
-
-hme: hme.cpp tools.cpp Utils.cpp
-	g++ -O2 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum
-
-compute: compute_pdfs.cpp Utils.cpp Plotting.cpp
-	g++ -O2 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum 
-
-test: test.cpp
-	g++ -O3 -Wall -Wextra -Wpedantic $^ -o $@ `root-config --cflags --glibs ` -lSpectrum 
-	
-clean:
-	rm -f hme
-	rm -f *~
-	rm *.o 
+.PHONY: clean
+clean: 
+	rm hme
+	rm *.o

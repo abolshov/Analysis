@@ -1,331 +1,296 @@
 #include <iostream>
-#include <fstream>
-#include <vector>
-#include <map>
+#include <numeric>
 #include <algorithm>
+#include <memory>
+#include <iomanip>
 #include <chrono>
-#include <time.h> 
+#include <cassert>
+#include <fstream>
 
 #include "TFile.h"
-#include "TDirectory.h"
-#include "TTreeReader.h"
+#include "TTree.h"
+#include "TLorentzVector.h"
+#include "TH1.h"
+#include "TCanvas.h"
+#include "THStack.h"
+#include "TLegend.h"
+#include "TString.h"
+#include "TStyle.h"
 #include "TRandom3.h"
-#include "TF1.h"
 
-#include "tools.hpp"
-#include "Utils.hpp"
-#include "Tracer.hpp"
-#include "constants.hpp"
+#include "MatchingTools.hpp"
+#include "HistManager.hpp"
+#include "EstimatorTools.hpp"
 
-using namespace std::chrono;
+static constexpr int MAX_AK4_GENJET = 35;
+static constexpr int MAX_GENPART = 350;
 
 int main()
 {
-    // TFile* file_pdf = new TFile("data/pdfs.root", "READ");
-    TFile* file_pdf = new TFile("data/new_pdfs.root", "READ");
-    TH1F* lead_bjet_pdf = static_cast<TH1F*>(file_pdf->Get("lead_bjet_pdf"));
-    TH1F* lead_off = static_cast<TH1F*>(file_pdf->Get("lead_off"));
-    TH1F* lead_on = static_cast<TH1F*>(file_pdf->Get("lead_on"));
-    TH1F* offshell_w_from_qq = static_cast<TH1F*>(file_pdf->Get("offshell_w_from_qq"));
-    TH1F* onshell_w_from_qq = static_cast<TH1F*>(file_pdf->Get("onshell_w_from_qq"));
-    TH1F* h_mass = static_cast<TH1F*>(file_pdf->Get("h_mass"));
-    TH1F* nu_eta = static_cast<TH1F*>(file_pdf->Get("nu_eta"));
-    // TH1F* sublead_bjet_pdf = static_cast<TH1F*>(file_pdf->Get("sublead_bjet_pdf"));
-    // TH1F* sublead_on = static_cast<TH1F*>(file_pdf->Get("sublead_on"));
-    // TH1F* sublead_off = static_cast<TH1F*>(file_pdf->Get("sublead_off"));
+    auto start = std::chrono::system_clock::now();
+    auto gStyle = std::make_unique<TStyle>();
+    gStyle->SetPalette(kRainBow);
+    TFile *myFile = TFile::Open("GluGluToRadionToHHTo2B2WToLNu2J_M-600-2.root");
+    TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
 
-    // TFile* file_data = TFile::Open("data/NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_Friend.root");
-    // TFile* file_data = TFile::Open("data/GluGluToRadionToHHTo2B2WToLNu2J_M-350_narrow_13TeV_Friend.root");
-    TFile* file_data = TFile::Open("data/NanoAODproduction_2017_cfg_NANO_1_RadionM400_HHbbWWToLNu2J_matched.root");
-    TDirectory *dir = (TDirectory*)file_data;
-    TTree *myTree = (TTree*)dir->Get("syncTree");
-
-    float genMET_pT;
-    float genMET_phi;
-
-    float genbjet1_mass;
-    float genbjet1_pt;
-    float genbjet1_eta;
-    float genbjet1_phi;
-
-    float genbjet2_mass;
-    float genbjet2_pt;
-    float genbjet2_eta;
-    float genbjet2_phi;
-
-    float genb1_mass;
-    float genb1_pt;
-    float genb1_eta;
-    float genb1_phi;
-
-    float genb2_mass;
-    float genb2_pt;
-    float genb2_eta;
-    float genb2_phi;
-
-    float genq2_mass;
-    float genq2_pt;
-    float genq2_eta;
-    float genq2_phi;
-
-    float genq1_mass;
-    float genq1_pt;
-    float genq1_eta;
-    float genq1_phi;
-
-    float genqjet2_mass;
-    float genqjet2_pt;
-    float genqjet2_eta;
-    float genqjet2_phi;
-
-    float genqjet1_mass;
-    float genqjet1_pt;
-    float genqjet1_eta;
-    float genqjet1_phi;
-
-    float genl_mass;
-    float genl_pt;
-    float genl_eta;
-    float genl_phi;
-
-    float gennu_mass;
-    float gennu_pt;
-    float gennu_eta;
-    float gennu_phi;
-
-    myTree->SetBranchAddress("genbjet1_mass", &genbjet1_mass);
-    myTree->SetBranchAddress("genbjet1_pt", &genbjet1_pt);
-    myTree->SetBranchAddress("genbjet1_eta", &genbjet1_eta);
-    myTree->SetBranchAddress("genbjet1_phi", &genbjet1_phi);
-
-    myTree->SetBranchAddress("genbjet2_mass", &genbjet2_mass);
-    myTree->SetBranchAddress("genbjet2_pt", &genbjet2_pt);
-    myTree->SetBranchAddress("genbjet2_eta", &genbjet2_eta);
-    myTree->SetBranchAddress("genbjet2_phi", &genbjet2_phi);
-
-    myTree->SetBranchAddress("genb1_mass", &genb1_mass);
-    myTree->SetBranchAddress("genb1_pt", &genb1_pt);
-    myTree->SetBranchAddress("genb1_eta", &genb1_eta);
-    myTree->SetBranchAddress("genb1_phi", &genb1_phi);
-
-    myTree->SetBranchAddress("genb2_mass", &genb2_mass);
-    myTree->SetBranchAddress("genb2_pt", &genb2_pt);
-    myTree->SetBranchAddress("genb2_eta", &genb2_eta);
-    myTree->SetBranchAddress("genb2_phi", &genb2_phi);
-
-    myTree->SetBranchAddress("genq2_mass", &genq2_mass);
-    myTree->SetBranchAddress("genq2_pt", &genq2_pt);
-    myTree->SetBranchAddress("genq2_eta", &genq2_eta);
-    myTree->SetBranchAddress("genq2_phi", &genq2_phi);
-
-    myTree->SetBranchAddress("genq1_mass", &genq1_mass);
-    myTree->SetBranchAddress("genq1_pt", &genq1_pt);
-    myTree->SetBranchAddress("genq1_eta", &genq1_eta);
-    myTree->SetBranchAddress("genq1_phi", &genq1_phi);
-
-    myTree->SetBranchAddress("genqjet1_mass", &genqjet1_mass);
-    myTree->SetBranchAddress("genqjet1_pt", &genqjet1_pt);
-    myTree->SetBranchAddress("genqjet1_eta", &genqjet1_eta);
-    myTree->SetBranchAddress("genqjet1_phi", &genqjet1_phi);
-
-    myTree->SetBranchAddress("genqjet2_mass", &genqjet2_mass);
-    myTree->SetBranchAddress("genqjet2_pt", &genqjet2_pt);
-    myTree->SetBranchAddress("genqjet2_eta", &genqjet2_eta);
-    myTree->SetBranchAddress("genqjet2_phi", &genqjet2_phi);
-    
-    myTree->SetBranchAddress("genl1_mass", &genl_mass);
-    myTree->SetBranchAddress("genl1_pt", &genl_pt);
-    myTree->SetBranchAddress("genl1_eta", &genl_eta);
-    myTree->SetBranchAddress("genl1_phi", &genl_phi);
-
-    myTree->SetBranchAddress("gennu1_mass", &gennu_mass);
-    myTree->SetBranchAddress("gennu1_pt", &gennu_pt);
-    myTree->SetBranchAddress("gennu1_eta", &gennu_eta);
-    myTree->SetBranchAddress("gennu1_phi", &gennu_phi);
-
-    myTree->SetBranchAddress("genMET_pT", &genMET_pT);
-    myTree->SetBranchAddress("genMET_phi", &genMET_phi);
-
-    int nEvents = static_cast<int>(myTree->GetEntries());
-
-    int nIter = 5000;
-    // int nbins = 101;
-    int zero_part_event = 0;
-    int identical_pair_event = 0;
-    int too_low_hh_mass = 0;
-    int too_low_hh_mass_v2 = 0;
-    int hme_error = 0;
-    int valid_event = 0;
-    int bad_bjet_match = 0;
-    int bad_ljet_match = 0;
+    auto file_pdf = std::make_unique<TFile>("pdfs.root", "READ");
+    auto lead_bjet_pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("lead_bjet_pdf")));
 
     TRandom3 rg;
+    rg.SetSeed(0);
 
-    TH1F* hh_mass_rand_sampl = new TH1F("hh_mass", "Random Sampling", 200, 0.0, 2000.0);
-    TH1F* hh_mass_analytical = new TH1F("hh_mass", "Analytical solution", 200, 0.0, 2000.0);
-    TH1F* hh_mass_anal_sampl = new TH1F("hh_mass", "Analytical solution sampling", 200, 0.0, 2000.0);
-    TH1F* hh_mass_rand_sampl_v1 = new TH1F("hh_mass", "Random Sampling v1", 200, 0.0, 2000.0);
-    TH1F* hh_mass_rand_sampl_v2 = new TH1F("hh_mass", "Random Sampling v2", 200, 0.0, 2000.0);
-    TH1F* hh_mass_rand_sampl_v3 = new TH1F("hh_mass", "Random Sampling v3", 200, 0.0, 2000.0);
+    UInt_t          nGenPart;
+    Float_t         GenPart_eta[MAX_GENPART];   //[nGenPart]
+    Float_t         GenPart_mass[MAX_GENPART];   //[nGenPart]
+    Float_t         GenPart_phi[MAX_GENPART];   //[nGenPart]
+    Float_t         GenPart_pt[MAX_GENPART];   //[nGenPart]
+    Int_t           GenPart_genPartIdxMother[MAX_GENPART];   //[nGenPart]
+    Int_t           GenPart_pdgId[MAX_GENPART];   //[nGenPart]
+    Int_t           GenPart_status[MAX_GENPART];   //[nGenPart]
 
-    auto start = std::chrono::high_resolution_clock::now();
-    int analytical_fails = 0;
+    // ak4 jets
+    UInt_t          nGenJetAK4;
+    Float_t         GenJetAK4_eta[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Float_t         GenJetAK4_mass[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Float_t         GenJetAK4_phi[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Float_t         GenJetAK4_pt[MAX_AK4_GENJET];   //[nGenJetAK4]
+    Int_t           GenJetAK4_partonFlavour[MAX_AK4_GENJET];   //[nGenJetAK4]
+    UChar_t         GenJetAK4_hadronFlavour[MAX_AK4_GENJET];   //[nGenJetAK4]
+
+    Float_t         GenMET_phi;
+    Float_t         GenMET_pt;
+
+    // gen particles 
+    myTree->SetBranchAddress("nGenPart", &nGenPart);
+    myTree->SetBranchAddress("GenPart_eta", &GenPart_eta);
+    myTree->SetBranchAddress("GenPart_mass", &GenPart_mass);
+    myTree->SetBranchAddress("GenPart_phi", &GenPart_phi);
+    myTree->SetBranchAddress("GenPart_pt", &GenPart_pt);
+    myTree->SetBranchAddress("GenPart_genPartIdxMother", &GenPart_genPartIdxMother);
+    myTree->SetBranchAddress("GenPart_pdgId", &GenPart_pdgId);
+    myTree->SetBranchAddress("GenPart_status", &GenPart_status);
+    myTree->SetBranchAddress("GenPart_phi", &GenPart_phi);
+    // myTree->SetBranchAddress("GenPart_statusFlags", &GenPart_statusFlags);
+
+    // ak4 gen jets
+    myTree->SetBranchAddress("nGenJet", &nGenJetAK4);
+    myTree->SetBranchAddress("GenJet_eta", &GenJetAK4_eta);
+    myTree->SetBranchAddress("GenJet_mass", &GenJetAK4_mass);
+    myTree->SetBranchAddress("GenJet_phi", &GenJetAK4_phi);
+    myTree->SetBranchAddress("GenJet_pt", &GenJetAK4_pt);
+    myTree->SetBranchAddress("GenJet_partonFlavour", &GenJetAK4_partonFlavour);
+    myTree->SetBranchAddress("GenJet_hadronFlavour", &GenJetAK4_hadronFlavour);
+
+    myTree->SetBranchAddress("GenMET_phi", &GenMET_phi);
+    myTree->SetBranchAddress("GenMET_pt", &GenMET_pt);
+
+    int nEvents = myTree->GetEntries();
+
+    // counters
+    int has_bbWW_decay = 0;
+    int has_tau = 0;
+    int has_only_emu = 0;
+    int has_at_least_4_primary_jets = 0;
+    int has_at_least_4_clean_jets = 0;
+
+    int has_at_least_1_bflav_jet = 0;
+    int has_at_least_2_bflav_jet = 0;
+    int has_at_least_2_bflav_jet_passing_pt = 0;
+    int has_at_least_2_bflav_jet_passing_eta = 0;
+    int has_accept_lep = 0;
+
+    // hists
+    HistManager hm;
+
+    std::string res_mass_default("res_mass_default");
+    std::string succ_rate_default("succ_rate_default");
+    hm.Add(res_mass_default, "X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 1000}, 250);
+    hm.Add(succ_rate_default, "HME Success rate", {"Success rate", "Count"}, {0, 1}, 10);
+
     for (int i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
-
-        TLorentzVector b1, b2, j1, j2, l, nu, met, q1, q2, bq1, bq2;
-        b1.SetPtEtaPhiM(genbjet1_pt, genbjet1_eta, genbjet1_phi, genbjet1_mass);
-        b2.SetPtEtaPhiM(genbjet2_pt, genbjet2_eta, genbjet2_phi, genbjet2_mass);
-        bq1.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
-        bq2.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
-        j1.SetPtEtaPhiM(genqjet1_pt, genqjet1_eta, genqjet1_phi, genqjet1_mass);
-        j2.SetPtEtaPhiM(genqjet2_pt, genqjet2_eta, genqjet2_phi, genqjet2_mass);
-        l.SetPtEtaPhiM(genl_pt, genl_eta, genl_phi, genl_mass);
-        nu.SetPtEtaPhiM(gennu_pt, gennu_eta, gennu_phi, gennu_mass);
-        met.SetPtEtaPhiM(genMET_pT, 0.0, genMET_phi, 0.0);
-        q1.SetPtEtaPhiM(genq1_pt, genq1_eta, genq1_phi, genq1_mass);
-        q2.SetPtEtaPhiM(genq2_pt, genq2_eta, genq2_phi, genq2_mass);
-
-        std::vector<TLorentzVector> particles = {b1, b2, j1, j2, l, nu, met};
-        // std::vector<TLorentzVector> particles = {b1, b2, q1, q2, l, nu, met}; // quarks instead of jets
-        std::vector<TH1F*> pdfs = {lead_bjet_pdf, lead_on, lead_off, onshell_w_from_qq, offshell_w_from_qq, h_mass, nu_eta};
-
-        if (HasZeroParticle(particles))
-        {
-            ++zero_part_event;
-            continue;
-        }
-
-        if (IsIdenticalPair(j1, j2) || IsIdenticalPair(b1, b2))
-        {
-            ++identical_pair_event;
-            continue;
-        }
-
-        if (b1.DeltaR(bq1) > 0.4 || b2.DeltaR(bq2) > 0.4)
-        {
-            ++bad_bjet_match;
-            continue;
-        }
-
-        if (q1.DeltaR(j1) > 0.4 || q2.DeltaR(j2) > 0.4)
-        {
-            ++bad_ljet_match;
-            continue;
-        }
-
-        ++valid_event;
-
-        rg.SetSeed(0);
-        // Ideal HME (when I know for sure what W I am using) without light jet corrections
-        float evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::Original);
-        if (evt_hh_mass > 0.0f)
-        {
-            if (evt_hh_mass < 250.0f) 
-            {
-                ++too_low_hh_mass;
-            }
-            hh_mass_rand_sampl->Fill(evt_hh_mass);
-        }
-        else 
-        {
-            ++hme_error;
-        }
-
-        // solution sampling
-        evt_hh_mass = hme::anal_sampl(particles, pdfs, nIter, rg, 3000);
-        if (evt_hh_mass > 0.0f)
-        {
-            hh_mass_anal_sampl->Fill(evt_hh_mass);
-        }
-
-        // random sampling v2
-        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::WeightedV2);
-        if (evt_hh_mass > 0.0f)
-        {
-            if (evt_hh_mass < 250.0f)
-            {
-                ++too_low_hh_mass_v2;
-            }
-            hh_mass_rand_sampl_v2->Fill(evt_hh_mass);
-        }
-
-        // random sampling v1
-        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::WeightedV1);
-        if (evt_hh_mass > 0.0f)
-        {
-            hh_mass_rand_sampl_v1->Fill(evt_hh_mass);
-        }
-
-        // random sampling v3
-        evt_hh_mass = hme::rand_sampl(particles, pdfs, nIter, rg, 3000, hme::MODE::SimpleV3);
-        if (evt_hh_mass > 0.0f)
-        {
-            hh_mass_rand_sampl_v3->Fill(evt_hh_mass);
-        }
         
-        // analytical solution
-        evt_hh_mass = hme::analytical({b1, b2, j1, j2, l, met});
-        if (evt_hh_mass > 0.0f) 
-        {   
-            hh_mass_analytical->Fill(evt_hh_mass);
-        }
-        else 
+        auto sig  = GetSignal(GenPart_pdgId, GenPart_genPartIdxMother, nGenPart);
+
+        if (!sig.empty())
         {
-            ++analytical_fails;
+            ++has_bbWW_decay;
+            X_mass = static_cast<int>(GenPart_mass[sig[SIG::X]]);
+
+            if (HasOnlyEleMu(sig, GenPart_genPartIdxMother, GenPart_pdgId)) 
+            {
+                ++has_only_emu;
+
+                KinematicData genpart{GenPart_pt, GenPart_eta, GenPart_phi, GenPart_mass, static_cast<int>(nGenPart)};
+                KinematicData genjet_ak4{GenJetAK4_pt, GenJetAK4_eta, GenJetAK4_phi, GenJetAK4_mass, static_cast<int>(nGenJetAK4)};
+
+                TLorentzVector l_p4 = GetP4(genpart, sig[SIG::l]);
+                TLorentzVector nu_p4 = GetP4(genpart, sig[SIG::nu]);
+
+                // int b_idx = sig[SIG::b];
+                // int bbar_idx = sig[SIG::bbar];
+                int q1_idx = sig[SIG::q1];
+                int q2_idx = sig[SIG::q2];
+
+                // CUTS START
+                if (!PassLeptonCut(l_p4))
+                {
+                    continue;
+                }
+                ++has_accept_lep;
+
+                std::vector<int> selected_jets = PrimaryJetSelection(genjet_ak4);
+                if (selected_jets.size() < 4)
+                {
+                    continue;
+                }
+                ++has_at_least_4_primary_jets;   
+
+                // perform jet cleaning: reject jets overlapping with the lepton
+                auto JetLepOverlap = [&l_p4, &genjet_ak4](int i)
+                { 
+                    TLorentzVector p = GetP4(genjet_ak4, i);
+                    return p.DeltaR(l_p4) < DR_THRESH;
+                };
+                selected_jets.erase(std::remove_if(selected_jets.begin(), selected_jets.end(), JetLepOverlap), selected_jets.end());
+                if (selected_jets.size() < 4)
+                {
+                    continue;
+                }
+                ++has_at_least_4_clean_jets;
+
+                std::vector<TLorentzVector> b_jets, light_jets;
+                for (auto j: selected_jets)
+                {
+                    unsigned flav = static_cast<unsigned>(GenJetAK4_hadronFlavour[j]);
+                    if (flav == 5)
+                    {
+                        b_jets.push_back(GetP4(genjet_ak4, j));
+                    }
+                    else
+                    {
+                        light_jets.push_back(GetP4(genjet_ak4, j));
+                    }
+                }
+
+                int num_bflav_jets = b_jets.size();
+                if (num_bflav_jets < 1)
+                {
+                    continue;
+                }
+                ++has_at_least_1_bflav_jet;
+
+                if (num_bflav_jets < 2)
+                {
+                    continue;
+                }
+                ++has_at_least_2_bflav_jet;
+
+                auto PtCut = [](TLorentzVector const& p) { return p.Pt() > MIN_B_GENJET_PT; };
+                int num_bjets_passing_pt = std::count_if(b_jets.begin(), b_jets.end(), PtCut);
+                if (num_bjets_passing_pt < 2)
+                {
+                    continue;
+                }
+                ++has_at_least_2_bflav_jet_passing_pt;
+
+                auto EtaCut = [](TLorentzVector const& p) { return std::abs(p.Eta()) < MAX_GENJET_ETA; };
+                int num_bjets_passing_eta = std::count_if(b_jets.begin(), b_jets.end(), EtaCut);
+                if (num_bjets_passing_eta < 2)
+                {
+                    continue;
+                }
+                ++has_at_least_2_bflav_jet_passing_eta;
+
+                if (light_jets.size() < 2)
+                {
+                    continue;
+                }
+
+                TLorentzVector lq1_p4 = GetP4(genpart, q1_idx);
+                TLorentzVector lq2_p4 = GetP4(genpart, q2_idx);
+
+                TLorentzVector bj1_p4, bj2_p4;
+                if (b_jets.size() == 2)
+                {
+                    bj1_p4 = b_jets[0];
+                    bj2_p4 = b_jets[1];
+                }
+                else
+                {
+                    continue;
+                    // double min_delta_m = GenPart_mass[h_idx];
+                    // for (size_t f = 0; f < b_jets.size(); ++f)
+                    // {
+                    //     for (size_t s = 1; s < b_jets.size(); ++s)
+                    //     {
+                    //         double m_jj = (b_jets[f] + b_jets[s]).M();
+                    //         if (std::abs(m_jj - GenPart_mass[h_idx]) < min_delta_m)
+                    //         {
+                    //             bj1_p4 = b_jets[f];
+                    //             bj2_p4 = b_jets[s];
+                    //             min_delta_m = m_jj;
+                    //         }
+                    //     }
+                    // }
+                }
+
+                TLorentzVector genmet;
+                genmet.SetPtEtaPhiM(GenMET_pt, 0, GenMET_phi, 0);
+
+                std::vector<TLorentzVector> input{ bj1_p4, bj2_p4, lq1_p4, lq2_p4, genmet };
+                auto res = EstimateMass(input, lead_bjet_pdf, rg, i);
+                if (res)
+                {
+                    auto [mass, eff] = res.value();
+                    hm.Fill(res_mass_default, mass);
+                    hm.Fill(succ_rate_default, eff);
+                }
+
+                // loop over all possible pairs of light jets
+                // int num_light_jets = light_jets.size();
+                // for (int j1 = 0; j1 < num_light_jets; ++j1)
+                // {
+                //     for (int j2 = j1 + 1; j2 < num_light_jets; ++j2)
+                //     {
+                //         std::vector<TLorentzVector> input{ bj1_p4, bj2_p4, light_jets[j1], light_jets[j2], l_p4, genmet };
+                //         auto res = EstimateMass(input, lead_bjet_pdf, rg, i);
+                //         if (res)
+                //         {
+                //             auto [mass, eff] = res.value();
+                //             hm.Fill(res_mass_default, mass);
+                //             hm.Fill(succ_rate_default, eff);
+                //         }
+                //     }
+                // }
+            }
+            else
+            {
+                ++has_tau;
+            }
         }
     }
 
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = duration_cast<std::chrono::seconds>(stop - start);
-    std::cout << "Time taken by HME event loop: " << duration.count() << " seconds" << "\n";
+    std::cout << "Finished processing\n";
+    hm.Draw();
 
-    save::save_1d_dist(hh_mass_rand_sampl, "hh_mass_rand_sampl", "[GeV]");
-    save::save_1d_dist(hh_mass_analytical, "hh_mass_analytical", "[GeV]");
-    save::save_1d_dist(hh_mass_rand_sampl_v2, "hh_mass_rand_sampl_v2", "[GeV]");
-    save::save_1d_dist(hh_mass_rand_sampl_v1, "hh_mass_rand_sampl_v1", "[GeV]");
-    save::save_1d_dist(hh_mass_rand_sampl_v3, "hh_mass_rand_sampl_v3", "[GeV]");
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 
-    std::cout << "Total " << nEvents << " events, from them:\n";
-    std::cout << "\t have zero particle(s) " << zero_part_event << "(" << (1.0*zero_part_event)/nEvents*100 << "%)\n";
-    std::cout << "\t have identical pair(s) " << identical_pair_event << "(" << (1.0*identical_pair_event)/nEvents*100 << "%)\n";
-    std::cout << "\t have bad b jet match " << bad_bjet_match << "(" << (1.0*bad_bjet_match)/nEvents*100 << "%)\n";
-    std::cout << "\t have bad light jet match " << bad_ljet_match << "(" << (1.0*bad_ljet_match)/nEvents*100 << "%)\n";
+    std::cout << std::setprecision(3);
+    std::cout << "nEvents = " << nEvents << ", processing time = " << elapsed.count() << " s\n"
+              << "\tHave bbWW decay: " << has_bbWW_decay << "/" << nEvents << " (" << 100.0*has_bbWW_decay/nEvents << "%)\n"
+              << "\tHave tau leptons: " << has_tau << "/" << nEvents << " (" << 100.0*has_tau/nEvents << "%)\n" 
+              << "\tHave only electrons/muons: " << has_only_emu << "/" << nEvents << " (" << 100.0*has_only_emu/nEvents << "%)\n"
+              << "\tHave lepton in acceptance region: " << has_accept_lep << "/" << has_only_emu << " (" << 100.0*has_accept_lep/has_only_emu << "%)\n"
+              << "\tHave at least 4 primary jets: " << has_at_least_4_primary_jets << "/" << has_accept_lep << " (" << 100.0*has_at_least_4_primary_jets/has_accept_lep << "%)\n"
+              << "\tHave at least 4 clean jets: " << has_at_least_4_clean_jets << "/" << has_at_least_4_primary_jets << " (" << 100.0*has_at_least_4_clean_jets/has_at_least_4_primary_jets << "%)\n"
+              << "\tHave at least 1 b-flavored jet: " << has_at_least_1_bflav_jet << "/" << has_at_least_4_clean_jets << " (" << 100.0*has_at_least_1_bflav_jet/has_at_least_4_clean_jets << "%)\n"
+              << "\tHave at least 2 b-flavored jets: " << has_at_least_2_bflav_jet << "/" << has_at_least_1_bflav_jet << " (" << 100.0*has_at_least_2_bflav_jet/has_at_least_1_bflav_jet << "%)\n"
+              << "\tHave at least 2 b-flavored jets passing pt cut: " << has_at_least_2_bflav_jet_passing_pt << "/" << has_at_least_2_bflav_jet << " (" << 100.0*has_at_least_2_bflav_jet_passing_pt/has_at_least_2_bflav_jet << "%)\n"
+              << "\tHave at least 2 b-flavored jets passing eta cut: " << has_at_least_2_bflav_jet_passing_eta << "/" << has_at_least_2_bflav_jet_passing_pt << " (" << 100.0*has_at_least_2_bflav_jet_passing_eta/has_at_least_2_bflav_jet_passing_pt << "%)\n";
+    std::cout << "============================================================================\n";
 
-    std::cout << "Total " << valid_event << " valid events, from them:\n";
-    std::cout << "\t have too low hh mass (hh_mass < 2*mh) " << too_low_hh_mass << "(" << (1.0*too_low_hh_mass)/valid_event*100 << "%)\n";
-    std::cout << "\t have too low v2 hh mass (hh_mass < 2*mh) " << too_low_hh_mass_v2 << "(" << (1.0*too_low_hh_mass_v2)/valid_event*100 << "%)\n";
-    std::cout << "\t have HME error (hh_mass = -1.0) " << hme_error << "(" << (1.0*hme_error)/valid_event*100 << "%)\n";
-    std::cout << "\t have analytical solution failure " << analytical_fails << "(" << (1.0*analytical_fails)/valid_event*100 << ")" << "\n";
-
-    std::cout << "Number of HME v0 predictions: " << hh_mass_rand_sampl->GetEntries() << "\n";
-    std::cout << "Number of HME v1 predictions: " << hh_mass_rand_sampl_v1->GetEntries() << "\n";
-    std::cout << "Number of HME v2 predictions: " << hh_mass_rand_sampl_v2->GetEntries() << "\n";
-    std::cout << "Number of HME v3 predictions: " << hh_mass_rand_sampl_v3->GetEntries() << "\n";
-    std::cout << "Number of analytical solutions: " << hh_mass_analytical->GetEntries() << "\n";
-
-    save::save_1d_stack({hh_mass_analytical, hh_mass_rand_sampl, hh_mass_anal_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2, hh_mass_rand_sampl_v3}, 
-                        {"analytical solution", "random sampling v0", "analytical solution sampling", "random sampling v1", "random sampling v2", "random sampling v3"}, 
-                        "all_comparison", "All method comparison", "[GeV]");
-
-    save::save_1d_stack({hh_mass_rand_sampl, hh_mass_rand_sampl_v1, hh_mass_rand_sampl_v2, hh_mass_rand_sampl_v3}, 
-                        {"random sampling v0", "random sampling v1", "random sampling v2", "random sampling v3"}, 
-                        "hme_comparison", "HME comparison", "[GeV]");
-
-    save::save_1d_stack({hh_mass_analytical, hh_mass_anal_sampl}, 
-                        {"analytical solution", "analytical solution sampling"}, 
-                        "all_anal_cmp", "All analytical method comparison", "[GeV]");
-
-    save::save_1d_stack({hh_mass_rand_sampl_v2, hh_mass_rand_sampl_v3}, 
-                        {"random sampling v2", "random sampling v3"}, 
-                        "v2v3_cmp", "Random Sampling method comparison", "[GeV]");
-
-    auto rand_sampl_par = save::save_fit(hh_mass_rand_sampl, "hh_mass_rand_sampl_fit", "[GeV]");
-    auto simpl_par = save::save_fit(hh_mass_analytical, "hh_mass_analytical_fit", "[GeV]");
-    std::cout << "Widths ratio = " << simpl_par.second / rand_sampl_par.second << "\n";
-    std::cout << "done\n";
-
-    delete file_pdf;
     return 0;
 }
