@@ -3,7 +3,7 @@
 #include "TString.h"
 #include "TCanvas.h"
 
-OptionalPair AnalyticalMass(std::vector<TLorentzVector> const& particles)
+OptPair AnalyticalMass(std::vector<TLorentzVector> const& particles)
 {
     TLorentzVector b1 = particles[PhysObj::bj1];
     TLorentzVector b2 = particles[PhysObj::bj2];
@@ -42,7 +42,7 @@ OptionalPair AnalyticalMass(std::vector<TLorentzVector> const& particles)
     return std::make_optional<std::pair<double, double>>(vis1.M(), vis2.M());
 }
 
-OptionalPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr<TH1F>& pdf, double mass)
+OptPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr<TH1F>& pdf, double mass)
 {
     if (j1.Pt() < j2.Pt()) 
     {
@@ -81,7 +81,7 @@ OptionalPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr
     return std::nullopt;
 }
 
-std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, double mh, double eta)
+OptTLorVec ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, double mh, double eta)
 {
     TLorentzVector vis(l);
     vis += j1;
@@ -101,7 +101,7 @@ std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector 
     return std::make_optional<TLorentzVector>(std::move(v));
 }
 
-std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, double mh, double eta, double phi)
+OptTLorVec ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, double mh, double eta, double phi)
 {
     TLorentzVector vis(l);
     vis += j1;
@@ -119,7 +119,7 @@ std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector 
     return std::make_optional<TLorentzVector>(std::move(v));
 }
 
-OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt)
+OptPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt)
 {
     TLorentzVector b1 = particles[PhysObj::bj1];
     TLorentzVector b2 = particles[PhysObj::bj2];
@@ -143,7 +143,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
     for (int i = 0; i < N_ITER; ++i)
     {
         double eta = rg.Uniform(-6, 6);
-        OptionalPair b_jet_resc = JetRescFact(b1, b2, b_resc_pdf, mh);
+        OptPair b_jet_resc = JetRescFact(b1, b2, b_resc_pdf, mh);
         if (b_jet_resc)
         {
             assert(b1.Pt() > b2.Pt());
@@ -154,7 +154,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
             double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
 
             TLorentzVector met_corr(met_corr_px, met_corr_py, 0.0, 0.0);
-            std::optional<TLorentzVector> nu = ComputeNu(l, j1, j2, met_corr, mh, eta);
+            OptTLorVec nu = ComputeNu(l, j1, j2, met_corr, mh, eta);
 
             if (nu)
             {
