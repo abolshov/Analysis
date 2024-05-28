@@ -2,9 +2,9 @@
 #define EVENTDATA_HPP
 
 #include "TTree.h"
+#include "TLorentzVector.h"
 
-inline constexpr int MAX_GENPART = 250;
-inline constexpr int MAX_AK4_GENJET = 20;
+#include "Constants.hpp"
 
 class EventData
 {
@@ -33,6 +33,12 @@ class EventData
         Float_t         GenMET_pt;
 
         EventData(TTree& tree);
+        inline TLorentzVector ComputeP4(int i, Float_t const* pt, Float_t const* eta, Float_t const* phi, Float_t const* mass)
+        {
+            TLorentzVector p;
+            p.SetPtEtaPhiM(pt[i], eta[i], phi[i], mass[i]);
+            return p;
+        }
 };
 
 #endif

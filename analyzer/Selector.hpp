@@ -1,11 +1,13 @@
 #ifndef SELECTOR_HPP
 #define SELECTOR_HPP
 
-class Selector 
+#include <optional>
+
+#include "SelectedData.hpp"
+
+struct Selector 
 {
-    public:
-    Selector();
-    bool operator()(EventData const& data);
+    std::optional<SelectedData> operator()(std::unique_ptr<EventData> const& data);
 };
 
 #endif
