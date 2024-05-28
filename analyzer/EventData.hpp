@@ -33,7 +33,7 @@ class EventData
         Float_t         GenMET_pt;
 
         EventData(TTree& tree);
-        inline TLorentzVector ComputeP4(int i, Float_t const* pt, Float_t const* eta, Float_t const* phi, Float_t const* mass)
+        inline TLorentzVector ComputeP4(int i, Float_t const* pt, Float_t const* eta, Float_t const* phi, Float_t const* mass) const
         {
             TLorentzVector p;
             p.SetPtEtaPhiM(pt[i], eta[i], phi[i], mass[i]);

@@ -3,11 +3,14 @@
 
 #include <optional>
 
-#include "SelectedData.hpp"
+#include "SignalData.hpp"
 
 struct Selector 
 {
-    std::optional<SelectedData> operator()(std::unique_ptr<EventData> const& data);
+    std::optional<SignalData> operator()(std::unique_ptr<EventData> const& data);
+
+    private:
+    std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_part) const;
 };
 
 #endif
