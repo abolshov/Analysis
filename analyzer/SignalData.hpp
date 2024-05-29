@@ -17,7 +17,7 @@
 class SignalData 
 {
     public:
-    explicit SignalData(std::unique_ptr<EventData> const& data);
+    SignalData(std::unique_ptr<EventData> const& data);
 
     void ComputeMomenta();
     inline std::vector<int> const& GetSignalIndices() const { return m_genpart_selection; }

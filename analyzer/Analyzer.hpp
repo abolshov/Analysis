@@ -8,6 +8,7 @@
 #include "TString.h"
 
 #include "EventData.hpp"
+#include "Selector.hpp"
 
 class Analyzer
 {
@@ -15,10 +16,11 @@ class Analyzer
         std::unique_ptr<TChain> m_chain;
         std::unique_ptr<EventData> m_data;
         std::vector<TString> m_input_files;
+        Selector m_selector;
 
     public:
         Analyzer(TString const& tree_name, std::vector<TString> const& input_files);
-        void Analyze() const;
+        void Analyze();
 };
 
 

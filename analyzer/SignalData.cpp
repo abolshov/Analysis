@@ -1,6 +1,6 @@
 #include "SignalData.hpp"
 
-explicit SignalData::SignalData(std::unique_ptr<EventData> const& data) 
+SignalData::SignalData(std::unique_ptr<EventData> const& data) 
 : m_data(data),
   m_genpart_selection(N_SIG_PART),
   m_bjet_selection(N_B_JETS),

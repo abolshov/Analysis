@@ -11,7 +11,10 @@ Analyzer.o: Analyzer.cpp
 EventData.o: EventData.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-analysis: analysis.o Analyzer.o EventData.o
+Selector.o: Selector.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+analysis: analysis.o Analyzer.o EventData.o Selector.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 .PHONY: clean
