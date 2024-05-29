@@ -28,9 +28,11 @@ void Analyzer::Analyze()
     m_selector.BuildTree(m_data);
     m_selector.PrintTree(m_data);
 
-    for (int i = 0; i < 25; ++i)
-    {
-        std::cout << m_data->GenPart_pdgId[i] << " ";
-    }
+    m_selector.Select(m_data);
+
+    // for (int i = 0; i < 25; ++i)
+    // {
+    //     std::cout << m_data->GenPart_pdgId[i] << " ";
+    // }
     std::cout << "\n";
 }

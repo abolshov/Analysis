@@ -1,12 +1,7 @@
 #include "Selector.hpp"
 
 #include <algorithm>
-
-// Selector::Selector(std::unique_ptr<EventData> const& data)
-// : m_generations(),
-//   m_stable(),
-//   m_data(data)
-// {}
+#include <iostream>
 
 std::vector<int> Selector::GetNextGen(int part_idx, int const* mothers, int n_gen_part) const 
 {
@@ -75,4 +70,53 @@ void Selector::PrintTree(std::unique_ptr<EventData> const& data) const
         }
         std::cout << "\n";
     }
+}
+
+bool Selector::IsDescOf(int cand_idx, int parent_idx, int const* mothers) const
+{
+    int mother_idx = mothers[cand_idx];
+    while(mother_idx != -1)
+    {
+        if (mother_idx == parent_idx) return true;
+        int new_mother_idx = mothers[mother_idx];
+        mother_idx = new_mother_idx;
+    }
+    return false;
+}
+
+std::pair<std::vector<int>, std::vector<int>> Selector::FindFirstLast(int target_id, int mother_idx, int const* pdg_ids, int const* mothers) const
+{
+    std::map<int, std::vector<int>> occurences;
+    for (auto const& [gen_num, gen_vec]: m_generations)
+    {
+        for (auto const& index: gen_vec)
+        {
+            // if particle at index descends from mother_idx (i.e. across generations), also count it
+            if (pdg_ids[index] == target_id && IsDescOf(index, mother_idx, mothers))
+            {
+                occurences[gen_num].push_back(index);
+            }
+        }
+    }
+
+    if (occurences.empty())
+    {
+        return std::make_pair<std::vector<int>, std::vector<int>>({}, {});
+    }
+
+    auto first = occurences.begin();
+    auto last = --occurences.end();
+
+    if (first == last)
+    {
+        std::vector<int> v = first->second;
+        return {v, v};
+    }
+
+    return std::make_pair<std::vector<int>, std::vector<int>>(std::move(first->second), std::move(last->second));
+}
+
+std::optional<SignalData> Selector::Select(std::unique_ptr<EventData> const& data) const
+{
+    return std::nullopt;
 }
