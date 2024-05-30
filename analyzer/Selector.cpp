@@ -101,7 +101,8 @@ std::pair<std::vector<int>, std::vector<int>> Selector::FindFirstLast(int target
 
     if (occurences.empty())
     {
-        return std::make_pair<std::vector<int>, std::vector<int>>({}, {});
+        // return std::make_pair<std::vector<int>, std::vector<int>>({}, {});
+        return {{}, {}};
     }
 
     auto first = occurences.begin();
@@ -113,10 +114,14 @@ std::pair<std::vector<int>, std::vector<int>> Selector::FindFirstLast(int target
         return {v, v};
     }
 
-    return std::make_pair<std::vector<int>, std::vector<int>>(std::move(first->second), std::move(last->second));
+    // return std::make_pair<std::vector<int>, std::vector<int>>(std::move(first->second), std::move(last->second));
+    // return std::make_pair<std::vector<int>, std::vector<int>>(first->second, last->second);
+    return {first->second, last->second};
 }
 
 std::optional<SignalData> Selector::Select(std::unique_ptr<EventData> const& data) const
 {
+    auto [v1, v2] = FindFirstLast(5, m_generations.at(2)[0], data->GenPart_pdgId, data->GenPart_genPartIdxMother);
+    std::cout << v1.size() << " " << v2.size() << "\n";
     return std::nullopt;
 }
