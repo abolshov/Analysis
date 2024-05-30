@@ -25,7 +25,7 @@ void Analyzer::Analyze()
     std::cout << "nEntries = " << m_chain->GetEntries() << "\n";
 
     m_chain->GetEntry(0);
-    m_selector.BuildTree(m_data);
+    m_selector.BuildTree(RADION_ID, m_data);
     m_selector.PrintTree(m_data);
 
     m_selector.Select(m_data);
@@ -34,5 +34,5 @@ void Analyzer::Analyze()
     // {
     //     std::cout << m_data->GenPart_pdgId[i] << " ";
     // }
-    std::cout << "\n";
+    // std::cout << "\n";
 }

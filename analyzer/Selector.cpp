@@ -16,19 +16,19 @@ std::vector<int> Selector::GetNextGen(int part_idx, int const* mothers, int n_ge
     return gen;
 }
 
-void Selector::BuildTree(std::unique_ptr<EventData> const& data)
+void Selector::BuildTree(int head_id, std::unique_ptr<EventData> const& data)
 {
-    int first_X_idx = -1;
+    int head_idx = -1;
     int generation_counter = 0;
-    auto ptr = std::find(data->GenPart_pdgId, data->GenPart_pdgId + data->nGenPart, RADION_ID);
-    first_X_idx = ptr - data->GenPart_pdgId;
+    auto ptr = std::find(data->GenPart_pdgId, data->GenPart_pdgId + data->nGenPart, head_id);
+    head_idx = ptr - data->GenPart_pdgId;
 
-    // TODO: consider case when after loop first_X_idx = -1
+    // TODO: consider case when after loop head_idx = -1
     int const* mothers = data->GenPart_genPartIdxMother;
     int n_gen_part = data->nGenPart;
 
-    m_generations[generation_counter] = {first_X_idx};
-    std::vector<int> gen = GetNextGen(first_X_idx, mothers, n_gen_part); // compute first-gen daughters of X
+    m_generations[generation_counter] = {head_idx};
+    std::vector<int> gen = GetNextGen(head_idx, mothers, n_gen_part); // compute first-gen daughters of X
     m_stable[generation_counter] = gen.empty() ? std::vector<bool>(1, true) : std::vector<bool>(1, false);
     ++generation_counter;
 

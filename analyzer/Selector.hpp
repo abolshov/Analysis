@@ -13,8 +13,9 @@
 class Selector 
 {
     public:
-    // fills maps
-    void BuildTree(std::unique_ptr<EventData> const& data);
+    // fills maps 
+    // head of the decay tree will be a particle with head_id
+    void BuildTree(int head_id, std::unique_ptr<EventData> const& data);
     void PrintTree(std::unique_ptr<EventData> const& data) const;
 
     std::optional<SignalData> Select(std::unique_ptr<EventData> const& data) const;
@@ -29,7 +30,7 @@ class Selector
     bool IsDescOf(int cand_idx, int parent_idx, int const* mothers) const;
 
     // map of generation to indices of particles in this generation
-    // generation 0 will consist of the single particle - first produced Radion (X)
+    // generation 0 will consist of the single particle - first particle head_id
     std::map<int, std::vector<int>> m_generations;
     // maps generation to list of indicating stable and unstable particle (stable = true, unstable = false)
     // stable = has no daughters 
