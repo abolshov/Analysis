@@ -84,6 +84,64 @@ bool Selector::IsDescOf(int cand_idx, int parent_idx, int const* mothers) const
     return false;
 }
 
+std::map<int, std::vector<int>> Selector::FindAllDesc(int target_id, int mother_idx, int const* pdg_ids, int const* mothers) const
+{
+    std::map<int, std::vector<int>> desc;
+    for (auto const& [gen_num, gen_vec]: m_generations)
+    {
+        for (auto const& index: gen_vec)
+        {
+            // if particle at index descends from mother_idx (i.e. across generations), also count it
+            if (pdg_ids[index] == target_id && IsDescOf(index, mother_idx, mothers))
+            {
+                desc[gen_num].push_back(index);
+            }
+        }
+    }
+
+    return desc;
+}
+
+std::vector<int> Selector::FindFirst(int target_id, int mother_idx, int const* pdg_ids, int const* mothers) const
+{
+    std::map<int, std::vector<int>> occurences = FindAllDesc(target_id, mother_idx, pdg_ids, mothers);
+    
+    if (occurences.empty())
+    {
+        return {};
+    }
+
+    std::vector<int> res;
+    auto it = occurences.begin();
+    res.insert(res.end(), it->second.begin(), it->second.end());
+    auto end = occurences.end();
+    ++it;
+    
+    while (it != end)
+    {
+        std::vector<int> const& current_gen = it->second;
+        for (auto p: current_gen)
+        {
+            // if particle is not a descendant of any particle that is already in res, add it
+            bool flag = true;
+            for (auto r: res)
+            {
+                if (IsDescOf(p, r, mothers))
+                {
+                    flag = false;
+                    break;
+                }
+            }
+            
+            if (flag)
+            {
+                res.push_back(p);
+            }
+        }
+    }
+    return res;
+}
+
 std::pair<std::vector<int>, std::vector<int>> Selector::FindFirstLast(int target_id, int mother_idx, int const* pdg_ids, int const* mothers) const
 {
     std::map<int, std::vector<int>> occurences;
@@ -121,7 +179,16 @@ std::pair<std::vector<int>, std::vector<int>> Selector::FindFirstLast(int target
 
 std::optional<SignalData> Selector::Select(std::unique_ptr<EventData> const& data) const
 {
-    auto [v1, v2] = FindFirstLast(5, m_generations.at(2)[0], data->GenPart_pdgId, data->GenPart_genPartIdxMother);
-    std::cout << v1.size() << " " << v2.size() << "\n";
+    // auto [v1, v2] = FindFirstLast(5, m_generations.at(2)[0], data->GenPart_pdgId, data->GenPart_genPartIdxMother);
+    // std::cout << v1.size() << " " << v2.size() << "\n";
+    auto higgses = FindFirst(25, m_generations.at(1)[0], data->GenPart_pdgId, data->GenPart_genPartIdxMother);
+    if (!higgses.empty())
+    {
+        for (auto h: higgses)
+        {
+            std::cout << data->GenPart_pdgId[h] << " ";
+        }
+        std::cout << "\n";
+    }
     return std::nullopt;
 }

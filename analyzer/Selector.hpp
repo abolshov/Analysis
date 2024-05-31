@@ -1,7 +1,7 @@
 #ifndef SELECTOR_HPP
 #define SELECTOR_HPP
 
-// #include <optional>
+#include <optional>
 #include <map>
 #include <vector>
 #include <memory>
@@ -23,6 +23,9 @@ class Selector
     private:
     // computes indices of first-generation daughters of particle part_idx
     std::vector<int> GetNextGen(int part_idx, int const* mothers, int n_gen_part) const;
+    std::vector<int> FindFirst(int target_id, int mother_idx, int const* pdg_ids, int const* mothers) const;
+    std::vector<int> FindLast(int target_id, int mother_idx, int const* pdg_ids, int const* mothers) const;
+    std::map<int, std::vector<int>> FindAllDesc(int target_id, int mother_idx, int const* pdg_ids, int const* mothers) const;
     // computes all first generation occurences and last generation occurences of particle target_id descending from mother_idx
     // if nothing found returns a pair of empty vectors
     // if first == last returns two copies of the same vector
