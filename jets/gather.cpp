@@ -91,6 +91,8 @@ int main([[maybe_unused]] int argc, char* argv[])
     Float_t X_pz;
     Float_t X_E;
 
+    Float_t X_mass;
+
     Float_t H_bb_px;
     Float_t H_bb_py;
     Float_t H_bb_pz;
@@ -166,6 +168,8 @@ int main([[maybe_unused]] int argc, char* argv[])
     output_tree->Branch("X_pz", &X_pz);
     output_tree->Branch("X_E", &X_E);
 
+    output_tree->Branch("X_mass", &X_mass);
+
     output_tree->Branch("H_bb_px", &H_bb_px);
     output_tree->Branch("H_bb_py", &H_bb_py);
     output_tree->Branch("H_bb_pz", &H_bb_pz);
@@ -229,7 +233,7 @@ int main([[maybe_unused]] int argc, char* argv[])
     int nEvents = input_tree->GetEntries();
 
     std::cout << std::boolalpha;
-    int X_mass = 0; 
+    int true_X_mass = 0; 
 
     for (int i = 0; i < nEvents; ++i)
     {
@@ -239,7 +243,7 @@ int main([[maybe_unused]] int argc, char* argv[])
 
         if (!sig.empty())
         {
-            X_mass = static_cast<int>(GenPart_mass[sig[SIG::X]]);
+            true_X_mass = static_cast<int>(GenPart_mass[sig[SIG::X]]);
 
             if (HasOnlyEleMu(sig, GenPart_genPartIdxMother, GenPart_pdgId)) 
             {
@@ -348,6 +352,8 @@ int main([[maybe_unused]] int argc, char* argv[])
                 X_pz = X_p4.Pz();
                 X_E = X_p4.E();
 
+                X_mass = X_p4.M();
+
                 H_bb_px = H_bb_p4.Px();
                 H_bb_py = H_bb_p4.Py();
                 H_bb_pz = H_bb_p4.Pz();
@@ -413,12 +419,13 @@ int main([[maybe_unused]] int argc, char* argv[])
         }
     }
 
-    output_tree->Write();
+    output_tree->Write("", TObject::kOverwrite);
+    std::cout << "Output tree contains " << output_tree->GetEntries() << " entries\n";
 
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 
-    std::cout << "Finished processing sample with mass M = " << X_mass << "\n";
+    std::cout << "Finished processing sample with mass M = " << true_X_mass << "\n";
     std::cout << "nEvents = " << nEvents << ", processing time = " << elapsed.count() << " s\n";
     return 0;
 }
