@@ -72,3 +72,17 @@ class JetNet():
 
     def Predict(self):
         return self.model.predict(self.test_features)
+
+
+    def SaveModel(self, path):
+        self.model.save(f"{path}JetNet_v1.keras")
+
+    
+    def LoadModel(self, model_name):
+        # to load with compilation custom_objects needs to be passed
+        # couldn't make it work
+        # if model is loaded only for prediction, compilation is not needed
+        self.model = tf.keras.models.load_model(model_name, compile=False)
+        # self.model = tf.keras.models.load_model(model_name, custom_objects={'loss' : MXLossFunc(target, output)})
+        print(f"Loaded model {model_name}")
+        print(self.model.summary())

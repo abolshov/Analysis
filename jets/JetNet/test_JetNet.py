@@ -1,14 +1,12 @@
 from JetNet import JetNet
-from JetNet_utils import PlotLoss, PlotPrediction
+from JetNet_utils import PlotPrediction
 
 
 def main():
     net = JetNet()
-    input_file = "../JetNetTrain_M-500.root"
+    input_file = "../JetNetTrain_M-700.root"
+    net.LoadModel("./models/JetNet_v1.keras")
     net.ReadFile(input_file)
-    history = net.Fit()
-    net.SaveModel("./models/")
-    PlotLoss(history)
     pred = net.Predict()
     PlotPrediction(pred, net.test_labels)
 
