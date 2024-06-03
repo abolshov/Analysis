@@ -9,12 +9,13 @@ def MXLossFunc(target, output):
     H_WW_pz = target[:, 2]
     H_WW_E = target[:, 3]    
         
-    X_px = target[:, 4]
-    X_py = target[:, 5]
-    X_pz = target[:, 6]
-    X_E = target[:, 7]
+    # X_px = target[:, 4]
+    # X_py = target[:, 5]
+    # X_pz = target[:, 6]
+    # X_E = target[:, 7]
     
-    X_mass = tf.sqrt(X_E**2 - X_px**2 - X_py**2 - X_pz**2)
+    # X_mass = tf.sqrt(X_E**2 - X_px**2 - X_py**2 - X_pz**2)
+    X_mass = target[:, 4]
     
     H_bb_px = output[:, 0]
     H_bb_py = output[:, 1]
@@ -52,11 +53,15 @@ def PlotPrediction(pred_labels, test_labels):
     H_bb_E = np.sqrt(H_bb_E_sqr)
 
     X_mass_pred = np.sqrt((H_bb_E + H_WW_E)**2 - (H_bb_px + H_WW_px)**2 - (H_bb_py + H_WW_py)**2 - (H_bb_pz + H_WW_pz)**2)
+    width = PredWidth(X_mass_pred)
+    peak = PredPeak(X_mass_pred)
 
     plt.hist(X_mass_pred, bins=100)
     plt.title('JetNet prediction')
     plt.xlabel('X mass [GeV]')
     plt.ylabel('Count')
+    plt.figtext(0.75, 0.8, f"peak: {peak:.2f}")
+    plt.figtext(0.75, 0.75, f"width: {width:.2f}")
     plt.grid(True)
     plt.savefig('JetNet_prediction.png', bbox_inches='tight')
 
@@ -69,5 +74,10 @@ def PredWidth(pred_mass):
     q_84 = np.quantile(pred_mass, 0.84)
     q_16 = np.quantile(pred_mass, 0.16)
     width = q_84 - q_16
-    print(f"predicted width = {width}") 
     return width 
+
+
+def PredPeak(pred_mass):
+    counts = np.bincount(pred_mass)
+    peak = np.argmax(counts)
+    return peak 

@@ -8,7 +8,8 @@ from JetNet_utils import MXLossFunc
 class JetNet():
     def __init__(self):
         self.features = ['genbjet1_px', 'genbjet1_py', 'genbjet1_pz', 'genbjet1_E', 'genbjet2_px', 'genbjet2_py', 'genbjet2_pz', 'genbjet2_E']
-        self.labels = ['H_WW_px', 'H_WW_py', 'H_WW_pz', 'H_WW_E', 'X_px', 'X_py', 'X_pz', 'X_E']
+        # self.labels = ['H_WW_px', 'H_WW_py', 'H_WW_pz', 'H_WW_E', 'X_px', 'X_py', 'X_pz', 'X_E']
+        self.labels = ['H_WW_px', 'H_WW_py', 'H_WW_pz', 'H_WW_E', 'X_mass']
 
         # dataset for training
         self.train_features = pd.DataFrame()
