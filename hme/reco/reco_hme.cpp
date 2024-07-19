@@ -5,6 +5,7 @@
 #include <fstream>
 #include <optional>
 #include <chrono>
+#include <cassert>
 
 #include "TTree.h"
 #include "TFile.h"
@@ -27,6 +28,9 @@ inline constexpr double MAX_MASS = 1500;
 inline constexpr int N_BINS = 1500;
 
 inline constexpr double TOL = 10e-7;
+
+inline constexpr bool USE_RECO = true;
+inline constexpr bool CHEAT = false;
 
 template <typename T>
 std::vector<int> sort_indices(T* v, int n) 
@@ -79,8 +83,25 @@ OptPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr<TH1F
 int main()
 {
     auto start = std::chrono::system_clock::now();
-    auto file_pdf = std::make_unique<TFile>("pdf.root", "READ");
-    auto pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf")));
+    std::cout << std::boolalpha;
+    std::cout << "Regime:\n";
+    std::cout << "  CHEAT: " << CHEAT << "\n";
+    std::cout << "  USE_RECO: " << USE_RECO << "\n";
+
+    std::unique_ptr<TFile> file_pdf;
+    std::unique_ptr<TH1F> pdf;
+
+    if constexpr (USE_RECO)
+    {
+        file_pdf = std::make_unique<TFile>("pdf.root", "READ");
+        pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf")));
+    }
+
+    if constexpr (!USE_RECO)
+    {
+        file_pdf = std::make_unique<TFile>("pdfs.root", "READ");
+        pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("lead_bjet_pdf")));    
+    }
 
     TFile *myFile = TFile::Open("GluGlutoRadiontoHHto2B2Vto2B2JLNu_M-450/nano_0.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -109,6 +130,16 @@ int main()
     Double_t        genb2_phi;
     Double_t        genb2_mass;
 
+    Double_t        genb1_vis_pt;
+    Double_t        genb1_vis_eta;
+    Double_t        genb1_vis_phi;
+    Double_t        genb1_vis_mass;
+
+    Double_t        genb2_vis_pt;
+    Double_t        genb2_vis_eta;
+    Double_t        genb2_vis_phi;
+    Double_t        genb2_vis_mass;
+
     myTree->SetBranchAddress("genHVV_pt", &genHVV_pt);
     myTree->SetBranchAddress("genHVV_eta", &genHVV_eta);
     myTree->SetBranchAddress("genHVV_phi", &genHVV_phi);
@@ -133,6 +164,16 @@ int main()
     myTree->SetBranchAddress("genb2_phi", &genb2_phi);
     myTree->SetBranchAddress("genb2_mass", &genb2_mass);
 
+    myTree->SetBranchAddress("genb1_vis_pt", &genb1_vis_pt);
+    myTree->SetBranchAddress("genb1_vis_eta", &genb1_vis_eta);
+    myTree->SetBranchAddress("genb1_vis_phi", &genb1_vis_phi);
+    myTree->SetBranchAddress("genb1_vis_mass", &genb1_vis_mass);
+
+    myTree->SetBranchAddress("genb2_vis_pt", &genb2_vis_pt);
+    myTree->SetBranchAddress("genb2_vis_eta", &genb2_vis_eta);
+    myTree->SetBranchAddress("genb2_vis_phi", &genb2_vis_phi);
+    myTree->SetBranchAddress("genb2_vis_mass", &genb2_vis_mass);
+
     HistManager hm;
 
     std::string res_mass_default("res_mass_default");
@@ -152,22 +193,46 @@ int main()
     {
         myTree->GetEntry(i);
 
-        std::vector<int> sorted_by_PNet = sort_indices<Float_t>(centralJet_btagPNetB, ncentralJet);
-        // std::vector<int> sorted_by_DeepFlav = sort_indices<Float_t>(centralJet_btagDeepFlavB, ncentralJet);
-
-        int j1 = sorted_by_PNet[0];
-        int j2 = sorted_by_PNet[1];
-
         TLorentzVector bj1, bj2;
-        bj1.SetPtEtaPhiM(centralJet_pt[j1], centralJet_eta[j1], centralJet_phi[j1], centralJet_mass[j1]);
-        bj2.SetPtEtaPhiM(centralJet_pt[j2], centralJet_eta[j2], centralJet_phi[j2], centralJet_mass[j2]);
+        int j1, j2;
+        if constexpr (USE_RECO)
+        {
+            std::vector<int> sorted_by_PNet = sort_indices<Float_t>(centralJet_btagPNetB, ncentralJet);
+            // std::vector<int> sorted_by_DeepFlav = sort_indices<Float_t>(centralJet_btagDeepFlavB, ncentralJet);
 
-        TLorentzVector bq1, bq2;
-        bq1.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
-        bq2.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
+            j1 = sorted_by_PNet[0];
+            j2 = sorted_by_PNet[1];
 
-        bool first_match = bq1.DeltaR(bj1) < 0.4 || bq1.DeltaR(bj2) < 0.4;
-        bool second_match = bq2.DeltaR(bj1) < 0.4 || bq2.DeltaR(bj2) < 0.4;
+            bj1.SetPtEtaPhiM(centralJet_pt[j1], centralJet_eta[j1], centralJet_phi[j1], centralJet_mass[j1]);
+            bj2.SetPtEtaPhiM(centralJet_pt[j2], centralJet_eta[j2], centralJet_phi[j2], centralJet_mass[j2]);
+        }
+
+        if constexpr (!USE_RECO)
+        {
+            bj1.SetPtEtaPhiM(genb1_vis_pt, genb1_vis_eta, genb2_vis_phi, genb2_vis_mass);
+            bj2.SetPtEtaPhiM(genb2_vis_pt, genb2_vis_eta, genb2_vis_phi, genb2_vis_mass);
+        }
+
+        bool first_match = true;
+        bool second_match = true;
+
+        if constexpr (CHEAT)
+        {
+            if constexpr (USE_RECO)
+            {
+                TLorentzVector bq1, bq2;
+                bq1.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
+                bq2.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
+
+                first_match = bq1.DeltaR(bj1) < 0.4 || bq1.DeltaR(bj2) < 0.4;
+                second_match = bq2.DeltaR(bj1) < 0.4 || bq2.DeltaR(bj2) < 0.4;
+            }
+            else 
+            {
+                first_match = genb1_vis_pt > 20 && std::abs(genb1_vis_eta) < 2.5;
+                second_match = genb2_vis_pt > 20 && std::abs(genb2_vis_eta) < 2.5;
+            }
+        }
 
         if (first_match && second_match)
         {
@@ -220,8 +285,10 @@ int main()
 
     std::cout << "nEvents = " << nEvents << ", processing time = " << elapsed.count() << " s\n";
 
+    std::string level = USE_RECO ? "reco" : "gen";
+
     hm.Draw();
-    hm.DrawStack({res_mass_default, hme_mass}, "X->HH: HME (gen H->WW & corr reco H->bb) vs default calculation", "hme_vs_default.png");
+    hm.DrawStack({res_mass_default, hme_mass}, Form("X->HH: HME (gen H->WW & corr %s jet H->bb) vs default calculation", level.data()), "hme_vs_default.png");
 
     return 0;
 }
