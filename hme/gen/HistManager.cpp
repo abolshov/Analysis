@@ -55,8 +55,8 @@ void HistManager::Draw() const
         ptr_hist->GetXaxis()->SetTitle(xlabel.c_str());
         ptr_hist->GetYaxis()->SetTitle(ylabel.c_str());
         ptr_hist->SetLineWidth(3);
-        ptr_hist->SetStats(1);
-        ptr_hist->DrawNormalized();
+        // ptr_hist->SetStats(0);
+        ptr_hist->Draw();
         c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
         // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
     }
@@ -110,6 +110,7 @@ void HistManager::DrawStack(std::vector<std::string> const& names, std::string c
             ptr_hist->SetLineWidth(3);
             if (color == 5) ++color;
             ptr_hist->SetLineColor(color++);
+            ptr_hist->SetStats(0);
             stack->Add(ptr_hist.get());
             leg->AddEntry(ptr_hist.get(), name.c_str(), "l");
         }

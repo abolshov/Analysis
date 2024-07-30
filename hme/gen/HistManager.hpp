@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <memory>
+#include <type_traits>
 
 #include "TH1.h"
 #include "TH2.h"
@@ -81,6 +82,19 @@ class HistManager
     void FillWeighted(std::string const& hist_name, double xval, double yval, double weight);
     void Draw() const;
     void DrawStack(std::vector<std::string> const& names, std::string const& title, std::string const& name) const;
+    
+    template <typename T>
+    std::unique_ptr<T> const& Get(std::string const& name) const
+    {
+        if constexpr (std::is_same_v<T, TH1F>)
+        {
+            return m_hists_1d.at(name).first;
+        }
+        if constexpr (std::is_same_v<T, TH2F>)
+        {
+            return m_hists_2d.at(name).first;
+        }
+    }
 };
 
 #endif
