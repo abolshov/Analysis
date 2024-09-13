@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <stdexcept>
+#include <vector>
 
 // ax^2 + bx + c = 0
 template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
@@ -16,19 +17,11 @@ class QuadEqn
             throw std::invalid_argument("Attempted to construct inconsistent equation");
         }
         m_solutions.reserve(2);
+        Solve(); 
     } 
 
-    std::vector<double> const& Solutions() const& 
-    {
-        Solve(); 
-        return m_solutions; 
-    }
-
-    std::vector<double>&& Solutions() && 
-    { 
-        Solve();
-        return std::move(m_solutions); 
-    }
+    inline std::vector<double> const& Solutions() const& { return m_solutions; }
+    inline std::vector<double>&& Solutions() && { return std::move(m_solutions); }
 
     void Solve() 
     {

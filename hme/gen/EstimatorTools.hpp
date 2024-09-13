@@ -33,6 +33,7 @@ OptionalPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr
 // compute 4-momentum of neutrino from W->lv using Higgs H->WW mass constraint
 std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, double mh, double eta);
 std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, double mh, double eta, double phi);
+std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& met, double mw, double eta);
 
 // this is HME: samples pdfs, computes corrections and calculates mass distribution for an event
 // in case of success returns mass and fraction of iterations which computed mass
@@ -43,9 +44,14 @@ namespace Experimental
     OptionalPair EstimateMassIdealEtaPhi(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::pair<double, double> const& dir);
     OptionalPair EstimateMassIdealNu(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& lead_b_pdf, TRandom3& rg, int evt, TLorentzVector const& nu);
     OptionalPair EstimateMassIdealNu2dPDF(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH2F>& bjet_2d_pdf, TRandom3& rg, int evt, TLorentzVector const& nu);
-    OptionalPair EstimateMassNew(std::vector<TLorentzVector> const& particles, std::vector<std::unique_ptr<TH1F>> const& pdfs, TRandom3& rg, int evt, TLorentzVector const& nu);
+    // OptionalPair EstimateMassNew(std::vector<TLorentzVector> const& particles, std::vector<std::unique_ptr<TH1F>> const& pdfs, TRandom3& rg, int evt, TLorentzVector const& nu);
     OptionalPair EstimateMassIdealHbb(std::vector<TLorentzVector> const& particles, TRandom3& rg, int evt); 
-    OptionalPair EstimateMassIdealHWW(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& pdf, TRandom3& rg, int evt, TLorentzVector const& HtoWW);    
+    OptionalPair EstimateMassIdealHWW(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& pdf, TRandom3& rg, int evt, TLorentzVector const& HtoWW);
+    OptionalPair EstimateMassNoMETCorr(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& pdf, TRandom3& rg, int evt); 
+    OptionalPair EstimateMassRandMETFrac(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& pdf, std::unique_ptr<TH1F>& met_pdf, TRandom3& rg, int evt); 
+    OptionalPair EstimateMassRandWmass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& pdf, TRandom3& rg, int evt); 
+    OptionalPair EstimateMassWeightRescIdealNu(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& pdf, std::unique_ptr<TH1F>& pt_corr_pdf, std::unique_ptr<TH1F>& mass_pdf, TRandom3& rg, int evt, TLorentzVector const& nu, double& mass, double& integral);
+    OptionalPair EstimateMassWeightResc2dPDFIdealNu(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH2F>& pdf, std::unique_ptr<TH1F>& pt_corr_pdf, std::unique_ptr<TH1F>& mass_pdf, TRandom3& rg, int evt, TLorentzVector const& nu);    
 }
 
 #endif

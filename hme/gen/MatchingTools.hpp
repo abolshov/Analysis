@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <numeric>
 #include <memory>
 
 #include "TLorentzVector.h"
@@ -35,11 +36,9 @@ static constexpr double DR_THRESH = 0.4;
 static constexpr int N_POINTS = 20;
 
 static constexpr double MIN_GENJET_PT = 20.0;
-static constexpr double MIN_B_GENJET_PT = 20.0;
-static constexpr double MIN_LIGHT_GENJET_PT = 10.0;
-static constexpr double PRIMARY_GENJET_PT = 15.0;
-static constexpr double PRIMARY_GENJET_ETA = 5.0;
 static constexpr double MAX_GENJET_ETA = 2.5;
+static constexpr double PRIMARY_GENJET_PT = 20.0;
+static constexpr double PRIMARY_GENJET_ETA = 2.5;
 
 static constexpr double MIN_LEP_PT = 5.0;
 static constexpr double MAX_LEP_ETA = 2.5;
@@ -128,50 +127,109 @@ TLorentzVector GetP4(KinematicData const& kd, int idx);
 // if matching fails returns -1
 int Match(int idx, KinematicData const& kd_part, KinematicData const& kd_jet);
 
+// returns index in array jets
+// no match == returns -1
+int Match(TLorentzVector const& quark, std::vector<TLorentzVector> const& jets);
+
+// if one match exists uses it to find best match by scanning all remaining jets and pick the one s.t. mass of the pair is closest to mass of the target particle
+int FindSecondMatch(int first_match, TLorentzVector const& target, std::vector<TLorentzVector> const& jets);
+
+// returns all posible matches (within 0.4 dR cone)
+std::vector<int> Matches(int idx, KinematicData const& kd_part, KinematicData const& kd_jet);
+
+TLorentzVector MatchDijet(TLorentzVector const& hadW, std::vector<TLorentzVector> const& jets);
+
 // computes min dR between all particles
 double MinDeltaR(std::vector<TLorentzVector> const& parts);
-
-// compute energy map of an event
-using AxisRange = std::pair<double, double>;
-std::unique_ptr<TH2F> EnergyMap(int const event_num, KinematicData const& kd, int const* mothers, int nbins = 30, AxisRange xrange = {-6.5, 6.5}, AxisRange yrange = {-6.5, 6.5});
-
-// Make a graph with a marker centered at particle idx in (eta, phi) space and 0.4 dR circle around it
-std::unique_ptr<TGraph> DRCone(KinematicData const& kd, int idx);
-
-using MatchKinematics = std::pair<KinematicData, KinematicData>;
-using MatchIndex = std::vector<std::pair<int, int>>; // contains pairs: {part_idx, jet_matched_to_part_idx}
-void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_index, int evt_num, std::pair<int*, int*> ptrs);
-
-// checks if all matched jets pass genjet acceptance cut
-// returns true if all jets satisfy selection criteria
-// DEPRECATED
-// bool PassGenJetCut(std::vector<TLorentzVector> const& jets);
-
-// checks if lepton passes acceptance cut
-// returns true if lepton satisfies selection criteria
-inline bool PassLeptonCut(TLorentzVector const& lep)
-{
-    return lep.Pt() > MIN_LEP_PT && std::abs(lep.Eta()) < MAX_LEP_ETA;
-}
+double MinDeltaR(TLorentzVector const& v, std::vector<TLorentzVector> const& other);
 
 // checks that among passed jets there are at least 4 jets such that the lepton is separated from them by at least dR = 0.4
 bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets);
 bool IsIsolatedLepton(TLorentzVector const& lep, KinematicData const& kd);
 
-// checks if matched objects preserve relationship between underlying objetcts (pt)
-using MatchedPair = std::pair<TLorentzVector, TLorentzVector>;
-inline bool ConsistentMatch(MatchedPair const& mp1, MatchedPair const& mp2)
-{
-    auto const& [q1, j1] = mp1;
-    auto const& [q2, j2] = mp2;
-
-    return (q1.Pt() > q2.Pt() ? j1.Pt() > j2.Pt() : j1.Pt() < j2.Pt());
-};
-
-// returns indices of jets in acceptance region (pt > 25 and |eta| < 2.5)
-std::vector<int> GetAcceptJets(GenJetData const& jet_data);
-
 // performs selection of jets with pt > 10 and |eta| < 5
 std::vector<int> PrimaryJetSelection(KinematicData const& kd);
+
+inline bool PassLeptonCut(TLorentzVector const& lep)
+{
+    return lep.Pt() > MIN_LEP_PT && std::abs(lep.Eta()) < MAX_LEP_ETA;
+}
+
+template <typename Func>
+std::pair<int, int> ChooseBestPair(std::vector<TLorentzVector> const& jets, Func func)
+{
+    size_t sz = jets.size();
+    if (sz == 2)
+    {
+        return {0, 1};
+    }
+
+
+    std::vector<std::pair<int, int>> pairs;
+    pairs.reserve(sz*(sz-1)/2);
+    for (size_t i = 0; i < sz; ++i)
+    {
+        for (size_t j = 0; j < sz; ++j)
+        {
+            pairs.emplace_back(i, j);
+        }
+    }
+
+    double min_metric = 10e9;
+    std::pair<int, int> res{-1, -1};
+    for (auto const& p: pairs)
+    {
+        auto [i1, i2] = p;
+        TLorentzVector const& jet1 = jets[i1];
+        TLorentzVector const& jet2 = jets[i2];
+
+        double metric = func(jet1, jet2);
+        if (metric < min_metric)
+        {
+            min_metric = metric;
+            res = p;
+        }
+    }
+
+    return res;
+}
+
+template <typename Func>
+std::pair<double, double> CalcJetPairStats(std::vector<TLorentzVector> const& jets, Func func)
+{
+    size_t n_jets = jets.size();
+    if (n_jets == 2)
+    {
+        return {func(jets[0], jets[1]), 0.0};
+    }
+
+    std::vector<std::pair<int, int>> pairs;
+    pairs.reserve(n_jets*(n_jets-1)/2);
+    for (size_t i = 0; i < n_jets; ++i)
+    {
+        for (size_t j = 0; j < n_jets; ++j)
+        {
+            pairs.emplace_back(i, j);
+        }
+    }
+
+    size_t sz = pairs.size();
+
+    auto Add = [&jets, &func](double acc, std::pair<int, int> const& p)
+    {
+        auto [i1, i2] = p; 
+        return acc + func(jets[i1], jets[i2]); 
+    };
+    double mean = std::accumulate(pairs.begin(), pairs.end(), 0.0, Add)/sz;
+
+    auto Variance = [&mean, &sz, &jets, &func](double var, std::pair<int, int> const& p)
+    {
+        auto [i1, i2] = p; 
+        double value = func(jets[i1], jets[i2]); 
+        return var + ((value - mean)*(value - mean)/(sz - 1)); 
+    };
+    double sdtdev = std::sqrt(std::accumulate(pairs.begin(), pairs.end(), 0.0, Variance));
+    return {mean, sdtdev};
+}
 
 #endif
