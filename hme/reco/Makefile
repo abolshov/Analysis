@@ -16,7 +16,7 @@ reco_hme: reco_hme.o EstimatorTools.o HistManager.o
 
 .PHONY: clean
 clean: 
-	rm hme
+	rm reco_hme
 	rm *.o
 
 compute_pdf: compute_pdf.cpp
