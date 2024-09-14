@@ -1,6 +1,10 @@
 #ifndef COMB_TOOLS_HPP
 #define COMB_TOOLS_HPP
 
+#include <vector>
+#include <algorithm>
+#include <numeric>
+
 template <typename T>
 std::vector<int> sort_indices(T* v, int n) 
 {
