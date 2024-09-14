@@ -59,6 +59,7 @@ int main()
     myTree->SetBranchAddress("centralJet_btagPNetB", centralJet_btagPNetB);
 
     // gen variables
+    // H->VV
     // V1: leptonic 
     // prod1: lep
     // prod2: neutrino
@@ -99,6 +100,24 @@ int main()
     Double_t        genV2prod2_mass;
     Double_t        genV2prod2_vis_mass;
 
+    // H->bb
+    Double_t        genb1_pt;
+    Double_t        genb1_vis_pt;
+    Double_t        genb1_eta;
+    Double_t        genb1_vis_eta;
+    Double_t        genb1_phi;
+    Double_t        genb1_vis_phi;
+    Double_t        genb1_mass;
+    Double_t        genb1_vis_mass;
+    Double_t        genb2_pt;
+    Double_t        genb2_vis_pt;
+    Double_t        genb2_eta;
+    Double_t        genb2_vis_eta;
+    Double_t        genb2_phi;
+    Double_t        genb2_vis_phi;
+    Double_t        genb2_mass;
+    Double_t        genb2_vis_mass;
+
     myTree->SetBranchAddress("genV1prod1_pt", &genV1prod1_pt);
     myTree->SetBranchAddress("genV1prod1_vis_pt", &genV1prod1_vis_pt);
     myTree->SetBranchAddress("genV1prod1_eta", &genV1prod1_eta);
@@ -135,10 +154,29 @@ int main()
     myTree->SetBranchAddress("genV2prod2_mass", &genV2prod2_mass);
     myTree->SetBranchAddress("genV2prod2_vis_mass", &genV2prod2_vis_mass);
 
+    myTree->SetBranchAddress("genb1_pt", &genb1_pt);
+    myTree->SetBranchAddress("genb1_vis_pt", &genb1_vis_pt);
+    myTree->SetBranchAddress("genb1_eta", &genb1_eta);
+    myTree->SetBranchAddress("genb1_vis_eta", &genb1_vis_eta);
+    myTree->SetBranchAddress("genb1_phi", &genb1_phi);
+    myTree->SetBranchAddress("genb1_vis_phi", &genb1_vis_phi);
+    myTree->SetBranchAddress("genb1_mass", &genb1_mass);
+    myTree->SetBranchAddress("genb1_vis_mass", &genb1_vis_mass);
+    myTree->SetBranchAddress("genb2_pt", &genb2_pt);
+    myTree->SetBranchAddress("genb2_vis_pt", &genb2_vis_pt);
+    myTree->SetBranchAddress("genb2_eta", &genb2_eta);
+    myTree->SetBranchAddress("genb2_vis_eta", &genb2_vis_eta);
+    myTree->SetBranchAddress("genb2_phi", &genb2_phi);
+    myTree->SetBranchAddress("genb2_vis_phi", &genb2_vis_phi);
+    myTree->SetBranchAddress("genb2_mass", &genb2_mass);
+    myTree->SetBranchAddress("genb2_vis_mass", &genb2_vis_mass);
+
     HistManager hm;
 
     std::string hme_mass("hme_mass");
     hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 1000}, 250);
+
+    int hme_events = 0;
 
     int nEvents = myTree->GetEntries();
     for (int i = 0; i < nEvents; ++i)
@@ -148,6 +186,31 @@ int main()
         {
             continue;
         }
+
+        TLorentzVector genb1_p4, genb2_p4, genq1_p4, genq2_p4; // quarks
+        genb1_p4.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
+        genb2_p4.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
+        genq1_p4.SetPtEtaPhiM(genV2prod1_pt, genV2prod1_eta, genV2prod1_phi, genV2prod1_mass);
+        genq2_p4.SetPtEtaPhiM(genV2prod2_pt, genV2prod2_eta, genV2prod2_phi, genV2prod2_mass);
+
+        if (genb1_p4.DeltaR(genb2_p4) < 0.4 || genq1_p4.DeltaR(genq2_p4) < 0.4)
+        {
+            continue;
+        }
+
+        bool all_matched = (genb1_vis_pt > 0.0) && (genb2_vis_pt > 0.0) && (genV2prod1_vis_pt > 0.0) && (genV2prod2_vis_pt); 
+        if (!all_matched)
+        {
+            continue;
+        }
+
+        ++hme_events;
+
+        TLorentzVector gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4; // gen jets matched to quarks
+        gen_bj1_p4.SetPtEtaPhiM(genb1_vis_pt, genb1_vis_eta, genb1_vis_phi, genb1_vis_mass);
+        gen_bj2_p4.SetPtEtaPhiM(genb2_vis_pt, genb2_vis_eta, genb2_vis_phi, genb2_vis_mass);
+        gen_lj1_p4.SetPtEtaPhiM(genV2prod1_vis_pt, genV2prod1_vis_eta, genV2prod1_vis_phi, genV2prod1_vis_mass);
+        gen_lj2_p4.SetPtEtaPhiM(genV2prod2_vis_pt, genV2prod2_vis_eta, genV2prod2_vis_phi, genV2prod2_vis_mass);
 
         TLorentzVector reco_lep_p4, reco_bj1_p4, reco_bj2_p4, reco_met_p4;
         reco_lep_p4.SetPtEtaPhiM(lep1_pt, lep1_eta, lep1_phi, lep1_mass);
@@ -202,5 +265,10 @@ int main()
 
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+
+    std::cout << "Finished processing, total events = " << nEvents << "\n";
+    std::cout << "Events passed to HME = " << hme_events << "\n"; 
+    std::cout << "Processing time = " << elapsed.count() << " s\n";
+
     return 0;
 }
