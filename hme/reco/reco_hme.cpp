@@ -233,7 +233,7 @@ int main()
         for (int j = 2; j < ncentralJet; ++j)
         {
             TLorentzVector jet;
-            jet.SetPtEtaPhiM(centralJet_pt[i], centralJet_eta[i], centralJet_phi[i], centralJet_mass[i]);
+            jet.SetPtEtaPhiM(centralJet_pt[j], centralJet_eta[j], centralJet_phi[j], centralJet_mass[j]);
             light_jets.push_back(jet);
         }
 
