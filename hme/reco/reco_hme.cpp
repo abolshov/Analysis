@@ -1,12 +1,14 @@
 #include <iostream>
 #include <memory>
 #include <chrono>
+#include <fstream>
 
 #include "TTree.h"
 #include "TFile.h"
 #include "TLorentzVector.h"
 #include "TH1.h"
 #include "TRandom3.h"
+#include "TCanvas.h"
 
 #include "HistManager.hpp"
 #include "EstimatorTools.hpp"
@@ -26,6 +28,11 @@ int main()
 
     TRandom3 rg;
     rg.SetSeed(42);
+
+    std::ofstream output("hme_output.txt");
+
+    ULong64_t event;
+    myTree->SetBranchAddress("event", &event);
 
     // reco variables
     Float_t         lep1_pt;
@@ -174,14 +181,48 @@ int main()
     HistManager hm;
 
     std::string hme_mass("hme_mass");
-    hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 1000}, 250);
+    hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
+
+    std::string hme_mass_onshell("hme_mass_onshell");
+    hm.Add(hme_mass_onshell, "HME X->HH mass wiht onshell jets for W->qq", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
+
+    std::string hme_mass_offshell("hme_mass_offshell");
+    hm.Add(hme_mass_offshell, "HME X->HH mass wiht offshell jets for W->qq", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
+
+    std::string hme_succ_onshell("hme_succ_onshell");
+    hm.Add(hme_succ_onshell, "HME success rate with onshell jets for W->qq", {"X->HH mass, [GeV]", "Count"}, {0, 1}, 10);
+
+    std::string hme_succ_offshell("hme_succ_offshell");
+    hm.Add(hme_succ_offshell, "HME success rate with offshell jets for W->qq", {"X->HH mass, [GeV]", "Count"}, {0, 1}, 10);
+
+    std::string numLightJets_onshell_fail("numLightJets_onshell_fail");
+    hm.Add(numLightJets_onshell_fail, "Number of light jets in events where HME with onshell pair fails", {"Number of light jets", "Count"}, {-0.5, 12.5}, 13);
+
+    std::string numLightJets_offshell_fail("numLightJets_offshell_fail");
+    hm.Add(numLightJets_offshell_fail, "Number of light jets in events where HME with offshell pair fails", {"Number of light jets", "Count"}, {-0.5, 12.5}, 13);
+
+    std::string numLightJets_both_fail("numLightJets_both_fail");
+    hm.Add(numLightJets_both_fail, "Number of light jets in events where HME fails", {"Number of light jets", "Count"}, {-0.5, 12.5}, 13);
+
+    std::string debug_hist("debug_hist");
+    hm.Add(debug_hist, "HME failures summary", {"Number of problems", "Count"}, {-0.5, 3.5}, 4);
 
     int hme_events = 0;
+    int hme_worked = 0;
+
+    int has_bad_lep = 0;
+    int has_bad_bjets = 0;
+    int has_bad_light_jets = 0;
 
     int nEvents = myTree->GetEntries();
     for (int i = 0; i < nEvents; ++i)
     {
         myTree->GetEntry(i);
+        if (event % 2 != 1)
+        {
+            continue;
+        }
+
         if (ncentralJet < 4)
         {
             continue;
@@ -193,24 +234,24 @@ int main()
         genq1_p4.SetPtEtaPhiM(genV2prod1_pt, genV2prod1_eta, genV2prod1_phi, genV2prod1_mass);
         genq2_p4.SetPtEtaPhiM(genV2prod2_pt, genV2prod2_eta, genV2prod2_phi, genV2prod2_mass);
 
-        if (genb1_p4.DeltaR(genb2_p4) < 0.4 || genq1_p4.DeltaR(genq2_p4) < 0.4)
+        if (genb1_p4.DeltaR(genb2_p4) < 0.4)
         {
             continue;
         }
 
-        bool all_matched = (genb1_vis_pt > 0.0) && (genb2_vis_pt > 0.0) && (genV2prod1_vis_pt > 0.0) && (genV2prod2_vis_pt); 
-        if (!all_matched)
+        if (genq1_p4.DeltaR(genq2_p4) < 0.4)
         {
             continue;
         }
-
-        ++hme_events;
 
         TLorentzVector gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4; // gen jets matched to quarks
         gen_bj1_p4.SetPtEtaPhiM(genb1_vis_pt, genb1_vis_eta, genb1_vis_phi, genb1_vis_mass);
         gen_bj2_p4.SetPtEtaPhiM(genb2_vis_pt, genb2_vis_eta, genb2_vis_phi, genb2_vis_mass);
         gen_lj1_p4.SetPtEtaPhiM(genV2prod1_vis_pt, genV2prod1_vis_eta, genV2prod1_vis_phi, genV2prod1_vis_mass);
         gen_lj2_p4.SetPtEtaPhiM(genV2prod2_vis_pt, genV2prod2_vis_eta, genV2prod2_vis_phi, genV2prod2_vis_mass);
+
+        TLorentzVector gen_lep_p4;
+        gen_lep_p4.SetPtEtaPhiM(genV1prod1_vis_pt, genV1prod1_vis_eta, genV1prod1_vis_phi, genV1prod1_vis_mass);
 
         TLorentzVector reco_lep_p4, reco_bj1_p4, reco_bj2_p4, reco_met_p4;
         reco_lep_p4.SetPtEtaPhiM(lep1_pt, lep1_eta, lep1_phi, lep1_mass);
@@ -246,20 +287,104 @@ int main()
         std::tie(idx1, idx2) = best_offshell_pair;
         std::vector<TLorentzVector> input_offshell = {reco_bj1_p4, reco_bj2_p4, light_jets[idx1], light_jets[idx2], reco_lep_p4, reco_met_p4};
 
-        auto hme = EstimateMass(input_onshell, pdf, rg, i);
-        if (hme)
+        ++hme_events;
+
+        auto hme_onshell = EstimateMass(input_onshell, pdf, rg, i);
+        if (hme_onshell)
         {
-            auto [mass, eff] = hme.value();
+            auto [mass, sr] = hme_onshell.value();
+            hm.Fill(hme_mass_onshell, mass);
+            hm.Fill(hme_succ_onshell, sr);
             hm.FillWeighted(hme_mass, mass, 0.5);
+            output << mass << " ";
+        }
+        else
+        {
+            output << -1.0 << " "; 
+            hm.Fill(numLightJets_onshell_fail, light_jets.size());
         }
 
-        hme = EstimateMass(input_offshell, pdf, rg, i);
-        if (hme)
+        auto hme_offshell = EstimateMass(input_offshell, pdf, rg, i);
+        if (hme_offshell)
         {
-            auto [mass, eff] = hme.value();
+            auto [mass, sr] = hme_offshell.value();
+            hm.Fill(hme_mass_offshell, mass);
+            hm.Fill(hme_succ_offshell, sr);
             hm.FillWeighted(hme_mass, mass, 0.5);
+            output << mass << " ";
         }
+        else
+        {
+            output << -1.0 << " "; 
+            hm.Fill(numLightJets_offshell_fail, light_jets.size());
+        }
+
+        if (!hme_offshell && !hme_onshell)
+        {
+            hm.Fill(numLightJets_both_fail, light_jets.size());
+
+            bool bad_lep = gen_lep_p4.DeltaR(reco_lep_p4) > 0.4;
+            if (bad_lep)
+            {
+                ++has_bad_lep;
+            }
+
+            bool bad_bjet_1 = genb1_p4.DeltaR(reco_bj1_p4) > 0.4 && genb1_p4.DeltaR(reco_bj2_p4) > 0.4;
+            bool bad_bjet_2 = genb2_p4.DeltaR(reco_bj1_p4) > 0.4 && genb2_p4.DeltaR(reco_bj2_p4) > 0.4;
+            bool bad_bjets = bad_bjet_1 || bad_bjet_2;
+            if (bad_bjets)
+            {
+                ++has_bad_bjets;
+            }
+
+            std::vector<TLorentzVector> slj = {light_jets[best_onshell_pair.first], 
+                                               light_jets[best_onshell_pair.second],
+                                               light_jets[best_offshell_pair.second],
+                                               light_jets[best_offshell_pair.second]};
+
+            bool bad_light_jet_1 = std::all_of(slj.begin(), slj.end(), [&genq1_p4](TLorentzVector const& v){ return v.DeltaR(genq1_p4) > 0.4; });
+            bool bad_light_jet_2 = std::all_of(slj.begin(), slj.end(), [&genq2_p4](TLorentzVector const& v){ return v.DeltaR(genq2_p4) > 0.4; });
+            bool bad_light_jets = bad_light_jet_1 || bad_light_jet_2;
+            if (bad_light_jets)
+            {
+                ++has_bad_light_jets;
+            }
+
+            int n_problems = bad_lep + bad_bjets + bad_light_jets;
+            hm.Fill(debug_hist, n_problems);   
+        }
+
+        hme_worked += (hme_onshell || hme_offshell);
+
+        output << event << "\n";
     }
+
+    std::vector<int> counts{ has_bad_light_jets,
+                             has_bad_bjets,
+                             has_bad_lep };
+
+    std::vector<char const*> labels{ "wrong light jets", 
+                                     "wrong b jets",
+                                     "wrong lepton" };
+
+    int nx = labels.size();
+    auto debug_breakdown = std::make_unique<TH1F>("debug_breakdown", "Breakdown of events where HME failed to categories", nx, 0, nx);
+    debug_breakdown->SetStats(0);
+    debug_breakdown->SetFillStyle(3544);
+    debug_breakdown->SetLineWidth(2);
+    debug_breakdown->SetFillColorAlpha(kBlue, 0.75);
+
+    auto canvas = std::make_unique<TCanvas>("canvas", "canvas");
+    canvas->SetGrid();
+
+    for (int b = 1; b <= nx; ++b)
+    {
+        debug_breakdown->SetBinContent(b, counts[b-1]);
+        debug_breakdown->GetXaxis()->SetBinLabel(b, labels[b-1]);
+    }
+
+    debug_breakdown->Draw();
+    canvas->SaveAs("histograms/debug_breakdown.png");
 
     hm.Draw();
 
@@ -268,6 +393,7 @@ int main()
 
     std::cout << "Finished processing, total events = " << nEvents << "\n";
     std::cout << "Events passed to HME = " << hme_events << "\n"; 
+    std::cout << "HME successful = " << hme_worked << "\n"; 
     std::cout << "Processing time = " << elapsed.count() << " s\n";
 
     return 0;
