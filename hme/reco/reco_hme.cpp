@@ -14,6 +14,19 @@
 #include "EstimatorTools.hpp"
 #include "CombTools.hpp"
 
+double InterquantileRange(std::unique_ptr<TH1F> const& h)
+{
+    int const nq = 50;
+    double xq[nq];  // position where to compute the quantiles in [0,1]
+    double yq[nq];  // array to contain the quantiles
+    for (int i = 0; i < nq; ++i) 
+    {
+        xq[i] = static_cast<double>(i+1)/nq;
+    }
+    h->GetQuantiles(nq, yq, xq);
+    return yq[41] - yq[7];
+}
+
 static constexpr int N_RECO_JETS = 12;
 
 int main()
@@ -21,7 +34,7 @@ int main()
     auto start = std::chrono::system_clock::now();
 
     auto file_pdf = std::make_unique<TFile>("pdf.root", "READ");
-    auto pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf")));
+    auto pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_b1")));
 
     TFile *myFile = TFile::Open("nano_0.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -180,8 +193,8 @@ int main()
 
     HistManager hm;
 
-    std::string hme_mass("hme_mass");
-    hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
+    // std::string hme_mass("hme_mass");
+    // hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
 
     std::string hme_mass_onshell("hme_mass_onshell");
     hm.Add(hme_mass_onshell, "HME X->HH mass wiht onshell jets for W->qq", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
@@ -206,6 +219,23 @@ int main()
 
     std::string debug_hist("debug_hist");
     hm.Add(debug_hist, "HME failures summary", {"Number of problems", "Count"}, {-0.5, 3.5}, 4);
+
+    std::string nJets_vs_massDiff("nJets_vs_massDiff");
+    hm.Add(nJets_vs_massDiff, "HME mass difference vs number of light jets", {"Number of light jets", "Mass difference, [GeV]"}, {-0.5, 12.5}, {-10.5, 120.5}, {13, 13});
+
+    std::string debug_off("debug_off");
+    hm.Add(debug_off, "HME failures with offshell pair summary", {"Number of problems", "Count"}, {-0.5, 3.5}, 4);
+
+    std::string debug_on("debug_on");
+    hm.Add(debug_on, "HME failures with onshell pair summary", {"Number of problems", "Count"}, {-0.5, 3.5}, 4);
+
+    std::string same_pair("same_pair");
+    hm.Add(same_pair, "Mass difference for same pair of light jets", {"Mass difference, [GeV]", "Count"}, {-1, 100}, 30);
+
+    std::string diff_pairs("diff_pairs");
+    hm.Add(diff_pairs, "Mass difference for different pairs of light jets", {"Mass difference, [GeV]", "Count"}, {-1, 100}, 30);
+
+    auto h = std::make_unique<TH1F>("h", "h", 200, 0, 2000);
 
     int hme_events = 0;
     int hme_worked = 0;
@@ -290,12 +320,14 @@ int main()
         ++hme_events;
 
         auto hme_onshell = EstimateMass(input_onshell, pdf, rg, i);
+        double m1 = -1.0;
         if (hme_onshell)
         {
             auto [mass, sr] = hme_onshell.value();
             hm.Fill(hme_mass_onshell, mass);
             hm.Fill(hme_succ_onshell, sr);
-            hm.FillWeighted(hme_mass, mass, 0.5);
+            // hm.FillWeighted(hme_mass, mass, 0.5);
+            m1 = mass;
             output << mass << " ";
         }
         else
@@ -305,18 +337,52 @@ int main()
         }
 
         auto hme_offshell = EstimateMass(input_offshell, pdf, rg, i);
+        double m2 = -1.0;
         if (hme_offshell)
         {
             auto [mass, sr] = hme_offshell.value();
             hm.Fill(hme_mass_offshell, mass);
             hm.Fill(hme_succ_offshell, sr);
-            hm.FillWeighted(hme_mass, mass, 0.5);
+            // hm.FillWeighted(hme_mass, mass, 0.5);
+            m2 = mass;
             output << mass << " ";
         }
         else
         {
             output << -1.0 << " "; 
             hm.Fill(numLightJets_offshell_fail, light_jets.size());
+        }
+
+        if (!hme_offshell)
+        {
+            bool bad_lep = gen_lep_p4.DeltaR(reco_lep_p4) > 0.4;
+
+            bool bad_bjet_1 = genb1_p4.DeltaR(reco_bj1_p4) > 0.4 && genb1_p4.DeltaR(reco_bj2_p4) > 0.4;
+            bool bad_bjet_2 = genb2_p4.DeltaR(reco_bj1_p4) > 0.4 && genb2_p4.DeltaR(reco_bj2_p4) > 0.4;
+            bool bad_bjets = bad_bjet_1 || bad_bjet_2;
+
+            bool bad_ljet_1 = genq1_p4.DeltaR(light_jets[best_offshell_pair.first]) > 0.4 && genq1_p4.DeltaR(light_jets[best_offshell_pair.second]) > 0.4;
+            bool bad_ljet_2 = genq2_p4.DeltaR(light_jets[best_offshell_pair.first]) > 0.4 && genq2_p4.DeltaR(light_jets[best_offshell_pair.second]) > 0.4;
+            bool bad_light_jets = bad_ljet_1 || bad_ljet_2;
+
+            int n_problems = bad_lep + bad_bjets + bad_light_jets;
+            hm.Fill(debug_off, n_problems);
+        }
+
+        if (!hme_onshell)
+        {
+            bool bad_lep = gen_lep_p4.DeltaR(reco_lep_p4) > 0.4;
+
+            bool bad_bjet_1 = genb1_p4.DeltaR(reco_bj1_p4) > 0.4 && genb1_p4.DeltaR(reco_bj2_p4) > 0.4;
+            bool bad_bjet_2 = genb2_p4.DeltaR(reco_bj1_p4) > 0.4 && genb2_p4.DeltaR(reco_bj2_p4) > 0.4;
+            bool bad_bjets = bad_bjet_1 || bad_bjet_2;
+
+            bool bad_ljet_1 = genq1_p4.DeltaR(light_jets[best_onshell_pair.first]) > 0.4 && genq1_p4.DeltaR(light_jets[best_onshell_pair.second]) > 0.4;
+            bool bad_ljet_2 = genq2_p4.DeltaR(light_jets[best_onshell_pair.first]) > 0.4 && genq2_p4.DeltaR(light_jets[best_onshell_pair.second]) > 0.4;
+            bool bad_light_jets = bad_ljet_1 || bad_ljet_2;
+
+            int n_problems = bad_lep + bad_bjets + bad_light_jets;
+            hm.Fill(debug_on, n_problems);
         }
 
         if (!hme_offshell && !hme_onshell)
@@ -339,7 +405,7 @@ int main()
 
             std::vector<TLorentzVector> slj = {light_jets[best_onshell_pair.first], 
                                                light_jets[best_onshell_pair.second],
-                                               light_jets[best_offshell_pair.second],
+                                               light_jets[best_offshell_pair.first],
                                                light_jets[best_offshell_pair.second]};
 
             bool bad_light_jet_1 = std::all_of(slj.begin(), slj.end(), [&genq1_p4](TLorentzVector const& v){ return v.DeltaR(genq1_p4) > 0.4; });
@@ -352,6 +418,32 @@ int main()
 
             int n_problems = bad_lep + bad_bjets + bad_light_jets;
             hm.Fill(debug_hist, n_problems);   
+        }
+
+        if (m1 > 0.0 && m2 > 0.0)
+        {
+            double dm = std::abs(m1 - m2);
+            hm.Fill(nJets_vs_massDiff, light_jets.size(), dm);
+
+            if (best_offshell_pair == best_onshell_pair)
+            {
+                hm.Fill(same_pair, dm);
+            }
+            else
+            {
+                hm.Fill(diff_pairs, dm);
+            }
+
+            h->Fill(m1, 0.5);
+            h->Fill(m2, 0.5);
+        }
+        else if (m1 > 0.0 && m2 < 0.0)
+        {
+            h->Fill(m1);
+        }
+        else if (m1 < 0.0 && m2 > 0.0)
+        {
+            h->Fill(m2);
         }
 
         hme_worked += (hme_onshell || hme_offshell);
@@ -388,12 +480,16 @@ int main()
 
     hm.Draw();
 
+    hm.DrawStack({hme_mass_onshell, hme_mass_offshell}, "Impact of onshell/offshell light jet candidates on HME", "hme_offshell_vs_hme_onshell.png");
+    hm.DrawStack({same_pair, diff_pairs}, "Impact of light jet selection on HME mass difference", "mass_diff_cmp.png");
+
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 
     std::cout << "Finished processing, total events = " << nEvents << "\n";
     std::cout << "Events passed to HME = " << hme_events << "\n"; 
     std::cout << "HME successful = " << hme_worked << "\n"; 
+    std::cout << "Combned width = " << InterquantileRange(h) << "\n";
     std::cout << "Processing time = " << elapsed.count() << " s\n";
 
     return 0;
