@@ -311,11 +311,11 @@ int main()
         auto best_onshell_pair = ChooseBestPair(light_jets, [](TLorentzVector const& p1, TLorentzVector const& p2){ return std::abs(80.0 - (p1 + p2).M()); });
         auto best_offshell_pair = ChooseBestPair(light_jets, [](TLorentzVector const& p1, TLorentzVector const& p2){ return std::abs(40.0 - (p1 + p2).M()); });
 
-        auto [idx1, idx2] = best_onshell_pair;
-        std::vector<TLorentzVector> input_onshell = {reco_bj1_p4, reco_bj2_p4, light_jets[idx1], light_jets[idx2], reco_lep_p4, reco_met_p4};
+        auto [i1, i2] = best_onshell_pair;
+        std::vector<TLorentzVector> input_onshell = {reco_bj1_p4, reco_bj2_p4, light_jets[i1], light_jets[i2], reco_lep_p4, reco_met_p4};
 
-        std::tie(idx1, idx2) = best_offshell_pair;
-        std::vector<TLorentzVector> input_offshell = {reco_bj1_p4, reco_bj2_p4, light_jets[idx1], light_jets[idx2], reco_lep_p4, reco_met_p4};
+        auto [j1, j2] = best_offshell_pair;
+        std::vector<TLorentzVector> input_offshell = {reco_bj1_p4, reco_bj2_p4, light_jets[j1], light_jets[j2], reco_lep_p4, reco_met_p4};
 
         ++hme_events;
 
