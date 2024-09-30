@@ -56,7 +56,7 @@ void HistManager::Draw() const
         ptr_hist->GetYaxis()->SetTitle(ylabel.c_str());
         ptr_hist->SetLineWidth(3);
         ptr_hist->SetStats(1);
-        ptr_hist->DrawNormalized();
+        ptr_hist->Draw();
         c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
         // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
     }
