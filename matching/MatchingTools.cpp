@@ -138,12 +138,13 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
     // H0->hh only
     if (tmp1.size() == 2)
     {
-        res[SIG::H1] = tmp1[0];
-        res[SIG::H2] = tmp1[1];
+        res[SIG::H_bb] = tmp1[0];
+        res[SIG::H_WW] = tmp1[1];
     }
 
-    tmp1 = GetNextGeneration(res[SIG::H1], mothers, n_gen_part); 
-    auto tmp2 = GetNextGeneration(res[SIG::H2], mothers, n_gen_part); 
+    tmp1 = GetNextGeneration(res[SIG::H_bb], mothers, n_gen_part); 
+    auto tmp2 = GetNextGeneration(res[SIG::H_WW], mothers, n_gen_part); 
+
     tmp1.insert(tmp1.end(), tmp2.begin(), tmp2.end()); // now tmp1 contains indices of all daughters of both higgses or is empty;
     
     // hh->bbWW only!
@@ -151,6 +152,11 @@ std::vector<int> GetSignal(int const* pdg_ids, int const* mothers, int n_gen_par
     int first_w_minus = -1;
     if (tmp1.size() == 4)
     {
+        if (std::abs(pdg_ids[tmp1[0]]) != B_ID)
+        {
+            std::swap(res[SIG::H_bb], res[SIG::H_WW]);
+        }
+
         for (auto const& idx: tmp1)
         {
             if (pdg_ids[idx] == B_ID)
@@ -296,6 +302,69 @@ int Match(int idx, KinematicData const& kd_part, KinematicData const& kd_jet)
     return -1;
 }
 
+int Match(TLorentzVector const& quark, std::vector<TLorentzVector> const& jets)
+{
+    std::map<double, int> hash;
+    int n_jets = jets.size();
+    for (int i = 0; i < n_jets; ++i)
+    {
+        TLorentzVector const& jet = jets[i];
+        double dr = quark.DeltaR(jet);
+        if (dr < DR_THRESH)
+        {
+            hash.insert({dr, i});
+        }
+    }
+
+    auto best_match = hash.begin();
+
+    if (best_match != hash.end())
+    {
+        return best_match->second;
+    }
+    return -1;
+}
+
+int FindSecondMatch(int first_match, TLorentzVector const& target, std::vector<TLorentzVector> const& jets)
+{
+    TLorentzVector const& jet1 = jets[first_match];
+    int res = -1;
+    double min_dm = 10e9;
+    int sz = jets.size();
+    for (int i = 0; i < sz; ++i)
+    {
+        if (i == first_match)
+        {
+            continue;
+        }
+        TLorentzVector const& jet2 = jets[i];
+        double dm = std::abs(target.M() - (jet1 + jet2).M());
+        if (dm < min_dm)
+        {
+            min_dm = dm;
+            res = i;
+        }
+    }
+    return res; 
+}
+
+std::vector<int> Matches(int idx, KinematicData const& kd_part, KinematicData const& kd_jet)
+{
+    std::vector<int> matches;
+    TLorentzVector p = GetP4(kd_part, idx);
+    int n_jets = kd_jet.n;
+    for (int i = 0; i < n_jets; ++i)
+    {
+        TLorentzVector j = GetP4(kd_jet, i);
+        double dr = p.DeltaR(j);
+        if (dr < DR_THRESH)
+        {
+            matches.push_back(i);
+        }
+    }
+    return matches;
+}
+
 double MinDeltaR(std::vector<TLorentzVector> const& parts)
 {
     int n = parts.size();
@@ -314,99 +383,82 @@ double MinDeltaR(std::vector<TLorentzVector> const& parts)
     return min_dR;
 }
 
-std::unique_ptr<TH2F> EnergyMap(int const event_num, KinematicData const& kd, int const* mothers, int nbins, AxisRange xrange, AxisRange yrange)
+TLorentzVector MatchDijet(TLorentzVector const& hadW, std::vector<TLorentzVector> const& jets)
 {
-    auto&& [xmin, xmax] = xrange;
-    auto&& [ymin, ymax] = yrange;
-    auto hist = std::make_unique<TH2F>(Form("evt_%d_EM", event_num), Form("Event %d", event_num), nbins, xmin, xmax, nbins, ymin, ymax); 
-    int n_parts = kd.n;
-    std::vector<int> final_parts = GetFinalParticles(mothers, n_parts);
-
-    for (auto const& part_idx: final_parts)
+    size_t sz = jets.size();
+    std::vector<std::pair<int, int>> pairs;
+    pairs.reserve(sz*(sz-1)/2);
+    for (size_t i = 0; i < sz; ++i)
     {
-        TLorentzVector p4 = GetP4(kd, part_idx);
-        hist->Fill(p4.Phi(), p4.Eta(), p4.E());
+        for (size_t j = 0; j < sz; ++j)
+        {
+            pairs.emplace_back(i, j);
+        }
     }
 
-    return hist;   
+    // double min_dm = 10e9;
+    // double min_dr = 6.0;
+    // TLorentzVector res{};
+    // for (auto const& p: pairs)
+    // {
+    //     auto [i1, i2] = p;
+    //     TLorentzVector dijet = jets[i1] + jets[i2];
+    //     double dr = hadW.DeltaR(dijet);
+
+    //     if (dr < DR_THRESH && dr < min_dr)
+    //     {
+    //         min_dr = dr;
+    //         double dm = std::abs(dijet.M() - hadW.M());
+    //         if (dm < min_dm)
+    //         {
+    //             res = dijet;
+    //         }
+    //     }
+    // }
+
+    // return res;
+
+    std::vector<TLorentzVector> close_dijets;
+    for (auto const& p: pairs)
+    {
+        auto [i1, i2] = p;
+        TLorentzVector dijet = jets[i1] + jets[i2];
+        double dr = hadW.DeltaR(dijet);
+
+        if (dr < DR_THRESH)
+        {
+            close_dijets.push_back(dijet);
+        }
+    }
+
+    // if (close_dijets.empty())
+    // {
+    //     return TLorentzVector{};
+    // }
+
+    // auto Cmp = [&hadW](TLorentzVector const& p1, TLorentzVector const& p2)
+    // {
+    //     return hadW.DeltaR(p1) < hadW.DeltaR(p2);
+    // };
+    // std::sort(close_dijets.begin(), close_dijets.end(), Cmp);
+    // return *close_dijets.begin();
+
+    auto Comparator = [&hadW](TLorentzVector const& p1, TLorentzVector const& p2)
+    { 
+        return std::abs(p1.M() - hadW.M()) < std::abs(p2.M() - hadW.M()); 
+    };
+
+    if (close_dijets.empty())
+    {
+        auto copy = jets;
+        std::sort(copy.begin(), copy.end(), Comparator);
+        return *copy.begin();
+    }
+
+    std::sort(close_dijets.begin(), close_dijets.end(), Comparator);
+    return *close_dijets.begin();
 }
 
-std::unique_ptr<TGraph> DRCone(KinematicData const& kd, int idx)
-{
-    TLorentzVector p4 = GetP4(kd, idx);
-    double eta_0 = p4.Eta();
-    double phi_0 = p4.Phi();
-
-    std::vector<double> phis(N_POINTS + 1);
-    std::vector<double> etas(N_POINTS + 1);
-
-    for (int i = 0; i < N_POINTS + 1; ++i)
-    {
-        double t = 2*3.14/(N_POINTS)*i;
-        phis[i] = phi_0 + DR_THRESH*std::cos(t);
-        etas[i] = eta_0 + DR_THRESH*std::sin(t);
-    }
-    return std::make_unique<TGraph>(N_POINTS + 1, phis.data(), etas.data());
-}
-
-void DrawEventMap(MatchKinematics const& match_kin, MatchIndex const& match_index, int evt_num, std::pair<int*, int*> ptrs)
-{
-    auto c1 = std::make_unique<TCanvas>("c1", "c1");
-    c1->SetGrid();
-    c1->SetTickx();
-    c1->SetTicky();
-    c1->SetLeftMargin(0.15);
-    c1->SetRightMargin(0.15);
-
-    auto const& [mothers, pdg_ids] = ptrs;
-    auto const& [genpart, genjet] = match_kin;
-
-    std::unique_ptr<TH2F> en_map = EnergyMap(evt_num, genpart, mothers);   
-    en_map->SetStats(0);
-    en_map->GetXaxis()->SetTitle("phi");
-    en_map->GetYaxis()->SetTitle("eta");
-    en_map->Draw("colz");
-
-    std::vector<std::unique_ptr<TGraph>> part_cones, jet_cones;
-    // cannot draw vectors in the loop as they will go out of scope after the loop is executed, thus need to save them
-    for (auto const& match_idx_pair: match_index)
-    {
-        auto [part_idx, jet_idx] = match_idx_pair;
-        auto&& part_cone = DRCone(genpart, part_idx);
-        auto&& jet_cone = DRCone(genjet, jet_idx);
-
-        part_cones.push_back(std::move(part_cone));
-        jet_cones.push_back(std::move(jet_cone));
-    }
-
-    auto leg = std::make_unique<TLegend>(0.15, 0.1, 0.35, 0.3);
-    for (int i = 0; i < static_cast<int>(part_cones.size()); ++i)
-    {
-        auto [part_idx, jet_idx] = match_index[i];
-        part_cones[i]->SetLineWidth(2);
-        part_cones[i]->SetLineColor(i+6);
-        part_cones[i]->Draw("same");
-        jet_cones[i]->SetLineWidth(2);
-        jet_cones[i]->SetLineColor(i+6);
-        jet_cones[i]->Draw("same");
-        leg->AddEntry(part_cones[i].get(), Form("pdg ID = %d", pdg_ids[part_idx]));
-    }
-    leg->Draw();
-
-    c1->SaveAs(Form("EnergyMaps/Event_%d.png", evt_num));
-}
-
-// bool PassGenJetCut(std::vector<TLorentzVector> const& jets)
-// {
-//     for (auto const& j: jets)
-//     {
-//         if (j.Pt() < MIN_GENJET_PT || std::abs(j.Eta()) > MAX_GENJET_ETA)
-//         {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
 
 bool IsIsolatedLepton(TLorentzVector const& lep, std::vector<TLorentzVector> const& jets)
 {
@@ -436,33 +488,6 @@ bool IsIsolatedLepton(TLorentzVector const& lep, KinematicData const& kd)
     return count >= N_JETS_AWAY_FROM_LEP;
 }
 
-std::vector<int> GetAcceptJets(GenJetData const& jet_data)
-{
-    std::vector<int> res;
-    auto const& [pt, eta, phi, m, n] = jet_data.kd;
-    auto const& [parton_flavor, hadron_flavor] = jet_data.fi;
-
-    for (int j_idx = 0; j_idx < n; ++j_idx)
-    {
-        // if (std::abs(parton_flavor[j_idx]) == B_ID)
-        if (static_cast<unsigned>(hadron_flavor[j_idx]) == 5)
-        {
-            if (pt[j_idx] > MIN_B_GENJET_PT && std::abs(eta[j_idx]) < MAX_GENJET_ETA)
-            {
-                res.push_back(j_idx);
-            }
-        }
-        else 
-        {
-            if (pt[j_idx] > MIN_LIGHT_GENJET_PT && std::abs(eta[j_idx]) < MAX_GENJET_ETA)
-            {
-                res.push_back(j_idx);
-            }
-        }
-    }
-    return res;
-}
-
 std::vector<int> PrimaryJetSelection(KinematicData const& kd)
 {
     auto const& [pt, eta, phi, m, n] = kd;
@@ -473,6 +498,17 @@ std::vector<int> PrimaryJetSelection(KinematicData const& kd)
         {
             res.push_back(i);
         }
+    }
+    return res;
+}
+
+double MinDeltaR(TLorentzVector const& v, std::vector<TLorentzVector> const& other)
+{
+    double res = 10.0;
+    for (auto const& p: other)
+    {
+        double dr = v.DeltaR(p);
+        res = std::min(dr, res);
     }
     return res;
 }
