@@ -35,6 +35,9 @@ OptionalPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr
 // compute 4-momentum of neutrino from W->lv using Higgs H->WW mass constraint
 std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, double mh, double eta);
 
+// compute 4-momentum of neutrino from W->lv using Higgs W->lv mass constraint
+std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& met, double mw, double numet_dphi);
+
 // this is HME: samples pdfs, computes corrections and calculates mass distribution for an event
 // in case of success returns mass and fraction of iterations which computed mass
 OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::vector<int>& err_cnt);

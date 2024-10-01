@@ -4,6 +4,7 @@
 #include "TString.h"
 #include "TCanvas.h"
 #include "TLine.h"
+#include "TVector2.h"
 
 OptionalPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr<TH1F>& pdf, double mass)
 {
@@ -65,6 +66,31 @@ std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector 
     TLorentzVector v;
     v.SetPtEtaPhiM(pt, eta, phi, 0.0);
     return std::make_optional<TLorentzVector>(std::move(v));
+}
+
+std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& met, double mw, double numet_dphi)
+{
+    // assume that numet_dphi is in [-max_numet_dphi, max_numet_dphi]
+    // numet_dphi is generated from a PDF
+    // compute possible angle of nu knowing phi of met and possible correction (generated randomly)
+    double nu_phi = TVector2::Phi_mpi_pi(met.Phi() + numet_dphi);
+    double lep_phi = l.Phi();
+
+    // angle between lepton and neutrino
+    double dphi = TVector2::Phi_mpi_pi(lep_phi - nu_phi);
+
+    double ch_deta = std::cos(dphi) + (mw*mw)/(2.0*met.Pt()*l.Pt());
+    if (std::abs(ch_deta) < 1.0)
+    {
+        return std::nullopt;
+    }
+
+    double deta = std::acosh(ch_deta);
+    double nu_eta = l.Eta() + deta;
+
+    TLorentzVector res;
+    res.SetPtEtaPhiM(met.Pt(), nu_eta, nu_phi, 0.0);
+    return std::make_optional<TLorentzVector>(res);
 }
 
 OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::vector<int>& err_cnt)
