@@ -151,8 +151,12 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
             auto [c1, c2] = b_jet_resc.value();
             TLorentzVector bb1 = c1*b1;
             TLorentzVector bb2 = c2*b2;
-            double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2;
-            double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2;
+
+            double smear_dpx = rg.Gaus(0.0, MET_SIGMA);
+            double smear_dpy = rg.Gaus(0.0, MET_SIGMA);
+
+            double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2 + smear_dpx;
+            double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2 + smear_dpy;
 
             TLorentzVector met_corr(met_corr_px, met_corr_py, 0.0, 0.0);
             std::optional<TLorentzVector> nu = ComputeNu(l, j1, j2, met_corr, mh, eta);

@@ -15,11 +15,13 @@ inline constexpr double HIGGS_MASS = 125.03;
 inline constexpr double HIGGS_WIDTH = 0.004;
 inline constexpr double TOL = 10e-7;
 inline constexpr int N_ATTEMPTS = 1;
-inline constexpr int N_ITER = 500;
+inline constexpr int N_ITER = 1000;
 
 // event mass distribution parameters
 inline constexpr double MAX_MASS = 2000;
 inline constexpr int N_BINS = 5000;
+
+inline constexpr double MET_SIGMA = 25.2;
 
 using OptionalPair = std::optional<std::pair<double, double>>;
 
@@ -32,7 +34,7 @@ OptionalPair JetRescFact(TLorentzVector& j1, TLorentzVector& j2, std::unique_ptr
 // compute 4-momentum of neutrino from W->lv using Higgs H->WW mass constraint
 std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& j1, TLorentzVector const& j2, TLorentzVector const& met, double mh, double eta);
 
-// compute 4-momentum of neutrino from W->lv using Higgs W->lv mass constraint
+// compute 4-momentum of neutrino from W->lv using W->lv mass constraint
 std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector const& met, double mw, double numet_dphi);
 
 // this is HME: samples pdfs, computes corrections and calculates mass distribution for an event
