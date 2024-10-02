@@ -15,18 +15,15 @@ inline constexpr double HIGGS_MASS = 125.03;
 inline constexpr double HIGGS_WIDTH = 0.004;
 inline constexpr double TOL = 10e-7;
 inline constexpr int N_ATTEMPTS = 1;
-inline constexpr int N_ITER = 100;
+inline constexpr int N_ITER = 500;
 
 // event mass distribution parameters
-inline constexpr double MAX_MASS = 1500;
-inline constexpr int N_BINS = 1500;
+inline constexpr double MAX_MASS = 2000;
+inline constexpr int N_BINS = 5000;
 
 using OptionalPair = std::optional<std::pair<double, double>>;
 
 enum PhysObj { bj1, bj2, wj1, wj2, lep, met };
-
-enum Error { RescFact, NuEqn };
-static const std::vector<char const*> err_names = {"RescFact", "NuEqn"};
 
 // computes rescaling factors for jets using rescale pdf and mass of particle->jj
 // has side effect: may swap j1 and j2
@@ -40,6 +37,6 @@ std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector 
 
 // this is HME: samples pdfs, computes corrections and calculates mass distribution for an event
 // in case of success returns mass and fraction of iterations which computed mass
-OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::vector<int>& err_cnt);
+OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::pair<double, double> lj_pt_res);
 
 #endif

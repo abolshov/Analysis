@@ -27,8 +27,6 @@ double InterquantileRange(std::unique_ptr<TH1F> const& h)
     return yq[41] - yq[7];
 }
 
-enum FailureType { Resc, Nu, Both };
-
 static constexpr int N_RECO_JETS = 12;
 
 int main()
@@ -55,6 +53,9 @@ int main()
     Float_t         lep1_phi;
     Float_t         lep1_mass;
 
+    Int_t           lep1_type;
+    Int_t           lep1_genLep_kind;
+
     Float_t         PuppiMET_pt;
     Float_t         PuppiMET_phi;
 
@@ -64,11 +65,17 @@ int main()
     Float_t         centralJet_phi[N_RECO_JETS];   
     Float_t         centralJet_mass[N_RECO_JETS]; 
     Float_t         centralJet_btagPNetB[N_RECO_JETS]; 
+    Float_t         centralJet_PNetRegPtRawCorr[N_RECO_JETS];    
+    Float_t         centralJet_PNetRegPtRawRes[N_RECO_JETS]; 
+    // Float_t         centralJet_PNetRegPtRawCorrNeutrino[N_RECO_JETS];  
 
     myTree->SetBranchAddress("lep1_pt", &lep1_pt);
     myTree->SetBranchAddress("lep1_eta", &lep1_eta);
     myTree->SetBranchAddress("lep1_phi", &lep1_phi);
     myTree->SetBranchAddress("lep1_mass", &lep1_mass);
+
+    myTree->SetBranchAddress("lep1_type", &lep1_type);
+    myTree->SetBranchAddress("lep1_genLep_kind", &lep1_genLep_kind);
 
     myTree->SetBranchAddress("PuppiMET_pt", &PuppiMET_pt);
     myTree->SetBranchAddress("PuppiMET_phi", &PuppiMET_phi);
@@ -79,6 +86,9 @@ int main()
     myTree->SetBranchAddress("centralJet_phi", centralJet_phi);
     myTree->SetBranchAddress("centralJet_mass", centralJet_mass);
     myTree->SetBranchAddress("centralJet_btagPNetB", centralJet_btagPNetB);
+    myTree->SetBranchAddress("centralJet_PNetRegPtRawCorr", centralJet_PNetRegPtRawCorr);
+    myTree->SetBranchAddress("centralJet_PNetRegPtRawRes", centralJet_PNetRegPtRawRes);
+    // myTree->SetBranchAddress("centralJet_PNetRegPtRawCorrNeutrino", centralJet_PNetRegPtRawCorrNeutrino);
 
     // gen variables
     // H->VV
@@ -195,25 +205,10 @@ int main()
 
     HistManager hm;
 
-    // std::string hme_mass("hme_mass");
-    // hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
+    std::string hme_mass("hme_mass");
+    hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
 
-    std::string W_mass_onshell("W_mass_onshell");
-    hm.Add(W_mass_onshell, "Mass of picked W for onshell pair", {"W mass, [GeV]", "Count"}, {0, 250}, 100);
-
-    std::string W_mass_offshell("W_mass_offshell");
-    hm.Add(W_mass_offshell, "Mass of picked W for offshell pair", {"W mass, [GeV]", "Count"}, {0, 250}, 100);
-
-    std::string err_onshell("err_onshell");
-    hm.Add(err_onshell, "Errors of HME with onshell pair", {err_names[Error::RescFact], err_names[Error::NuEqn]}, {0, 100}, {0, 100}, {10, 10});
-
-    std::string err_offshell("err_offshell");
-    hm.Add(err_offshell, "Errors of HME with offshell pair", {err_names[Error::RescFact], err_names[Error::NuEqn]}, {0, 100}, {0, 100}, {10, 10});
-
-    std::vector<char const*> labels = {"only resc", "only nu", "resc + nu"};
-
-    std::vector<int> onshell_counts(labels.size(), 0);
-    std::vector<int> offshell_counts(labels.size(), 0);
+    auto h = std::make_unique<TH1F>("h", "h", 200, 0, 2000);
 
     int hme_events = 0;
     int hme_worked = 0;
@@ -232,18 +227,34 @@ int main()
             continue;
         }
 
+        bool reco_lep1_mu = (lep1_type == 2);
+        bool reco_lep1_ele = (lep1_type == 1);
+
+        bool gen_lep1_mu = ((lep1_genLep_kind == 2) || (lep1_genLep_kind == 4));
+        bool gen_lep1_ele = ((lep1_genLep_kind == 1) || (lep1_genLep_kind == 3));
+
+        bool corr_lep_reco = ((reco_lep1_mu && gen_lep1_mu) || (reco_lep1_ele && gen_lep1_ele));
+        
+        if (!corr_lep_reco)
+        {
+            continue;
+        }
+
         TLorentzVector genb1_p4, genb2_p4, genq1_p4, genq2_p4; // quarks
         genb1_p4.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
         genb2_p4.SetPtEtaPhiM(genb2_pt, genb2_eta, genb2_phi, genb2_mass);
         genq1_p4.SetPtEtaPhiM(genV2prod1_pt, genV2prod1_eta, genV2prod1_phi, genV2prod1_mass);
         genq2_p4.SetPtEtaPhiM(genV2prod2_pt, genV2prod2_eta, genV2prod2_phi, genV2prod2_mass);
 
-        if (genb1_p4.DeltaR(genb2_p4) < 0.4)
+        if (genb1_p4.DeltaR(genb2_p4) < 0.4 || genq1_p4.DeltaR(genq2_p4) < 0.4)
         {
             continue;
         }
 
-        if (genq1_p4.DeltaR(genq2_p4) < 0.4)
+        bool bq_accept = (genb1_p4.Pt() > 20.0 && std::abs(genb1_p4.Eta()) < 2.5) && (genb2_p4.Pt() > 20.0 && std::abs(genb2_p4.Eta()) < 2.5);
+        bool lq_accept = (genq1_p4.Pt() > 20.0 && std::abs(genq1_p4.Eta()) < 5.0) && (genq2_p4.Pt() > 20.0 && std::abs(genq2_p4.Eta()) < 5.0);
+        bool quarks_accept = bq_accept && lq_accept;
+        if (!quarks_accept)
         {
             continue;
         }
@@ -253,6 +264,12 @@ int main()
         gen_bj2_p4.SetPtEtaPhiM(genb2_vis_pt, genb2_vis_eta, genb2_vis_phi, genb2_vis_mass);
         gen_lj1_p4.SetPtEtaPhiM(genV2prod1_vis_pt, genV2prod1_vis_eta, genV2prod1_vis_phi, genV2prod1_vis_mass);
         gen_lj2_p4.SetPtEtaPhiM(genV2prod2_vis_pt, genV2prod2_vis_eta, genV2prod2_vis_phi, genV2prod2_vis_mass);
+
+        std::vector<TLorentzVector> gen_jets = {gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4};
+        if (!std::all_of(gen_jets.begin(), gen_jets.end(), [](TLorentzVector const& p){ return p != TLorentzVector{}; }))
+        {
+            continue;
+        }
 
         TLorentzVector gen_lep_p4;
         gen_lep_p4.SetPtEtaPhiM(genV1prod1_vis_pt, genV1prod1_vis_eta, genV1prod1_vis_phi, genV1prod1_vis_mass);
@@ -275,11 +292,18 @@ int main()
         }
 
         std::vector<TLorentzVector> light_jets;
+        std::vector<double> resolutions;
         for (int j = 2; j < ncentralJet; ++j)
         {
             TLorentzVector jet;
             jet.SetPtEtaPhiM(centralJet_pt[j], centralJet_eta[j], centralJet_phi[j], centralJet_mass[j]);
+
+            // use PNet correction to correct p4 of light jets
+            jet *= centralJet_PNetRegPtRawCorr[j];
             light_jets.push_back(jet);
+
+            // save resolutions of pt corrections of light jets
+            resolutions.push_back(centralJet_pt[j]*centralJet_PNetRegPtRawRes[j]);
         }
 
         auto best_onshell_pair = ChooseBestPair(light_jets, [](TLorentzVector const& p1, TLorentzVector const& p2){ return std::abs(80.0 - (p1 + p2).M()); });
@@ -287,78 +311,42 @@ int main()
 
         auto [i1, i2] = best_onshell_pair;
         std::vector<TLorentzVector> input_onshell = {reco_bj1_p4, reco_bj2_p4, light_jets[i1], light_jets[i2], reco_lep_p4, reco_met_p4};
+        std::pair<double, double> res_onshell = {resolutions[i1], resolutions[i2]};
 
         auto [j1, j2] = best_offshell_pair;
         std::vector<TLorentzVector> input_offshell = {reco_bj1_p4, reco_bj2_p4, light_jets[j1], light_jets[j2], reco_lep_p4, reco_met_p4};
+        std::pair<double, double> res_offshell = {resolutions[j1], resolutions[j2]};
 
         ++hme_events;
 
-        std::vector<int> err_cnt(err_names.size(), 0);
-        [[maybe_unused]] auto hme_onshell = EstimateMass(input_onshell, pdf, rg, i, err_cnt);
-        if (!hme_onshell)
+        [[maybe_unused]] auto hme_onshell = EstimateMass(input_onshell, pdf, rg, i, res_onshell);
+        [[maybe_unused]] auto hme_offshell = EstimateMass(input_offshell, pdf, rg, i, res_offshell);
+
+        hme_worked += (hme_onshell || hme_offshell);
+
+        if (hme_offshell && hme_onshell)
         {
-            hm.Fill(err_onshell, err_cnt[Error::RescFact], err_cnt[Error::NuEqn]);
-
-            bool both = std::all_of(err_cnt.begin(), err_cnt.end(), [](int c){ return c > 0; });
-            bool resc = err_cnt[Error::NuEqn] == 0;
-            bool nu = err_cnt[Error::RescFact] == 0;
-
-            onshell_counts[FailureType::Resc] += resc; 
-            onshell_counts[FailureType::Nu] += nu; 
-            onshell_counts[FailureType::Both] += both; 
-
-            hm.Fill(W_mass_onshell, (light_jets[i1] + light_jets[i2]).M());
+            auto hme = rg.Uniform(0, 1) > 0.27 ? hme_onshell : hme_offshell;
+            if (hme)
+            {
+                auto [mass, succ_rate] = hme.value();
+                hm.Fill(hme_mass, mass);
+                h->Fill(mass);
+            }
         }
-
-        err_cnt = std::vector<int>(err_names.size(), 0);
-        [[maybe_unused]] auto hme_offshell = EstimateMass(input_offshell, pdf, rg, i, err_cnt);
-        if (!hme_offshell)
+        else if (hme_offshell)
         {
-            hm.Fill(err_offshell, err_cnt[Error::RescFact], err_cnt[Error::NuEqn]);
-            
-            bool both = std::all_of(err_cnt.begin(), err_cnt.end(), [](int c){ return c > 0; });
-            bool resc = err_cnt[Error::NuEqn] == 0;
-            bool nu = err_cnt[Error::RescFact] == 0;
-
-            offshell_counts[FailureType::Resc] += resc; 
-            offshell_counts[FailureType::Nu] += nu; 
-            offshell_counts[FailureType::Both] += both; 
-
-            hm.Fill(W_mass_offshell, (light_jets[j1] + light_jets[j2]).M());
+            auto [mass, succ_rate] = hme_offshell.value();
+            hm.Fill(hme_mass, mass);
+            h->Fill(mass);
+        }
+        else if (hme_onshell)
+        {
+            auto [mass, succ_rate] = hme_onshell.value();
+            hm.Fill(hme_mass, mass);
+            h->Fill(mass);
         }
     }
-
-    int nx = labels.size();
-
-    auto onshell_summary = std::make_unique<TH1F>("onshell_summary", "Summary of HME failures for onshell pair", nx, 0, nx);
-    onshell_summary->SetStats(0);
-    onshell_summary->SetFillStyle(3544);
-    onshell_summary->SetLineWidth(2);
-    onshell_summary->SetFillColorAlpha(kBlue, 0.75);
-
-    auto offshell_summary = std::make_unique<TH1F>("offshell_summary", "Summary of HME failures for offshell pair", nx, 0, nx);
-    offshell_summary->SetStats(0);
-    offshell_summary->SetFillStyle(3544);
-    offshell_summary->SetLineWidth(2);
-    offshell_summary->SetFillColorAlpha(kBlue, 0.75);
-
-    auto canvas = std::make_unique<TCanvas>("canvas", "canvas");
-    canvas->SetGrid();
-
-    for (int b = 1; b <= nx; ++b)
-    {
-        onshell_summary->SetBinContent(b, onshell_counts[b-1]);
-        onshell_summary->GetXaxis()->SetBinLabel(b, labels[b-1]);
-
-        offshell_summary->SetBinContent(b, offshell_counts[b-1]);
-        offshell_summary->GetXaxis()->SetBinLabel(b, labels[b-1]);
-    }
-
-    onshell_summary->Draw();
-    canvas->SaveAs("histograms/onshell_summary.png");
-
-    offshell_summary->Draw();
-    canvas->SaveAs("histograms/offshell_summary.png");
 
     hm.Draw();
 
@@ -367,7 +355,8 @@ int main()
 
     std::cout << "Finished processing, total events = " << nEvents << "\n";
     std::cout << "Events passed to HME = " << hme_events << "\n"; 
-    std::cout << "HME successful = " << hme_worked << "\n"; 
+    std::cout << "HME successful = " << 100.0*hme_worked/hme_events << "%\n"; 
+    std::cout << "Combned width = " << InterquantileRange(h) << "\n";
     std::cout << "Processing time = " << elapsed.count() << " s\n";
 
     return 0;
