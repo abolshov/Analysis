@@ -115,15 +115,33 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
         [[maybe_unused]] double lepW_mass = rg.Uniform(0, mh - hadW_mass);
 
         double dpt_1 = rg.Gaus(0, res1);
-        if (j1.Pt() + dpt_1 > 0.0)
+        bool valid_corr_1 = j1.Pt() + dpt_1 > 0.0;
+        double dpx_1 = valid_corr_1 ? j1.Px() : 0.0;
+        double dpy_1 = valid_corr_1 ? j1.Py() : 0.0;
+        if (valid_corr_1)
         {
             j1.SetPtEtaPhiM(j1.Pt() + dpt_1, j1.Eta(), j1.Phi(), j1.M());
+            
+            dpx_1 -= j1.Px();
+            dpx_1 *= -1.0;
+            
+            dpy_1 -= j1.Py();
+            dpy_1 *= -1.0;
         }
 
         double dpt_2 = rg.Gaus(0, res2);
-        if (j2.Pt() + dpt_2 > 0.0)
+        bool valid_corr_2 = j2.Pt() + dpt_2 > 0.0;
+        double dpx_2 = valid_corr_2 ? j2.Px() : 0.0;
+        double dpy_2 = valid_corr_2 ? j2.Py() : 0.0;
+        if (valid_corr_2)
         {
             j2.SetPtEtaPhiM(j2.Pt() + dpt_2, j2.Eta(), j2.Phi(), j2.M());
+
+            dpx_2 -= j2.Px();
+            dpx_2 *= -1.0;
+            
+            dpy_2 -= j2.Py();
+            dpy_2 *= -1.0;
         }
 
         OptionalPair b_jet_resc = JetRescFact(b1, b2, b_resc_pdf, mh);
@@ -133,8 +151,8 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
             auto [c1, c2] = b_jet_resc.value();
             TLorentzVector bb1 = c1*b1;
             TLorentzVector bb2 = c2*b2;
-            double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
-            double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
+            double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2;
+            double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2;
 
             TLorentzVector met_corr(met_corr_px, met_corr_py, 0.0, 0.0);
             std::optional<TLorentzVector> nu = ComputeNu(l, j1, j2, met_corr, mh, eta);
