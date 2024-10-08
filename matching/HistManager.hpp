@@ -6,6 +6,8 @@
 
 #include "TH1.h"
 #include "TH2.h"
+// #include "TCanvas.h"
+// #include "TFile.h"
 
 class HistManager
 {
@@ -71,14 +73,24 @@ class HistManager
 
     std::unordered_map<std::string, Item1D> m_hists_1d;
     std::unordered_map<std::string, Item2D> m_hists_2d;
+    
+    // std::unique_ptr<TCanvas> m_c1;
+    // std::unique_ptr<TFile> m_outfile;
+    // std::string m_path;
 
     public:
+    // HistManager(std::string const& path, std::string const& outfile);
+
     void Add(std::string hist_name, std::string const& title, Label const& labels, Range const& range, int n_bins);
     void Add(std::string hist_name, std::string const& title, Label const& labels, Range const& xrange, Range const& yrange, Bins const& bins);
     void Fill(std::string const& hist_name, double value);
     void Fill(std::string const& hist_name, double xval, double yval);
+    void FillWeighted(std::string const& hist_name, double value, double weight);
+    void FillWeighted(std::string const& hist_name, double xval, double yval, double weight);
     void Draw() const;
     void DrawStack(std::vector<std::string> const& names, std::string const& title, std::string const& name) const;
+    void Write1D(std::string const& fname, std::vector<std::string> const& names) const;
+    void Write2D(std::string const& fname, std::vector<std::string> const& names) const;
 };
 
 #endif

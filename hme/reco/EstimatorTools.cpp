@@ -93,7 +93,7 @@ std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector 
     return std::make_optional<TLorentzVector>(res);
 }
 
-OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::vector<int>& err_cnt)
+OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::pair<double, double> lj_pt_res)
 {
     TLorentzVector b1 = particles[PhysObj::bj1];
     TLorentzVector b2 = particles[PhysObj::bj2];
@@ -102,14 +102,48 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
     TLorentzVector l = particles[PhysObj::lep];
     TLorentzVector met = particles[PhysObj::met];
 
-    rg.SetSeed(0);
     double mh = rg.Gaus(HIGGS_MASS, HIGGS_WIDTH);
+    auto [res1, res2] = lj_pt_res;
     auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d", evt), N_BINS, 0.0, MAX_MASS);
     
     int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
     {
         double eta = rg.Uniform(-6, 6);
+
+        [[maybe_unused]] double hadW_mass = (j1 + j2).M();
+        [[maybe_unused]] double lepW_mass = rg.Uniform(0, mh - hadW_mass);
+
+        double dpt_1 = rg.Gaus(0, res1);
+        bool valid_corr_1 = j1.Pt() + dpt_1 > 0.0;
+        double dpx_1 = valid_corr_1 ? j1.Px() : 0.0;
+        double dpy_1 = valid_corr_1 ? j1.Py() : 0.0;
+        if (valid_corr_1)
+        {
+            j1.SetPtEtaPhiM(j1.Pt() + dpt_1, j1.Eta(), j1.Phi(), j1.M());
+            
+            dpx_1 -= j1.Px();
+            dpx_1 *= -1.0;
+            
+            dpy_1 -= j1.Py();
+            dpy_1 *= -1.0;
+        }
+
+        double dpt_2 = rg.Gaus(0, res2);
+        bool valid_corr_2 = j2.Pt() + dpt_2 > 0.0;
+        double dpx_2 = valid_corr_2 ? j2.Px() : 0.0;
+        double dpy_2 = valid_corr_2 ? j2.Py() : 0.0;
+        if (valid_corr_2)
+        {
+            j2.SetPtEtaPhiM(j2.Pt() + dpt_2, j2.Eta(), j2.Phi(), j2.M());
+
+            dpx_2 -= j2.Px();
+            dpx_2 *= -1.0;
+            
+            dpy_2 -= j2.Py();
+            dpy_2 *= -1.0;
+        }
+
         OptionalPair b_jet_resc = JetRescFact(b1, b2, b_resc_pdf, mh);
         if (b_jet_resc)
         {
@@ -117,8 +151,12 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
             auto [c1, c2] = b_jet_resc.value();
             TLorentzVector bb1 = c1*b1;
             TLorentzVector bb2 = c2*b2;
-            double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px();
-            double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py();
+
+            double smear_dpx = rg.Gaus(0.0, MET_SIGMA);
+            double smear_dpy = rg.Gaus(0.0, MET_SIGMA);
+
+            double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2 + smear_dpx;
+            double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2 + smear_dpy;
 
             TLorentzVector met_corr(met_corr_px, met_corr_py, 0.0, 0.0);
             std::optional<TLorentzVector> nu = ComputeNu(l, j1, j2, met_corr, mh, eta);
@@ -138,14 +176,12 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
             }
             else
             {
-                ++err_cnt[Error::NuEqn];
                 ++failed_iter;
                 continue;
             }
         }
         else
         {
-            ++err_cnt[Error::RescFact];
             ++failed_iter;
             continue;
         }
