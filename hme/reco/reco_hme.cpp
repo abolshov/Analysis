@@ -213,6 +213,13 @@ int main()
     int hme_events = 0;
     int hme_worked = 0;
 
+    // int lep_reco = 0;
+    // int jet_mult = 0;
+    // int res_top = 0;
+    // int quark_accept = 0;
+    // int matching = 0;
+    // int tot = 0;
+
     int nEvents = myTree->GetEntries();
     for (int i = 0; i < nEvents; ++i)
     {
@@ -221,24 +228,27 @@ int main()
         {
             continue;
         }
+        // ++tot;
 
         if (ncentralJet < 4)
         {
             continue;
         }
+        // ++jet_mult;
 
-        bool reco_lep1_mu = (lep1_type == 2);
-        bool reco_lep1_ele = (lep1_type == 1);
+        // bool reco_lep1_mu = (lep1_type == 2);
+        // bool reco_lep1_ele = (lep1_type == 1);
 
-        bool gen_lep1_mu = ((lep1_genLep_kind == 2) || (lep1_genLep_kind == 4));
-        bool gen_lep1_ele = ((lep1_genLep_kind == 1) || (lep1_genLep_kind == 3));
+        // bool gen_lep1_mu = ((lep1_genLep_kind == 2) || (lep1_genLep_kind == 4));
+        // bool gen_lep1_ele = ((lep1_genLep_kind == 1) || (lep1_genLep_kind == 3));
 
-        bool corr_lep_reco = ((reco_lep1_mu && gen_lep1_mu) || (reco_lep1_ele && gen_lep1_ele));
+        // bool corr_lep_reco = ((reco_lep1_mu && gen_lep1_mu) || (reco_lep1_ele && gen_lep1_ele));
         
-        if (!corr_lep_reco)
-        {
-            continue;
-        }
+        // if (!corr_lep_reco)
+        // {
+        //     continue;
+        // }
+        // ++lep_reco;
 
         TLorentzVector genb1_p4, genb2_p4, genq1_p4, genq2_p4; // quarks
         genb1_p4.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
@@ -250,14 +260,16 @@ int main()
         {
             continue;
         }
+        // ++res_top;
 
-        bool bq_accept = (genb1_p4.Pt() > 20.0 && std::abs(genb1_p4.Eta()) < 2.5) && (genb2_p4.Pt() > 20.0 && std::abs(genb2_p4.Eta()) < 2.5);
-        bool lq_accept = (genq1_p4.Pt() > 20.0 && std::abs(genq1_p4.Eta()) < 5.0) && (genq2_p4.Pt() > 20.0 && std::abs(genq2_p4.Eta()) < 5.0);
-        bool quarks_accept = bq_accept && lq_accept;
-        if (!quarks_accept)
-        {
-            continue;
-        }
+        // bool bq_accept = (genb1_p4.Pt() > 20.0 && std::abs(genb1_p4.Eta()) < 2.5) && (genb2_p4.Pt() > 20.0 && std::abs(genb2_p4.Eta()) < 2.5);
+        // bool lq_accept = (genq1_p4.Pt() > 20.0 && std::abs(genq1_p4.Eta()) < 5.0) && (genq2_p4.Pt() > 20.0 && std::abs(genq2_p4.Eta()) < 5.0);
+        // bool quarks_accept = bq_accept && lq_accept;
+        // if (!quarks_accept)
+        // {
+        //     continue;
+        // }
+        // ++quark_accept;
 
         TLorentzVector gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4; // gen jets matched to quarks
         gen_bj1_p4.SetPtEtaPhiM(genb1_vis_pt, genb1_vis_eta, genb1_vis_phi, genb1_vis_mass);
@@ -265,11 +277,12 @@ int main()
         gen_lj1_p4.SetPtEtaPhiM(genV2prod1_vis_pt, genV2prod1_vis_eta, genV2prod1_vis_phi, genV2prod1_vis_mass);
         gen_lj2_p4.SetPtEtaPhiM(genV2prod2_vis_pt, genV2prod2_vis_eta, genV2prod2_vis_phi, genV2prod2_vis_mass);
 
-        std::vector<TLorentzVector> gen_jets = {gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4};
-        if (!std::all_of(gen_jets.begin(), gen_jets.end(), [](TLorentzVector const& p){ return p != TLorentzVector{}; }))
-        {
-            continue;
-        }
+        // std::vector<TLorentzVector> gen_jets = {gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4};
+        // if (!std::all_of(gen_jets.begin(), gen_jets.end(), [](TLorentzVector const& p){ return p != TLorentzVector{}; }))
+        // {
+        //     continue;
+        // }
+        // ++matching;
 
         TLorentzVector gen_lep_p4;
         gen_lep_p4.SetPtEtaPhiM(genV1prod1_vis_pt, genV1prod1_vis_eta, genV1prod1_vis_phi, genV1prod1_vis_mass);
@@ -332,6 +345,7 @@ int main()
                 auto [mass, succ_rate] = hme.value();
                 hm.Fill(hme_mass, mass);
                 h->Fill(mass);
+                output << mass << "\n";
             }
         }
         else if (hme_offshell)
@@ -339,14 +353,54 @@ int main()
             auto [mass, succ_rate] = hme_offshell.value();
             hm.Fill(hme_mass, mass);
             h->Fill(mass);
+            output << mass << "\n";
         }
         else if (hme_onshell)
         {
             auto [mass, succ_rate] = hme_onshell.value();
             hm.Fill(hme_mass, mass);
             h->Fill(mass);
+            output << mass << "\n";
+        }
+        else 
+        {
+            output << -1.0 << "\n";
         }
     }
+
+    // std::vector<char const*> labels = {"total",
+    //                                    ">= 4 jets",
+    //                                    "lep reco",
+    //                                    "resolved",
+    //                                    "acceptance",
+    //                                    "matching"};
+
+    // std::vector<double> count = {100.0*tot/tot,
+    //                              100.0*jet_mult/tot,
+    //                              100.0*lep_reco/tot,
+    //                              100.0*res_top/tot,
+    //                              100.0*quark_accept/tot,
+    //                              100.0*matching/tot};
+
+    // int nx = labels.size();
+
+    // auto cutflow = std::make_unique<TH1F>("cutflow", "HME benchmark cutflow", nx, 0, nx);
+    // cutflow->SetStats(0);
+    // cutflow->SetFillStyle(3544);
+    // cutflow->SetLineWidth(2);
+    // cutflow->SetFillColorAlpha(kBlue, 0.75);
+
+    // auto canvas = std::make_unique<TCanvas>("canvas", "canvas");
+    // canvas->SetGrid();
+
+    // for (int b = 1; b <= nx; ++b)
+    // {
+    //     cutflow->SetBinContent(b, count[b-1]);
+    //     cutflow->GetXaxis()->SetBinLabel(b, labels[b-1]);
+    // }
+
+    // cutflow->Draw();
+    // canvas->SaveAs("histograms/cutflow.png");
 
     hm.Draw();
 
@@ -356,7 +410,7 @@ int main()
     std::cout << "Finished processing, total events = " << nEvents << "\n";
     std::cout << "Events passed to HME = " << hme_events << "\n"; 
     std::cout << "HME successful = " << 100.0*hme_worked/hme_events << "%\n"; 
-    std::cout << "Combned width = " << InterquantileRange(h) << "\n";
+    std::cout << "Combined width = " << InterquantileRange(h) << "\n";
     std::cout << "Processing time = " << elapsed.count() << " s\n";
 
     return 0;
