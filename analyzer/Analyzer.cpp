@@ -4,15 +4,13 @@
 
 Analyzer::Analyzer(TString const& tree_name, std::vector<TString> const& input_files)
 : m_chain(std::make_unique<TChain>(tree_name)),
-  m_data(),
-  m_input_files(input_files),
-  m_selector()
+  m_input_files(input_files)
 {
     for (auto const& input_file: m_input_files)
     {
         m_chain->Add(input_file);
     }
-    m_data = std::make_unique<EventData>(*m_chain); 
+    m_event = std::make_unique<Event>(m_chain.get()); 
 }
 
 void Analyzer::Analyze()
@@ -22,17 +20,14 @@ void Analyzer::Analyze()
     {
         std::cout << "\t" << input_file << "\n";
     }
-    std::cout << "nEntries = " << m_chain->GetEntries() << "\n";
 
-    m_chain->GetEntry(0);
-    m_selector.BuildTree(RADION_ID, m_data);
-    m_selector.PrintTree(m_data);
+    auto nEntries = m_chain->GetEntries();
+    std::cout << "chain size: " << nEntries << "\n";
 
-    m_selector.Select(m_data);
+    for (size_t i = 0; i < 1; ++i)
+    {
+        m_chain->GetEntry(i);
 
-    // for (int i = 0; i < 25; ++i)
-    // {
-    //     std::cout << m_data->GenPart_pdgId[i] << " ";
-    // }
-    // std::cout << "\n";
+        std::cout << "gen=" << m_event->genjet.nGenJet << ", reco=" << m_event->recojet.nRecoJet << "\n";
+    }
 }
