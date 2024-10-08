@@ -12,13 +12,13 @@
 class Analyzer
 {
     private:
-        std::unique_ptr<TChain> m_chain;
-        std::vector<TString> m_input_files;
-        std::unique_ptr<Event> m_event;
+    std::unique_ptr<TChain> m_chain;
+    std::vector<TString> m_input_files;
+    std::unique_ptr<Event> m_event;
 
     public:
-        Analyzer(TString const& tree_name, std::vector<TString> const& input_files);
-        void Analyze();
+    Analyzer(TString const& tree_name, std::vector<TString> const& input_files);
+    void Analyze();
 };
 
 

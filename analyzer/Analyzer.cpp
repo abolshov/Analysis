@@ -21,13 +21,21 @@ void Analyzer::Analyze()
         std::cout << "\t" << input_file << "\n";
     }
 
-    auto nEntries = m_chain->GetEntries();
+    size_t nEntries = m_chain->GetEntries();
     std::cout << "chain size: " << nEntries << "\n";
 
-    for (size_t i = 0; i < 1; ++i)
+    std::cout << std::setprecision(4);
+    for (size_t i = 0; i < nEntries; ++i)
     {
         m_chain->GetEntry(i);
-
         std::cout << "gen=" << m_event->genjet.nGenJet << ", reco=" << m_event->recojet.nRecoJet << "\n";
+        m_event->recojet.SetP4();
+        
+        int n_reco_jet = m_event->recojet.nRecoJet;
+        for (int i = 0; i < n_reco_jet; ++i)
+        {
+            std::cout << m_event->recojet.p4[i].Pt() << " ";
+        }
+        std::cout << "\n";
     }
 }

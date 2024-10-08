@@ -9,16 +9,16 @@
 class Event
 {
     public:
-        Event(TTree* tree);
+    Event(TTree* tree);
 
-        GenJet genjet;
-        RecoJet recojet;
-        
-        // Float_t GenMET_phi;
-        // Float_t GenMET_pt;
+    GenJet genjet;
+    RecoJet recojet;
+    
+    Float_t puppiMET_phi;
+    Float_t puppiMET_pt;
 
     private:
-        TTree* m_tree;
+    TTree* m_tree;
 };
 
 #endif

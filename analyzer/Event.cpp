@@ -1,7 +1,6 @@
 #include "Event.hpp"
 
-Event::Event(TTree* tree) 
-: m_tree(tree)
+Event::Event(TTree* tree) : m_tree(tree)
 {
     m_tree->SetBranchAddress("ngenJet", &genjet.nGenJet);
     m_tree->SetBranchAddress("genJet_pt", genjet.pt.get());
@@ -18,4 +17,7 @@ Event::Event(TTree* tree)
     m_tree->SetBranchAddress("centralJet_PNetRegPtRawRes", recojet.PNetRegPtRawRes.get());
     m_tree->SetBranchAddress("centralJet_btagPNetB", recojet.btagPNetB.get());
     m_tree->SetBranchAddress("centralJet_PNetRegPtRawCorrNeutrino", recojet.PNetRegPtRawCorrNu.get());
+
+    m_tree->SetBranchAddress("PuppiMET_pt", &puppiMET_phi);
+    m_tree->SetBranchAddress("PuppiMET_phi", &puppiMET_pt);
 }
