@@ -1,7 +1,5 @@
 #include "Objects.hpp"
 
-#include <stdexcept>
-
 Kinematics::Kinematics(size_t sz)
 : pt(std::make_unique<Float_t[]>(sz)),
   eta(std::make_unique<Float_t[]>(sz)),
@@ -22,9 +20,9 @@ void Kinematics::SetP4(size_t sz)
 
 GenJet::GenJet() 
 : Kinematics(Gen::MAX_GEN_JET), 
-  nGenJet(0)
-//   part_flav(std::make_unique<UChar_t>(Gen::MAX_GEN_JET)),
-//   hadr_flav(std::make_unique<Short_t>(Gen::MAX_GEN_JET))
+  nGenJet(0),
+  part_flav(std::make_unique<UChar_t[]>(Gen::MAX_GEN_JET)),
+  hadr_flav(std::make_unique<Short_t[]>(Gen::MAX_GEN_JET))
 {}
 
 RecoJet::RecoJet() 

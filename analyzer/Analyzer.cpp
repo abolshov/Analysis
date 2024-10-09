@@ -30,7 +30,9 @@ void Analyzer::Analyze()
         m_chain->GetEntry(i);
         std::cout << "gen=" << m_event->genjet.nGenJet << ", reco=" << m_event->recojet.nRecoJet << "\n";
         m_event->recojet.SetP4();
-        
+
+        std::cout << "met_eta=" << m_event->gen_truth.eta[ObjSLRes::met] << ", met_mass=" << m_event->gen_truth.mass[ObjSLRes::met] << "\n";
+
         int n_reco_jet = m_event->recojet.nRecoJet;
         for (int i = 0; i < n_reco_jet; ++i)
         {

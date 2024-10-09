@@ -6,16 +6,25 @@
 #include "Constants.hpp"
 #include "Objects.hpp"
 
+using GenJet_t = GenJet;
+using RecoJet_t = RecoJet;
+using Particle_t = Particle;
+using Kin_t = Kinematics;
+
 class Event
 {
     public:
     Event(TTree* tree);
 
-    GenJet genjet;
-    RecoJet recojet;
+    GenJet_t genjet;        // gen level jets  
+    RecoJet_t recojet;      // reco jets
+
+    Kin_t gen_truth;        // gen level quarks, lepton and met
+
+    Particle_t nu;
     
-    Float_t puppiMET_phi;
-    Float_t puppiMET_pt;
+    Particle_t reco_met;
+    Particle_t reco_lep;
 
     private:
     TTree* m_tree;

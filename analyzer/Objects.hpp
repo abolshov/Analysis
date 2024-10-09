@@ -33,8 +33,8 @@ struct GenJet : public Kinematics
     inline void SetP4() { Kinematics::SetP4(nGenJet); }
 
     Int_t nGenJet;
-    // UArrUC_t part_flav;
-    // UArrS_t hadr_flav;
+    UArrUC_t part_flav;
+    UArrS_t hadr_flav;
 };
 
 struct RecoJet : public Kinematics 
@@ -50,6 +50,14 @@ struct RecoJet : public Kinematics
     UArrF_t PNetRegPtRawCorr;
     UArrF_t PNetRegPtRawRes;
     UArrF_t PNetRegPtRawCorrNu;
+};
+
+struct Particle 
+{
+    Float_t pt;
+    Float_t eta;
+    Float_t phi;
+    Float_t mass;
 };
 
 #endif
