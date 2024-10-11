@@ -14,7 +14,10 @@ Event.o: Event.cpp
 Objects.o: Objects.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-analysis: analysis.o Analyzer.o Event.o Objects.o
+Input.o: Input.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+analysis: analysis.o Analyzer.o Event.o Objects.o Input.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 .PHONY: clean
