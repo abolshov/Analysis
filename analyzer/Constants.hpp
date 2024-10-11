@@ -17,11 +17,11 @@ namespace Reco
 };
 
 // objects in SL channel resolved topology
-enum ObjSLRes { b1, b2, q1, q2, lep, met, count };
+enum class ObjSLRes { b1, b2, q1, q2, lep, met, count };
 
 // PDFs in SL channel resolved topology
-enum PDF1dSLRes { pdf_b1, count };
-enum PDF2dSLRes { pdf_b1b2, count };
+enum class PDF1dSLRes { pdf_b1, count };
+enum class PDF2dSLRes { pdf_b1b2, count };
 static const std::vector<char const*> pdf1d_names { "pdf_b1" };
 static const std::vector<char const*> pdf2d_names { "pdf_b1b2" };
 

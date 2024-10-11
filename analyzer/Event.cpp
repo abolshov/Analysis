@@ -1,6 +1,6 @@
 #include "Event.hpp"
 
-Event::Event(TTree* tree) : gen_truth(ObjSLRes::count), m_tree(tree)
+Event::Event(TTree* tree) : gen_truth(static_cast<size_t>(ObjSLRes::count)), m_tree(tree)
 {
     // genjet data
     m_tree->SetBranchAddress("ncentralGenJet", &genjet.nGenJet);
@@ -12,32 +12,32 @@ Event::Event(TTree* tree) : gen_truth(ObjSLRes::count), m_tree(tree)
     m_tree->SetBranchAddress("centralGenJet_hadronFlavour", genjet.hadr_flav.get());
 
     // true gen partons data
-    m_tree->SetBranchAddress("genb1_pt", gen_truth.pt.get() + ObjSLRes::b1);
-    m_tree->SetBranchAddress("genb2_pt", gen_truth.pt.get() + ObjSLRes::b2);
-    m_tree->SetBranchAddress("genV2prod1_pt", gen_truth.pt.get() + ObjSLRes::q1);
-    m_tree->SetBranchAddress("genV2prod2_pt", gen_truth.pt.get() + ObjSLRes::q2);
-    m_tree->SetBranchAddress("genV1prod1_pt", gen_truth.pt.get() + ObjSLRes::lep);
+    m_tree->SetBranchAddress("genb1_pt", gen_truth.pt.get() + Offset(ObjSLRes::b1));
+    m_tree->SetBranchAddress("genb2_pt", gen_truth.pt.get() + Offset(ObjSLRes::b2));
+    m_tree->SetBranchAddress("genV2prod1_pt", gen_truth.pt.get() + Offset(ObjSLRes::q1));
+    m_tree->SetBranchAddress("genV2prod2_pt", gen_truth.pt.get() + Offset(ObjSLRes::q2));
+    m_tree->SetBranchAddress("genV1prod1_pt", gen_truth.pt.get() + Offset(ObjSLRes::lep));
 
-    m_tree->SetBranchAddress("genb1_eta", gen_truth.eta.get() + ObjSLRes::b1);
-    m_tree->SetBranchAddress("genb2_eta", gen_truth.eta.get() + ObjSLRes::b2);
-    m_tree->SetBranchAddress("genV2prod1_eta", gen_truth.eta.get() + ObjSLRes::q1);
-    m_tree->SetBranchAddress("genV2prod2_eta", gen_truth.eta.get() + ObjSLRes::q2);
-    m_tree->SetBranchAddress("genV1prod1_eta", gen_truth.eta.get() + ObjSLRes::lep);
+    m_tree->SetBranchAddress("genb1_eta", gen_truth.eta.get() + Offset(ObjSLRes::b1));
+    m_tree->SetBranchAddress("genb2_eta", gen_truth.eta.get() + Offset(ObjSLRes::b2));
+    m_tree->SetBranchAddress("genV2prod1_eta", gen_truth.eta.get() + Offset(ObjSLRes::q1));
+    m_tree->SetBranchAddress("genV2prod2_eta", gen_truth.eta.get() + Offset(ObjSLRes::q2));
+    m_tree->SetBranchAddress("genV1prod1_eta", gen_truth.eta.get() + Offset(ObjSLRes::lep));
 
-    m_tree->SetBranchAddress("genb1_phi", gen_truth.phi.get() + ObjSLRes::b1);
-    m_tree->SetBranchAddress("genb2_phi", gen_truth.phi.get() + ObjSLRes::b2);
-    m_tree->SetBranchAddress("genV2prod1_phi", gen_truth.phi.get() + ObjSLRes::q1);
-    m_tree->SetBranchAddress("genV2prod2_phi", gen_truth.phi.get() + ObjSLRes::q2);
-    m_tree->SetBranchAddress("genV1prod1_phi", gen_truth.phi.get() + ObjSLRes::lep);
+    m_tree->SetBranchAddress("genb1_phi", gen_truth.phi.get() + Offset(ObjSLRes::b1));
+    m_tree->SetBranchAddress("genb2_phi", gen_truth.phi.get() + Offset(ObjSLRes::b2));
+    m_tree->SetBranchAddress("genV2prod1_phi", gen_truth.phi.get() + Offset(ObjSLRes::q1));
+    m_tree->SetBranchAddress("genV2prod2_phi", gen_truth.phi.get() + Offset(ObjSLRes::q2));
+    m_tree->SetBranchAddress("genV1prod1_phi", gen_truth.phi.get() + Offset(ObjSLRes::lep));
 
-    m_tree->SetBranchAddress("genb1_mass", gen_truth.mass.get() + ObjSLRes::b1);
-    m_tree->SetBranchAddress("genb2_mass", gen_truth.mass.get() + ObjSLRes::b2);
-    m_tree->SetBranchAddress("genV2prod1_mass", gen_truth.mass.get() + ObjSLRes::q1);
-    m_tree->SetBranchAddress("genV2prod2_mass", gen_truth.mass.get() + ObjSLRes::q2);
-    m_tree->SetBranchAddress("genV1prod1_mass", gen_truth.mass.get() + ObjSLRes::lep);
+    m_tree->SetBranchAddress("genb1_mass", gen_truth.mass.get() + Offset(ObjSLRes::b1));
+    m_tree->SetBranchAddress("genb2_mass", gen_truth.mass.get() + Offset(ObjSLRes::b2));
+    m_tree->SetBranchAddress("genV2prod1_mass", gen_truth.mass.get() + Offset(ObjSLRes::q1));
+    m_tree->SetBranchAddress("genV2prod2_mass", gen_truth.mass.get() + Offset(ObjSLRes::q2));
+    m_tree->SetBranchAddress("genV1prod1_mass", gen_truth.mass.get() + Offset(ObjSLRes::lep));
 
-    m_tree->SetBranchAddress("GenMET_pt", gen_truth.pt.get() + ObjSLRes::met);
-    m_tree->SetBranchAddress("GenMET_phi", gen_truth.phi.get() + ObjSLRes::met);
+    m_tree->SetBranchAddress("GenMET_pt", gen_truth.pt.get() + Offset(ObjSLRes::met));
+    m_tree->SetBranchAddress("GenMET_phi", gen_truth.phi.get() + Offset(ObjSLRes::met));
 
     // true neutrino
     m_tree->SetBranchAddress("genV1prod2_pt", &nu.pt);

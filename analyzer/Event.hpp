@@ -28,6 +28,8 @@ class Event
 
     private:
     TTree* m_tree;
+
+    inline size_t Offset(ObjSLRes obj) { return static_cast<size_t>(obj); }
 };
 
 #endif
