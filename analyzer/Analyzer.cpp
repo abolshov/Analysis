@@ -3,8 +3,8 @@
 #include <iostream>
 
 Analyzer::Analyzer(TString const& tree_name, std::vector<TString> const& input_files)
-: m_chain(std::make_unique<TChain>(tree_name)),
-  m_input_files(input_files)
+: m_input_files(input_files),
+  m_chain(std::make_unique<TChain>(tree_name))
 {
     for (auto const& input_file: m_input_files)
     {
@@ -29,14 +29,14 @@ void Analyzer::Analyze()
     {
         m_chain->GetEntry(i);
         std::cout << "gen=" << m_event->genjet.nGenJet << ", reco=" << m_event->recojet.nRecoJet << "\n";
-        m_event->recojet.SetP4();
+        // m_event->recojet.SetP4();
 
         std::cout << "met_eta=" << m_event->gen_truth.eta[static_cast<size_t>(ObjSLRes::met)] << ", met_mass=" << m_event->gen_truth.mass[static_cast<size_t>(ObjSLRes::met)] << "\n";
 
         int n_reco_jet = m_event->recojet.nRecoJet;
         for (int i = 0; i < n_reco_jet; ++i)
         {
-            std::cout << m_event->recojet.p4[i].Pt() << " ";
+            std::cout << m_event->recojet.pt[i] << " ";
         }
         std::cout << "\n";
     }

@@ -12,8 +12,8 @@
 class Analyzer
 {
     private:
-    std::unique_ptr<TChain> m_chain;
     std::vector<TString> m_input_files;
+    std::unique_ptr<TChain> m_chain;
     std::unique_ptr<Event> m_event;
 
     public:
