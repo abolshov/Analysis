@@ -4,19 +4,19 @@ Kinematics::Kinematics(size_t sz)
 : pt(std::make_unique<Float_t[]>(sz)),
   eta(std::make_unique<Float_t[]>(sz)),
   phi(std::make_unique<Float_t[]>(sz)),
-  mass(std::make_unique<Float_t[]>(sz)),
-  p4(std::make_unique<TLorentzVector[]>(sz))
+  mass(std::make_unique<Float_t[]>(sz))
+  // p4(std::make_unique<TLorentzVector[]>(sz))
 {}
 
-void Kinematics::SetP4(size_t sz)
-{
-	for (size_t i = 0; i < sz; ++i)
-	{
-		TLorentzVector v;
-		v.SetPtEtaPhiM(pt[i], eta[i], phi[i], mass[i]);
-		p4[i] = v;
-	}
-}
+// void Kinematics::SetP4(size_t sz)
+// {
+// 	for (size_t i = 0; i < sz; ++i)
+// 	{
+// 		TLorentzVector v;
+// 		v.SetPtEtaPhiM(pt[i], eta[i], phi[i], mass[i]);
+// 		p4[i] = v;
+// 	}
+// }
 
 GenJet::GenJet() 
 : Kinematics(Gen::MAX_GEN_JET), 

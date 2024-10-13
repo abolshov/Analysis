@@ -64,3 +64,13 @@ Event::Event(TTree* tree) : gen_truth(static_cast<size_t>(ObjSLRes::count)), m_t
     m_tree->SetBranchAddress("lep1_phi", &reco_lep.phi);
     m_tree->SetBranchAddress("lep1_mass", &reco_lep.mass);
 }
+
+template<typename Func>
+EstimatorInput Event::MakeEstimatorInput(std::string const& pdf_file_name, Func LightJetSelector) const
+{
+    std::vector<TLorentzVector> p4;
+    size_t n_inputs = static_cast<size_t>(ObjSLRes::count);
+    p4.reserve(n_inputs);
+
+    return EstimatorInput(std::move(p4), pdf_file_name);
+}

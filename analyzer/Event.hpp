@@ -5,6 +5,7 @@
 
 #include "Constants.hpp"
 #include "Objects.hpp"
+#include "Input.hpp"
 
 using GenJet_t = GenJet;
 using RecoJet_t = RecoJet;
@@ -25,6 +26,11 @@ class Event
     
     Particle_t reco_met;
     Particle_t reco_lep;
+
+    template<typename Func>
+    EstimatorInput MakeEstimatorInput(std::string const& pdf_file_name, Func LightJetSelector) const;
+    
+    ValidatorInput MakeValidatorInput(std::string const& pdf_file_name) const;
 
     private:
     TTree* m_tree;
