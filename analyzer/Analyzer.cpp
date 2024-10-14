@@ -29,8 +29,6 @@ void Analyzer::Analyze()
     {
         m_chain->GetEntry(i);
         std::cout << "gen=" << m_event->genjet.nGenJet << ", reco=" << m_event->recojet.nRecoJet << "\n";
-        // m_event->recojet.SetP4();
-
         std::cout << "met_eta=" << m_event->gen_truth.eta[static_cast<size_t>(ObjSLRes::met)] << ", met_mass=" << m_event->gen_truth.mass[static_cast<size_t>(ObjSLRes::met)] << "\n";
 
         int n_reco_jet = m_event->recojet.nRecoJet;

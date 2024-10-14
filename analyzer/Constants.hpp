@@ -4,17 +4,11 @@
 #include <cstddef>
 #include <vector>
 
-// namespace for gen constants 
-namespace Gen 
-{
-    inline constexpr size_t MAX_GEN_JET = 20;
-};
+inline constexpr size_t MAX_GEN_JET = 20;
+inline constexpr size_t MAX_RECO_JET = 12;
+inline constexpr size_t MAX_LEP = 2;
 
-// namespace for reco constants 
-namespace Reco 
-{
-    inline constexpr size_t MAX_RECO_JET = 12;
-};
+enum class LepIdx { lep1, lep2, count };
 
 // objects in SL channel resolved topology
 enum class ObjSLRes { b1, b2, q1, q2, lep, met, count };
