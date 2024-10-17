@@ -11,6 +11,8 @@ using GenJet_t = GenJet;
 using RecoJet_t = RecoJet;
 using Particle_t = Particle;
 using Kin_t = Kinematics;
+using GenLep_t = GenLep;
+using RecoLep_t = RecoLep;
 
 class Event
 {
@@ -21,21 +23,20 @@ class Event
     RecoJet_t recojet;      // reco jets
 
     Kin_t gen_truth;        // gen level quarks, lepton and met
+    GenLep_t gen_lep;
 
     Particle_t nu;
     
     Particle_t reco_met;
     Particle_t reco_lep;
 
-    template<typename Func>
-    EstimatorInput MakeEstimatorInput(std::string const& pdf_file_name, Func LightJetSelector) const;
-    
+    EstimatorInput MakeEstimatorInput(std::string const& pdf_file_name) const;
     ValidatorInput MakeValidatorInput(std::string const& pdf_file_name) const;
 
     private:
     TTree* m_tree;
 
-    inline size_t Offset(ObjSLRes obj) { return static_cast<size_t>(obj); }
+    inline size_t Offset(Obj obj) { return static_cast<size_t>(obj); }
 };
 
 #endif
