@@ -6,7 +6,8 @@
 
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 12;
-inline constexpr size_t MAX_LEP = 2;
+inline constexpr size_t MAX_RECO_LEP = 2;
+inline constexpr size_t MAX_GEN_LEP = 2;
 
 enum class LepIdx { lep1, lep2, count };
 

@@ -53,6 +53,13 @@ struct RecoLep : public Kinematics
     UArrI_t lep_type;
 };
 
+struct GenLep : public Kinematics
+{
+    GenLep();
+
+    UArrI_t pdgId;
+};
+
 struct Particle 
 {
     Float_t pt;

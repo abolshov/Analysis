@@ -26,7 +26,12 @@ RecoJet::RecoJet()
 {}
 
 RecoLep::RecoLep() 
-: Kinematics(MAX_LEP), 
-  lep_iso(std::make_unique<Float_t[]>(MAX_LEP)),
-  lep_type(std::make_unique<Int_t[]>(MAX_LEP))
+: Kinematics(MAX_RECO_LEP), 
+  lep_iso(std::make_unique<Float_t[]>(MAX_RECO_LEP)),
+  lep_type(std::make_unique<Int_t[]>(MAX_RECO_LEP))
+{}
+
+GenLep::GenLep() 
+: Kinematics(MAX_GEN_LEP), 
+  pdgId(std::make_unique<Int_t[]>(MAX_GEN_LEP))
 {}
