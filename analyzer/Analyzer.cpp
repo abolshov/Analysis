@@ -2,40 +2,36 @@
 
 #include <iostream>
 
-Analyzer::Analyzer(TString const& tree_name, std::vector<TString> const& input_files)
-: m_input_files(input_files),
-  m_chain(std::make_unique<TChain>(tree_name))
-{
-    for (auto const& input_file: m_input_files)
-    {
-        m_chain->Add(input_file);
-    }
-    m_event = std::make_unique<Event>(m_chain.get()); 
-}
+Analyzer::Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map): m_file_map(input_file_map), m_tree_name(tree_name) {}
 
 void Analyzer::Analyze()
 {
-    std::cout << "Files in TChain:\n";
-    for (auto const& input_file: m_input_files)
+    for (auto const& [file_name, channel]: m_file_map)
     {
-        std::cout << "\t" << input_file << "\n";
+        TFile* file = TFile::Open(file_name);
+        TTree* tree = static_cast<TTree*>(file->Get(m_tree_name));
+
+        TString channel_name = channel == Channel::SL ? "Single lepton" : "Double Lepton";
+        m_index = channel == Channel::SL ? GenTruthIdxMapSL : GenTruthIdxMapDL;
+        std::cout << "File: " << file_name << ", channel: " << channel_name << "\n";
+
+        Event event(tree, channel);
+        AnalyzeEvent(event, tree);
+        file->Close();
     }
+}
 
-    size_t nEntries = m_chain->GetEntries();
-    std::cout << "chain size: " << nEntries << "\n";
-
-    std::cout << std::setprecision(4);
-    for (size_t i = 0; i < nEntries; ++i)
+void Analyzer::AnalyzeEvent(Event const& event, TTree* tree)
+{
+    for (long long i = 0; i < tree->GetEntries(); ++i)
     {
-        m_chain->GetEntry(i);
-        std::cout << "gen=" << m_event->genjet.nGenJet << ", reco=" << m_event->recojet.nRecoJet << "\n";
-        std::cout << "met_eta=" << m_event->gen_truth.eta[static_cast<size_t>(ObjSLRes::met)] << ", met_mass=" << m_event->gen_truth.mass[static_cast<size_t>(ObjSLRes::met)] << "\n";
+        tree->GetEntry(i);
 
-        int n_reco_jet = m_event->recojet.nRecoJet;
-        for (int i = 0; i < n_reco_jet; ++i)
-        {
-            std::cout << m_event->recojet.pt[i] << " ";
-        }
-        std::cout << "\n";
+        size_t met_idx = m_index.at("met");
+        std::cout << event.gen_truth.pt[met_idx] << " " << event.gen_truth.mass[met_idx] << "\n";
+
+        std::cout << event.recojet.nRecoJet << "\n";
+
+        // break;
     }
 }

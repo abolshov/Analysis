@@ -3,22 +3,25 @@
 
 #include <vector>
 #include <memory>
+#include <map>
 
 #include "TChain.h"
 #include "TString.h"
 
 #include "Event.hpp"
+#include "Constants.hpp"
 
 class Analyzer
 {
     private:
-    std::vector<TString> m_input_files;
-    std::unique_ptr<TChain> m_chain;
-    std::unique_ptr<Event> m_event;
+    std::map<TString, Channel> m_file_map;
+    std::map<std::string, size_t> m_index;
+    TString m_tree_name;
 
     public:
-    Analyzer(TString const& tree_name, std::vector<TString> const& input_files);
+    Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map);
     void Analyze();
+    void AnalyzeEvent(Event const& event, TTree* tree);
 };
 
 

@@ -16,19 +16,26 @@ using RecoLep_t = RecoLep;
 
 class Event
 {
+    private:
+    std::map<std::string, size_t> const m_index;
+    std::map<std::string, std::string> const m_branch_map;
+
     public:
-    Event(TTree* tree);
+    Event(TTree* tree, Channel ch);
+    // ~Event() { std::cout << "~Event()\n"; }
 
     GenJet_t genjet;        // gen level jets  
     RecoJet_t recojet;      // reco jets
 
-    Kin_t gen_truth;        // gen level quarks, lepton and met
-    GenLep_t gen_lep;
+    // GenLep_t gen_lep;
+    // RecoLep_t reco_lep;
 
-    Particle_t nu;
+    Kin_t gen_truth;        // gen level quarks, lepton and met
+   
+    // Particle_t nu;
     
-    Particle_t reco_met;
-    Particle_t reco_lep;
+    // Particle_t reco_met;
+    // Particle_t reco_lep;
 
     EstimatorInput MakeEstimatorInput(std::string const& pdf_file_name) const;
     ValidatorInput MakeValidatorInput(std::string const& pdf_file_name) const;
@@ -46,9 +53,6 @@ class Event
                                                                              { "_eta", &Event::GenTruthEta },
                                                                              { "_phi", &Event::GenTruthPhi },
                                                                              { "_mass", &Event::GenTruthMass } };
-    
-
-    inline size_t Offset(Obj obj) { return static_cast<size_t>(obj); }
 };
 
 #endif

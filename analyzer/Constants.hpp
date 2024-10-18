@@ -9,21 +9,12 @@
 #define N_LEP 1
 #endif
 
+enum class Channel { SL, DL };
+
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 12;
 inline constexpr size_t MAX_RECO_LEP = 2;
 inline constexpr size_t MAX_GEN_LEP = 2;
-
-enum class LepIdx { lep1, lep2, count };
-
-// objects in SL channel resolved topology
-enum class ObjSLRes { b1, b2, q1, q2, lep, met, count };
-
-// objects in DL channel resolved topology
-enum class ObjDLRes { b1, b2, lep1, lep2, met, count };
-
-// used to index 4-vectors in the input of HME and 4-vectors in gen truth
-using Obj = std::conditional_t<N_LEP == 1, ObjSLRes, ObjDLRes>;
 
 // obj name to its index in HME input (or index in gen truth)
 static const std::map<std::string, size_t> GenTruthIdxMapSL = { { "b1", 0 },
@@ -49,8 +40,8 @@ static const std::map<std::string, std::string> GenTruthBranchMapSL = { { "b1", 
 
 static const std::map<std::string, std::string> GenTruthBranchMapDL = { { "b1", "genb1" },
                                                                         { "b2", "genb2" },
-                                                                        { "lep1", "genV2prod1" },
-                                                                        { "lep2", "genV1prod1" },
+                                                                        { "lep1", "genV1prod1" },
+                                                                        { "lep2", "genV2prod1" },
                                                                         { "met", "GenMET" } };
 
 static const std::vector<std::string> KinVarNames = { "_pt", "_eta", "_phi", "_mass" };

@@ -2,6 +2,7 @@
 #define OBJECTS_HPP
 
 #include <memory>
+#include <iostream>
 
 #include "TROOT.h"
 
@@ -34,6 +35,7 @@ struct GenJet : public Kinematics
 struct RecoJet : public Kinematics 
 {
     RecoJet();
+    // ~RecoJet() { std::cout << "~RecoJet()\n"; }
 
     Int_t nRecoJet;
     UArrUC_t part_flav;
