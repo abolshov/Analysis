@@ -36,6 +36,18 @@ class Event
     private:
     TTree* m_tree;
 
+    inline Float_t* GenTruthPt() { return gen_truth.pt.get(); }
+    inline Float_t* GenTruthEta() { return gen_truth.eta.get(); }
+    inline Float_t* GenTruthPhi() { return gen_truth.phi.get(); }
+    inline Float_t* GenTruthMass() { return gen_truth.mass.get(); }
+
+    typedef Float_t*(Event::*AddressFunc_t)();
+    inline static const std::map<std::string, AddressFunc_t> address_map = { { "_pt", &Event::GenTruthPt },
+                                                                             { "_eta", &Event::GenTruthEta },
+                                                                             { "_phi", &Event::GenTruthPhi },
+                                                                             { "_mass", &Event::GenTruthMass } };
+    
+
     inline size_t Offset(Obj obj) { return static_cast<size_t>(obj); }
 };
 
