@@ -5,7 +5,6 @@
 
 #include "Constants.hpp"
 #include "Objects.hpp"
-// #include "Input.hpp"
 
 class Event
 {
@@ -29,6 +28,9 @@ class Event
     RecoLep_t reco_lep;      // reco leptons
 
     Kinematics_t gen_truth;        // gen level quarks, lepton and met
+
+    Float_t reco_met_pt;
+    Float_t reco_met_phi;
 
     private:
     TTree* m_tree;

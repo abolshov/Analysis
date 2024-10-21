@@ -78,4 +78,7 @@ Event::Event(TTree* tree, Channel ch)
         m_tree->SetBranchAddress((branch_name + "_type").c_str(), reco_lep.lep_type.get() + offset);
         m_tree->SetBranchAddress((branch_name + "_iso").c_str(), reco_lep.lep_iso.get() + offset);
     }
+
+    m_tree->SetBranchAddress("PuppiMET_pt", &reco_met_pt);
+    m_tree->SetBranchAddress("PuppiMET_phi", &reco_met_phi);
 }

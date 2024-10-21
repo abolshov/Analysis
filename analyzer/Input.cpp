@@ -30,7 +30,9 @@ EstimatorInput::EstimatorInput(std::vector<TLorentzVector>&& p4, std::vector<UHi
 ,   pdf2d(std::move(vec_pdf_2d))
 {}
 
-ValidatorInput::ValidatorInput(Event const& event)
+ValidatorInput::ValidatorInput(Event const& event, Vec1D&& pdf_1d, Vec2D&& pdf_2d)
+:   pdf1d(std::move(pdf_1d))
+,   pdf2d(std::move(pdf_2d))
 {
     for (int i = 0; i < event.reco_jet.nRecoJet; ++i)
     {
@@ -57,4 +59,6 @@ ValidatorInput::ValidatorInput(Event const& event)
         p.SetPtEtaPhiM(event.nu.pt[i], event.nu.eta[i], event.nu.phi[i], event.nu.mass[i]);
         nu.push_back(p);
     }
+
+    recoMET.SetPtEtaPhiM(event.reco_met_pt, 0.0, event.reco_met_phi, 0.0);
 }
