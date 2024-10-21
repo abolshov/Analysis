@@ -30,7 +30,7 @@ EstimatorInput::EstimatorInput(std::vector<TLorentzVector>&& p4, std::vector<UHi
 ,   pdf2d(std::move(vec_pdf_2d))
 {}
 
-ValidatorInput::ValidatorInput(Event const& event, Vec1D&& pdf_1d, Vec2D&& pdf_2d)
+ValidatorInput::ValidatorInput(Event const& event, Vec1D_t&& pdf_1d, Vec2D_t&& pdf_2d)
 :   pdf1d(std::move(pdf_1d))
 ,   pdf2d(std::move(pdf_2d))
 {
