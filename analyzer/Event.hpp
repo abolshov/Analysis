@@ -5,54 +5,68 @@
 
 #include "Constants.hpp"
 #include "Objects.hpp"
-#include "Input.hpp"
-
-using GenJet_t = GenJet;
-using RecoJet_t = RecoJet;
-using Particle_t = Particle;
-using Kin_t = Kinematics;
-using GenLep_t = GenLep;
-using RecoLep_t = RecoLep;
+// #include "Input.hpp"
 
 class Event
 {
-    private:
+    public:
     std::map<std::string, size_t> const m_index;
+    std::map<std::string, size_t> const m_nu_index;
+    std::map<std::string, size_t> const m_reco_lep_index;
+
+    private:
     std::map<std::string, std::string> const m_branch_map;
+    std::map<std::string, std::string> const m_nu_branch_map;
+    std::map<std::string, std::string> const m_reco_lep_branch_map;
 
     public:
     Event(TTree* tree, Channel ch);
-    // ~Event() { std::cout << "~Event()\n"; }
 
-    GenJet_t genjet;        // gen level jets  
-    RecoJet_t recojet;      // reco jets
+    GenJet_t gen_jet;        // gen level jets  
+    RecoJet_t reco_jet;      // reco jets
 
-    // GenLep_t gen_lep;
-    // RecoLep_t reco_lep;
+    GenLep_t nu;             // gen level neutrinos
+    RecoLep_t reco_lep;      // reco leptons
 
-    Kin_t gen_truth;        // gen level quarks, lepton and met
-   
-    // Particle_t nu;
-    
-    // Particle_t reco_met;
-    // Particle_t reco_lep;
-
-    EstimatorInput MakeEstimatorInput(std::string const& pdf_file_name) const;
-    ValidatorInput MakeValidatorInput(std::string const& pdf_file_name) const;
+    Kinematics_t gen_truth;        // gen level quarks, lepton and met
 
     private:
     TTree* m_tree;
 
+    typedef Float_t*(Event::*AddressFunc_t)();
+
+    // truth addresses
     inline Float_t* GenTruthPt() { return gen_truth.pt.get(); }
     inline Float_t* GenTruthEta() { return gen_truth.eta.get(); }
     inline Float_t* GenTruthPhi() { return gen_truth.phi.get(); }
     inline Float_t* GenTruthMass() { return gen_truth.mass.get(); }
 
-    typedef Float_t*(Event::*AddressFunc_t)();
-    inline static const std::map<std::string, AddressFunc_t> address_map = { { "_pt", &Event::GenTruthPt },
-                                                                             { "_eta", &Event::GenTruthEta },
-                                                                             { "_phi", &Event::GenTruthPhi },
-                                                                             { "_mass", &Event::GenTruthMass } };
+    inline static const std::map<std::string, AddressFunc_t> truth_address_map = { { "_pt", &Event::GenTruthPt },
+                                                                                   { "_eta", &Event::GenTruthEta },
+                                                                                   { "_phi", &Event::GenTruthPhi },
+                                                                                   { "_mass", &Event::GenTruthMass } };
+
+    // neutrino addresses
+    inline Float_t* NuPt() { return nu.pt.get(); }
+    inline Float_t* NuEta() { return nu.eta.get(); }
+    inline Float_t* NuPhi() { return nu.phi.get(); }
+    inline Float_t* NuMass() { return nu.mass.get(); }
+
+    inline static const std::map<std::string, AddressFunc_t> nu_address_map = { { "_pt", &Event::NuPt },
+                                                                                { "_eta", &Event::NuEta },
+                                                                                { "_phi", &Event::NuPhi },
+                                                                                { "_mass", &Event::NuMass } };
+
+    // neutrino addresses
+    inline Float_t* RecoLepPt() { return reco_lep.pt.get(); }
+    inline Float_t* RecoLepEta() { return reco_lep.eta.get(); }
+    inline Float_t* RecoLepPhi() { return reco_lep.phi.get(); }
+    inline Float_t* RecoLepMass() { return reco_lep.mass.get(); }
+
+    inline static const std::map<std::string, AddressFunc_t> reco_lep_address_map = { { "_pt", &Event::RecoLepPt },
+                                                                                      { "_eta", &Event::RecoLepEta },
+                                                                                      { "_phi", &Event::RecoLepPhi },
+                                                                                      { "_mass", &Event::RecoLepMass } };
 };
 
 #endif

@@ -28,10 +28,13 @@ void Analyzer::AnalyzeEvent(Event const& event, TTree* tree)
         tree->GetEntry(i);
 
         size_t met_idx = m_index.at("met");
-        std::cout << event.gen_truth.pt[met_idx] << " " << event.gen_truth.mass[met_idx] << "\n";
-
-        std::cout << event.recojet.nRecoJet << "\n";
-
-        // break;
+        std::cout << "gen met: " << event.gen_truth.pt[met_idx] << " " << event.gen_truth.mass[met_idx] << "\n";
+        std::cout << "reco jet: " << event.reco_jet.nRecoJet << "\n";
+        std::cout << "gen jet: " << event.gen_jet.nGenJet << "\n";
+        std::cout << "nu: " << event.nu.pdgId[0] << " " << event.nu.pdgId[1] << "\n";
+        std::cout << "reco lep: " << event.reco_lep.lep_type[0] << " " << event.reco_lep.lep_iso[0] << " " << event.reco_lep.lep_iso[1] << "\n";
+        std::cout << "lep1: " << event.reco_lep.pt[0] << " " << event.reco_lep.eta[0] << " " << event.reco_lep.phi[0] << " " << event.reco_lep.mass[0] << "\n";
+        std::cout << "lep2: " << event.reco_lep.pt[1] << " " << event.reco_lep.eta[1] << " " << event.reco_lep.phi[1] << " " << event.reco_lep.mass[1] << "\n";
+        std::cout << "\n";
     }
 }

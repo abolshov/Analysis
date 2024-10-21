@@ -13,9 +13,9 @@ using UArrUC_t = std::unique_ptr<UChar_t[]>;
 using UArrS_t = std::unique_ptr<Short_t[]>;
 using UArrI_t = std::unique_ptr<Int_t[]>;
 
-struct Kinematics
+struct Kinematics_t
 {
-	Kinematics(size_t sz);
+	Kinematics_t(size_t sz);
 
 	UArrF_t pt;
 	UArrF_t eta;
@@ -23,19 +23,18 @@ struct Kinematics
 	UArrF_t mass;
 };
 
-struct GenJet : public Kinematics 
+struct GenJet_t : public Kinematics_t 
 {
-    GenJet();
+    GenJet_t();
 
     Int_t nGenJet;
     UArrUC_t part_flav;
     UArrS_t hadr_flav;
 };
 
-struct RecoJet : public Kinematics 
+struct RecoJet_t : public Kinematics_t 
 {
-    RecoJet();
-    // ~RecoJet() { std::cout << "~RecoJet()\n"; }
+    RecoJet_t();
 
     Int_t nRecoJet;
     UArrUC_t part_flav;
@@ -47,17 +46,17 @@ struct RecoJet : public Kinematics
     UArrF_t PNetRegPtRawCorrNu;
 };
 
-struct RecoLep : public Kinematics
+struct RecoLep_t : public Kinematics_t
 {
-    RecoLep();
+    RecoLep_t();
 
     UArrF_t lep_iso;
     UArrI_t lep_type;
 };
 
-struct GenLep : public Kinematics
+struct GenLep_t : public Kinematics_t
 {
-    GenLep();
+    GenLep_t();
 
     UArrI_t pdgId;
 };

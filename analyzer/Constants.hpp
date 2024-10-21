@@ -5,10 +5,6 @@
 #include <vector>
 #include <map>
 
-#ifndef N_LEP
-#define N_LEP 1
-#endif
-
 enum class Channel { SL, DL };
 
 inline constexpr size_t MAX_GEN_JET = 20;
@@ -29,6 +25,22 @@ static const std::map<std::string, size_t> GenTruthIdxMapDL = { { "b1", 0 },
                                                                 { "lep1", 2 },
                                                                 { "lep2", 3 },
                                                                 { "met", 4 } };
+
+static const std::map<std::string, size_t> GenNuIdxMapSL = { { "nu", 0 } };
+static const std::map<std::string, size_t> GenNuIdxMapDL = { { "nu1", 0 },
+                                                             { "nu2", 1 } };
+
+static const std::map<std::string, std::string> GenNuBranchMapSL = { { "nu", "genV1prod2" } };
+static const std::map<std::string, std::string> GenNuBranchMapDL = { { "nu1", "genV1prod1" },
+                                                                     { "nu2", "genV1prod2" } };
+
+static const std::map<std::string, size_t> RecoLepIdxMapSL = { { "lep", 0 } };
+static const std::map<std::string, size_t> RecoLepIdxMapDL = { { "lep1", 0 },
+                                                               { "lep2", 1 } };
+
+static const std::map<std::string, std::string> RecoLepBranchMapSL = { { "lep", "lep1" } };
+static const std::map<std::string, std::string> RecoLepBranchMapDL = { { "lep1", "lep2" },
+                                                                       { "lep2", "lep2" } };
 
 // obj name to name of the branch with pt, eta, phi, mass of that object
 static const std::map<std::string, std::string> GenTruthBranchMapSL = { { "b1", "genb1" },

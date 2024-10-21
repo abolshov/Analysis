@@ -5,7 +5,7 @@
 #include <memory>
 #include <map>
 
-#include "TChain.h"
+#include "TFile.h"
 #include "TString.h"
 
 #include "Event.hpp"

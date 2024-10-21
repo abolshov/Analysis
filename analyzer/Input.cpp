@@ -1,7 +1,7 @@
 #include "Input.hpp"
 
 EstimatorInput::EstimatorInput(std::vector<TLorentzVector>&& p4, std::string const& pdf_file)
-: p4(std::move(p4))
+:   p4(std::move(p4))
 {
     auto file_pdf = std::make_unique<TFile>(pdf_file.c_str(), "READ");
 
@@ -22,4 +22,39 @@ EstimatorInput::EstimatorInput(std::vector<TLorentzVector>&& p4, std::string con
     }
 
     file_pdf->Close();
+}
+
+EstimatorInput::EstimatorInput(std::vector<TLorentzVector>&& p4, std::vector<UHist1D>&& vec_pdf_1d, std::vector<UHist2D>&& vec_pdf_2d)
+:   p4(std::move(p4))
+,   pdf1d(std::move(vec_pdf_1d))
+,   pdf2d(std::move(vec_pdf_2d))
+{}
+
+ValidatorInput::ValidatorInput(Event const& event)
+{
+    for (int i = 0; i < event.reco_jet.nRecoJet; ++i)
+    {
+        TLorentzVector p;
+        p.SetPtEtaPhiM(event.reco_jet.pt[i], event.reco_jet.eta[i], event.reco_jet.phi[i], event.reco_jet.mass[i]);
+        reco_jet_p4.push_back(p);
+
+        jet_PNet_resolutions.push_back(event.reco_jet.PNetRegPtRawCorr[i]);
+        jet_PNet_corrections.push_back(event.reco_jet.pt[i]*event.reco_jet.PNetRegPtRawRes[i]);
+    }
+
+    // gen truth inputs
+    for (size_t i = 0; i < event.m_index.size(); ++i)
+    {
+        TLorentzVector p;
+        p.SetPtEtaPhiM(event.gen_truth.pt[i], event.gen_truth.eta[i], event.gen_truth.phi[i], event.gen_truth.mass[i]);
+        gen_truth_p4.push_back(p);
+    }
+
+    // true nu inputs
+    for (size_t i = 0; i < event.m_nu_index.size(); ++i)
+    {
+        TLorentzVector p;
+        p.SetPtEtaPhiM(event.nu.pt[i], event.nu.eta[i], event.nu.phi[i], event.nu.mass[i]);
+        nu.push_back(p);
+    }
 }
