@@ -4,9 +4,9 @@ EstimatorInput::EstimatorInput(Event const& event, HistVec1d_t&& vec_pdf_1d, His
 :   pdf1d(std::move(vec_pdf_1d))
 ,   pdf2d(std::move(vec_pdf_2d))
 {
-    for (size_t i = 0; i < event.m_index.size(); ++i)
+    for (auto const& [obj_name, idx]: event.m_index)
     {
-        p4.emplace_back(event.gen_truth.pt[i], event.gen_truth.eta[i], event.gen_truth.phi[i], event.gen_truth.mass[i]);
+        p4.emplace_back(event.gen_truth.pt[idx], event.gen_truth.eta[idx], event.gen_truth.phi[idx], event.gen_truth.mass[idx]);
     }
 }
 
@@ -24,14 +24,14 @@ ValidatorInput::ValidatorInput(Event const& event, HistVec1d_t&& pdf_1d, HistVec
     }
 
     // gen truth inputs
-    for (size_t i = 0; i < event.m_index.size(); ++i)
+    for (auto const& [obj_name, idx]: event.m_index)
     {
-        gen_truth_p4.emplace_back(event.gen_truth.pt[i], event.gen_truth.eta[i], event.gen_truth.phi[i], event.gen_truth.mass[i]);
+        gen_truth_p4.emplace_back(event.gen_truth.pt[idx], event.gen_truth.eta[idx], event.gen_truth.phi[idx], event.gen_truth.mass[idx]);
     }
 
     // true nu inputs
-    for (size_t i = 0; i < event.m_nu_index.size(); ++i)
+    for (auto const& [obj_name, idx]: event.m_nu_index)
     {
-        nu.emplace_back(event.nu.pt[i], event.nu.eta[i], event.nu.phi[i], event.nu.mass[i]);
+        nu.emplace_back(event.nu.pt[idx], event.nu.eta[idx], event.nu.phi[idx], event.nu.mass[idx]);
     }
 }
