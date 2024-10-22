@@ -4,7 +4,9 @@
 #include <vector>
 #include <memory>
 
-#include "TLorentzVector.h"
+#include "Math/GenVector/LorentzVector.h"
+#include "Math/Vector4D.h"
+
 #include "TH1.h"
 #include "TH2.h"
 #include "TFile.h"
@@ -15,31 +17,39 @@
 using UHist1D = std::unique_ptr<TH1F>;
 using UHist2D = std::unique_ptr<TH2F>;
 
-using Vec1D_t = std::vector<UHist1D>;
-using Vec2D_t = std::vector<UHist2D>;
+using HistVec1d_t = std::vector<UHist1D>;
+using HistVec2d_t = std::vector<UHist2D>;
+
+using LorentzVectorF_t = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<Float_t>>;
+using VecLVF_t = std::vector<LorentzVectorF_t>;
 
 struct EstimatorInput
 {
     EstimatorInput() = default;
-    EstimatorInput(std::vector<TLorentzVector>&& p4, std::string const& pdf_file);
-    EstimatorInput(std::vector<TLorentzVector>&& p4, std::vector<UHist1D>&& vec_pdf_1d, std::vector<UHist2D>&& vec_pdf_2d);
+    EstimatorInput(Event const& event, HistVec1d_t&& vec_pdf_1d, HistVec2d_t&& vec_pdf_2d);
+ 
+    HistVec1d_t pdf1d;
+    HistVec2d_t pdf2d;
 
-    std::vector<TLorentzVector> p4; 
-    std::vector<UHist1D> pdf1d;
-    std::vector<UHist2D> pdf2d;
+    VecLVF_t p4;
 };
 
 struct ValidatorInput
 {
-    ValidatorInput(Event const& event, Vec1D_t&& pdf_1d, Vec2D_t&& pdf_2d);
-    Vec1D_t pdf1d;
-    Vec2D_t pdf2d;
-    std::vector<TLorentzVector> gen_truth_p4; // p4 of gen level quarks, lepton and met
-    std::vector<TLorentzVector> reco_jet_p4; // p4 of all selected reco jets
-    std::vector<TLorentzVector> nu;
-    std::vector<double> jet_PNet_resolutions; // pt resolutions provided by pnet
-    std::vector<double> jet_PNet_corrections; // central rescaling value provided by pnet
-    TLorentzVector recoMET;
+    ValidatorInput() = default;
+    ValidatorInput(Event const& event, HistVec1d_t&& pdf_1d, HistVec2d_t&& pdf_2d);
+
+    HistVec1d_t pdf1d;
+    HistVec2d_t pdf2d;
+
+    VecLVF_t gen_truth_p4; // p4 of gen level quarks, lepton and met
+    VecLVF_t reco_jet_p4; // p4 of all selected reco jets
+    VecLVF_t nu;
+
+    std::vector<Float_t> jet_PNet_resolutions; // pt resolutions provided by pnet
+    std::vector<Float_t> jet_PNet_corrections; // central rescaling value provided by pnet
+    
+    LorentzVectorF_t recoMET;
 };
 
 #endif

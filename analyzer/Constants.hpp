@@ -57,6 +57,8 @@ static const std::map<std::string, std::string> GenTruthBranchMapDL = { { "b1", 
                                                                         { "met", "GenMET" } };
 
 static const std::vector<std::string> KinVarNames = { "_pt", "_eta", "_phi", "_mass" };
+static const std::vector<std::string> ObjectSL = { "b1", "b2", "q1", "q2", "lep", "met" };
+static const std::vector<std::string> ObjectDL = { "b1", "b2", "lep1", "lep2", "met" };
 
 // PDFs in SL channel resolved topology
 enum class PDF1dSLRes { pdf_b1, count };
