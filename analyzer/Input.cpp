@@ -19,8 +19,8 @@ ValidatorInput::ValidatorInput(Event const& event, HistVec1d_t&& pdf_1d, HistVec
     {
         reco_jet_p4.emplace_back(event.reco_jet.pt[i], event.reco_jet.eta[i], event.reco_jet.phi[i], event.reco_jet.mass[i]);
 
-        jet_PNet_resolutions.push_back(event.reco_jet.PNetRegPtRawCorr[i]);
-        jet_PNet_corrections.push_back(event.reco_jet.pt[i]*event.reco_jet.PNetRegPtRawRes[i]);
+        jet_PNet_resolutions.push_back(event.reco_jet.pt[i]*event.reco_jet.PNetRegPtRawRes[i]);
+        jet_PNet_corrections.push_back(event.reco_jet.PNetRegPtRawCorr[i]);
     }
 
     // gen truth inputs
