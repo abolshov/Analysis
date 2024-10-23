@@ -13,6 +13,7 @@ int main()
     gROOT->ProcessLine("gErrorIgnoreLevel = 6001;");
 
     TString tree_name = "Events";
+    TString pdf_file_name = "pdfs.root";
 
     std::map<TString, Channel> input_file_map = { { "nano_0.root", Channel::SL } };
 

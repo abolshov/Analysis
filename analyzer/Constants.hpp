@@ -5,6 +5,8 @@
 #include <vector>
 #include <map>
 
+#include "TString.h"
+
 enum class Channel { SL, DL };
 
 inline constexpr size_t MAX_GEN_JET = 20;
@@ -63,7 +65,8 @@ static const std::vector<std::string> ObjectDL = { "b1", "b2", "lep1", "lep2", "
 // PDFs in SL channel resolved topology
 enum class PDF1dSLRes { pdf_b1, count };
 enum class PDF2dSLRes { pdf_b1b2, count };
-static const std::vector<char const*> pdf1d_names { "pdf_b1" };
-static const std::vector<char const*> pdf2d_names { "pdf_b1b2" };
+
+static const std::vector<TString> pdf1d_names { "pdf_b1", "pdf_mbb", "pdf_numet" };
+static const std::vector<TString> pdf2d_names { "pdf_b1b2" };
 
 #endif
