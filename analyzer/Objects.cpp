@@ -18,8 +18,8 @@ Kinematics_t::Kinematics_t(size_t sz)
 GenJet_t::GenJet_t() 
 :	Kinematics_t(MAX_GEN_JET)
 ,	nGenJet(0)
-,	part_flav(std::make_unique<UChar_t[]>(MAX_GEN_JET))
-,	hadr_flav(std::make_unique<Short_t[]>(MAX_GEN_JET))
+,	part_flav(std::make_unique<Short_t[]>(MAX_GEN_JET))
+,	hadr_flav(std::make_unique<UChar_t[]>(MAX_GEN_JET))
 {
 	for (size_t i = 0; i < MAX_GEN_JET; ++i)
 	{

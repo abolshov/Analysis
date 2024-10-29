@@ -28,8 +28,8 @@ struct GenJet_t : public Kinematics_t
     GenJet_t();
 
     Int_t nGenJet;
-    UArrUC_t part_flav;
-    UArrS_t hadr_flav;
+    UArrS_t part_flav;
+    UArrUC_t hadr_flav;
 };
 
 struct RecoJet_t : public Kinematics_t 
