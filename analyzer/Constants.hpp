@@ -8,6 +8,7 @@
 #include "TString.h"
 
 enum class Channel { SL, DL };
+enum class Mode { Validation, Estimation };
 
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 12;

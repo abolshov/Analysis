@@ -13,11 +13,13 @@ int main()
     gROOT->ProcessLine("gErrorIgnoreLevel = 6001;");
 
     TString tree_name = "Events";
-    TString pdf_file_name = "pdfs.root";
+    TString pdf_file_name = "pdf.root";
 
     std::map<TString, Channel> input_file_map = { { "nano_0.root", Channel::SL } };
 
-    Analyzer ana(tree_name, input_file_map);
+    Mode mode = Mode::Validation;
+
+    Analyzer ana(tree_name, input_file_map, pdf_file_name, mode);
     ana.Analyze();
 
     return 0;
