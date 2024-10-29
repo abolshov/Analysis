@@ -18,7 +18,9 @@ class Analyzer
     private:
     Validator validator;
     std::map<TString, Channel> m_file_map;
-    std::map<std::string, size_t> m_index;
+    std::map<std::string, size_t> m_obj_index;
+    std::map<std::string, size_t> m_pdf1d_index;
+    std::map<std::string, size_t> m_pdf2d_index;
     TString m_tree_name;
 
     public:

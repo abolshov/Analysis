@@ -8,12 +8,24 @@
 #include "TString.h"
 
 enum class Channel { SL, DL };
+enum class Topology { Resolved, Boosted };
 enum class Mode { Validation, Estimation };
 
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 12;
 inline constexpr size_t MAX_RECO_LEP = 2;
 inline constexpr size_t MAX_GEN_LEP = 2;
+
+inline constexpr double HIGGS_MASS = 125.03;
+inline constexpr double HIGGS_WIDTH = 0.004;
+inline constexpr double TOL = 10e-7;
+inline constexpr int N_ATTEMPTS = 1;
+inline constexpr int N_ITER = 1000;
+
+inline constexpr double MAX_MASS = 2000;
+inline constexpr int N_BINS = 5000;
+
+inline constexpr double MET_SIGMA = 25.2;
 
 // obj name to its index in HME input (or index in gen truth)
 static const std::map<std::string, size_t> GenTruthIdxMapSL = { { "b1", 0 },
@@ -67,7 +79,12 @@ static const std::vector<std::string> ObjectDL = { "b1", "b2", "lep1", "lep2", "
 enum class PDF1dSLRes { pdf_b1, count };
 enum class PDF2dSLRes { pdf_b1b2, count };
 
-static const std::vector<TString> pdf1d_names { "pdf_b1", "pdf_mbb", "pdf_numet" };
+static const std::vector<TString> pdf1d_names { "pdf_b1", "pdf_mbb" };
 static const std::vector<TString> pdf2d_names { "pdf_b1b2" };
+
+static const std::map<std::string, size_t> PDF1dResolvedIdxMap = { { "pdf_b1", 0 },
+                                                                   { "pdf_mbb", 1 } };
+
+static const std::map<std::string, size_t> PDF2dResolvedIdxMap = { { "pdf_b1b2", 0 } };
 
 #endif

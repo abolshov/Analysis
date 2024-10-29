@@ -1,4 +1,5 @@
-CXX=clang++
+CXX=g++
+# CXXFLAGS= -c -O2 -Wall -Wextra -pedantic `root-config --cflags ` -D N_LEP=2
 CXXFLAGS= -c -O2 -Wall -Wextra -pedantic `root-config --cflags `
 LDFLAGS= `root-config --glibs ` -lSpectrum
 
@@ -14,10 +15,13 @@ Event.o: Event.cpp
 Objects.o: Objects.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-Input.o: Input.cpp
+Validator.o: Validator.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-analysis: analysis.o Analyzer.o Event.o Objects.o Input.o
+EstimatorTools.o: EstimatorTools.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+analysis: analysis.o Analyzer.o Event.o Objects.o Validator.o EstimatorTools.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 .PHONY: clean

@@ -51,12 +51,18 @@ void Analyzer::Analyze()
         TTree* tree = static_cast<TTree*>(file->Get(m_tree_name));
 
         TString channel_name = channel == Channel::SL ? "Single lepton" : "Double Lepton";
-        m_index = channel == Channel::SL ? GenTruthIdxMapSL : GenTruthIdxMapDL;
+        m_obj_index = channel == Channel::SL ? GenTruthIdxMapSL : GenTruthIdxMapDL;
         std::cout << "File: " << file_name << ", channel: " << channel_name << "\n";
+
+        m_pdf1d_index = PDF1dResolvedIdxMap;
+        m_pdf2d_index = PDF2dResolvedIdxMap;
 
         Event event(tree, channel);
         // AnalyzeEvent(event, tree);
 
+        validator.SetTruthIndex(m_obj_index);
+        validator.SetPDF1dIndex(m_pdf1d_index);
+        validator.SetPDF1dIndex(m_pdf2d_index);
         validator.Print();
 
         file->Close();
@@ -69,7 +75,7 @@ void Analyzer::AnalyzeEvent(Event const& event, TTree* tree)
     {
         tree->GetEntry(i);
 
-        size_t met_idx = m_index.at("met");
+        size_t met_idx = m_obj_index.at("met");
         std::cout << "gen met: " << event.gen_truth.pt[met_idx] << " " << event.gen_truth.mass[met_idx] << "\n";
         std::cout << "reco jet: " << event.reco_jet.nRecoJet << "\n";
         std::cout << "gen jet: " << event.gen_jet.nGenJet << "\n";

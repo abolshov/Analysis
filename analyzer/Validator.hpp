@@ -11,10 +11,18 @@ class Validator
     void FillVariables(Event const& event);
     inline void Set1dPDF(HistVec1d_t&& pdf1d) { pdf_1d = std::move(pdf1d); }
     inline void Set2dPDF(HistVec2d_t&& pdf2d) { pdf_2d = std::move(pdf2d); }
+    inline void SetTruthIndex(std::map<std::string, size_t> const& index) { truth_index = index; }
+    inline void SetPDF1dIndex(std::map<std::string, size_t> const& index) { pdf1d_index = index; }
+    inline void SetPDF2dIndex(std::map<std::string, size_t> const& index) { pdf2d_index = index; }
 
+    void ValidateBJetCorr();
     void Print();
 
     private:
+    std::map<std::string, size_t> truth_index;
+    std::map<std::string, size_t> pdf1d_index;
+    std::map<std::string, size_t> pdf2d_index;
+
     HistVec1d_t pdf_1d;
     HistVec2d_t pdf_2d;
 
