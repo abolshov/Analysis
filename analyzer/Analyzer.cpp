@@ -63,7 +63,8 @@ void Analyzer::Analyze()
         validator.SetTruthIndex(m_obj_index);
         validator.SetPDF1dIndex(m_pdf1d_index);
         validator.SetPDF1dIndex(m_pdf2d_index);
-        validator.Print();
+        RunValidation(event, tree);
+        // validator.ResetHistograms();        
 
         file->Close();
     }
@@ -85,4 +86,25 @@ void Analyzer::AnalyzeEvent(Event const& event, TTree* tree)
         std::cout << "lep2: " << event.reco_lep.pt[1] << " " << event.reco_lep.eta[1] << " " << event.reco_lep.phi[1] << " " << event.reco_lep.mass[1] << "\n";
         std::cout << "\n";
     }
+}
+
+
+void Analyzer::RunValidation(Event const& event, TTree* tree)
+{
+    for (long long i = 0; i < tree->GetEntries(); ++i)
+    {
+        tree->GetEntry(i);
+        validator.FillVariables(event);
+        validator.CompareJetsToQuarksB();
+    }
+
+    validator.DrawStack({"raw_ratio_px_1", "corr_ratio_px_1"}, "Px ratio comarison for pair 1", "px_1_cmp");
+    validator.DrawStack({"raw_ratio_py_1", "corr_ratio_py_1"}, "Py ratio comarison for pair 1", "py_1_cmp");
+    validator.DrawStack({"raw_ratio_pz_1", "corr_ratio_pz_1"}, "Pz ratio comarison for pair 1", "pz_1_cmp");
+    validator.DrawStack({"raw_ratio_E_1", "corr_ratio_E_1"}, "E ratio comarison for pair 1", "E_1_cmp");
+
+    validator.DrawStack({"raw_ratio_px_2", "corr_ratio_px_2"}, "Px ratio comarison for pair 2", "px_2_cmp");
+    validator.DrawStack({"raw_ratio_py_2", "corr_ratio_py_2"}, "Py ratio comarison for pair 2", "py_2_cmp");
+    validator.DrawStack({"raw_ratio_pz_2", "corr_ratio_pz_2"}, "Pz ratio comarison for pair 2", "pz_2_cmp");
+    validator.DrawStack({"raw_ratio_E_2", "corr_ratio_E_2"}, "E ratio comarison for pair 2", "E_2_cmp");
 }

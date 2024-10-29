@@ -28,6 +28,8 @@ class Analyzer
     void Analyze();
     void AnalyzeEvent(Event const& event, TTree* tree);
 
+    void RunValidation(Event const& event, TTree* tree);
+
     private:
     HistVec1d_t PDFs1dFromFile(TString const& file_name, std::vector<TString> const& pdf_list) const;
     HistVec2d_t PDFs2dFromFile(TString const& file_name, std::vector<TString> const& pdf_list) const;
