@@ -20,8 +20,8 @@ class Validator
 
     void Clear();
 
-    void CompareJetsToQuarksB();
-    // void ResetHistograms();
+    void CompareJetsToQuarksB(bool use_2d_pdf, bool skip_failures = false);
+    inline void ResetHistograms() { hm.Reset(); }
     inline void DrawStack(std::vector<std::string> const& names, std::string const& title, std::string const& name) { hm.DrawStack(names, title, name); }
     inline void Draw() { hm.Draw(); }
 

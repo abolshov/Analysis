@@ -64,7 +64,6 @@ void Analyzer::Analyze()
         validator.SetPDF1dIndex(m_pdf1d_index);
         validator.SetPDF1dIndex(m_pdf2d_index);
         RunValidation(event, tree);
-        // validator.ResetHistograms();        
 
         file->Close();
     }
@@ -91,20 +90,63 @@ void Analyzer::AnalyzeEvent(Event const& event, TTree* tree)
 
 void Analyzer::RunValidation(Event const& event, TTree* tree)
 {
+    // run validation with 1d pdf
+    bool use_2d_pdf = false;
     for (long long i = 0; i < tree->GetEntries(); ++i)
     {
         tree->GetEntry(i);
         validator.FillVariables(event);
-        validator.CompareJetsToQuarksB();
+        validator.CompareJetsToQuarksB(use_2d_pdf);
     }
 
-    validator.DrawStack({"raw_ratio_px_1", "corr_ratio_px_1"}, "Px ratio comarison for pair 1", "px_1_cmp");
-    validator.DrawStack({"raw_ratio_py_1", "corr_ratio_py_1"}, "Py ratio comarison for pair 1", "py_1_cmp");
-    validator.DrawStack({"raw_ratio_pz_1", "corr_ratio_pz_1"}, "Pz ratio comarison for pair 1", "pz_1_cmp");
-    validator.DrawStack({"raw_ratio_E_1", "corr_ratio_E_1"}, "E ratio comarison for pair 1", "E_1_cmp");
+    validator.DrawStack({"raw_ratio_px_1", "corr_ratio_px_1"}, "Px ratio comarison for pair 1 with 1d PDF", "px_ratio_1_pdf1d_cmp");
+    validator.DrawStack({"raw_ratio_py_1", "corr_ratio_py_1"}, "Py ratio comarison for pair 1 with 1d PDF", "py_ratio_1_pdf1d_cmp");
+    validator.DrawStack({"raw_ratio_pz_1", "corr_ratio_pz_1"}, "Pz ratio comarison for pair 1 with 1d PDF", "pz_ratio_1_pdf1d_cmp");
+    validator.DrawStack({"raw_ratio_E_1", "corr_ratio_E_1"}, "E ratio comarison for pair 1 with 1d PDF", "E_ratio_1_pdf1d_cmp");
 
-    validator.DrawStack({"raw_ratio_px_2", "corr_ratio_px_2"}, "Px ratio comarison for pair 2", "px_2_cmp");
-    validator.DrawStack({"raw_ratio_py_2", "corr_ratio_py_2"}, "Py ratio comarison for pair 2", "py_2_cmp");
-    validator.DrawStack({"raw_ratio_pz_2", "corr_ratio_pz_2"}, "Pz ratio comarison for pair 2", "pz_2_cmp");
-    validator.DrawStack({"raw_ratio_E_2", "corr_ratio_E_2"}, "E ratio comarison for pair 2", "E_2_cmp");
+    validator.DrawStack({"raw_ratio_px_2", "corr_ratio_px_2"}, "Px ratio comarison for pair 2 with 1d PDF", "px_ratio_2_pdf1d_cmp");
+    validator.DrawStack({"raw_ratio_py_2", "corr_ratio_py_2"}, "Py ratio comarison for pair 2 with 1d PDF", "py_ratio_2_pdf1d_cmp");
+    validator.DrawStack({"raw_ratio_pz_2", "corr_ratio_pz_2"}, "Pz ratio comarison for pair 2 with 1d PDF", "pz_ratio_2_pdf1d_cmp");
+    validator.DrawStack({"raw_ratio_E_2", "corr_ratio_E_2"}, "E ratio comarison for pair 2 with 1d PDF", "E_ratio_2_pdf1d_cmp");
+
+    validator.DrawStack({"true_px_1", "corr_px_1"}, "Px comparison for pair 1 with 1d PDF", "px_1_pdf1d_cmp");
+    validator.DrawStack({"true_py_1", "corr_py_1"}, "Py comparison for pair 1 with 1d PDF", "py_1_pdf1d_cmp");
+    validator.DrawStack({"true_pz_1", "corr_pz_1"}, "Pz comparison for pair 1 with 1d PDF", "pz_1_pdf1d_cmp");
+    validator.DrawStack({"true_E_1", "corr_E_1"}, "E comparison for pair 1 with 1d PDF", "E_1_pdf1d_cmp");
+
+    validator.DrawStack({"true_px_2", "corr_px_2"}, "Px comparison for pair 2 with 1d PDF", "px_2_pdf1d_cmp");
+    validator.DrawStack({"true_py_2", "corr_py_2"}, "Py comparison for pair 2 with 1d PDF", "py_2_pdf1d_cmp");
+    validator.DrawStack({"true_pz_2", "corr_pz_2"}, "Pz comparison for pair 2 with 1d PDF", "pz_2_pdf1d_cmp");
+    validator.DrawStack({"true_E_2", "corr_E_2"}, "E comparison for pair 2 with 1d PDF", "E_2_pdf1d_cmp");
+
+    // reset histograms and run validation with 2d pdf
+    validator.ResetHistograms();
+
+    use_2d_pdf = true;
+    for (long long i = 0; i < tree->GetEntries(); ++i)
+    {
+        tree->GetEntry(i);
+        validator.FillVariables(event);
+        validator.CompareJetsToQuarksB(use_2d_pdf);
+    }
+
+    validator.DrawStack({"raw_ratio_px_1", "corr_ratio_px_1"}, "Px ratio comarison for pair 1 with 2d PDF", "px_ratio_1_pdf2d_cmp");
+    validator.DrawStack({"raw_ratio_py_1", "corr_ratio_py_1"}, "Py ratio comarison for pair 1 with 2d PDF", "py_ratio_1_pdf2d_cmp");
+    validator.DrawStack({"raw_ratio_pz_1", "corr_ratio_pz_1"}, "Pz ratio comarison for pair 1 with 2d PDF", "pz_ratio_1_pdf2d_cmp");
+    validator.DrawStack({"raw_ratio_E_1", "corr_ratio_E_1"}, "E ratio comarison for pair 1 with 2d PDF", "E_ratio_1_pdf2d_cmp");
+
+    validator.DrawStack({"raw_ratio_px_2", "corr_ratio_px_2"}, "Px ratio comarison for pair 2 with 2d PDF", "px_ratio_2_pdf2d_cmp");
+    validator.DrawStack({"raw_ratio_py_2", "corr_ratio_py_2"}, "Py ratio comarison for pair 2 with 2d PDF", "py_ratio_2_pdf2d_cmp");
+    validator.DrawStack({"raw_ratio_pz_2", "corr_ratio_pz_2"}, "Pz ratio comarison for pair 2 with 2d PDF", "pz_ratio_2_pdf2d_cmp");
+    validator.DrawStack({"raw_ratio_E_2", "corr_ratio_E_2"}, "E ratio comarison for pair 2 with 2d PDF", "E_ratio_2_pdf2d_cmp");
+
+    validator.DrawStack({"true_px_1", "corr_px_1"}, "Px comparison for pair 1 with 2d PDF", "px_1_pdf2d_cmp");
+    validator.DrawStack({"true_py_1", "corr_py_1"}, "Py comparison for pair 1 with 2d PDF", "py_1_pdf2d_cmp");
+    validator.DrawStack({"true_pz_1", "corr_pz_1"}, "Pz comparison for pair 1 with 2d PDF", "pz_1_pdf2d_cmp");
+    validator.DrawStack({"true_E_1", "corr_E_1"}, "E comparison for pair 1 with 2d PDF", "E_1_pdf2d_cmp");
+
+    validator.DrawStack({"true_px_2", "corr_px_2"}, "Px comparison for pair 2 with 2d PDF", "px_2_pdf2d_cmp");
+    validator.DrawStack({"true_py_2", "corr_py_2"}, "Py comparison for pair 2 with 2d PDF", "py_2_pdf2d_cmp");
+    validator.DrawStack({"true_pz_2", "corr_pz_2"}, "Pz comparison for pair 2 with 2d PDF", "pz_2_pdf2d_cmp");
+    validator.DrawStack({"true_E_2", "corr_E_2"}, "E comparison for pair 2 with 2d PDF", "E_2_pdf2d_cmp");
 }
