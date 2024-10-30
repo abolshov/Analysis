@@ -126,3 +126,18 @@ void HistManager::DrawStack(std::vector<std::string> const& names, std::string c
     c1->SaveAs(Form("histograms/%s.png", name.c_str()));
     // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), name.c_str()));
 }
+
+void HistManager::Reset()
+{
+    for (auto const& [hist_name, hhi_pair]: m_hists_1d)
+    {
+        auto const& [ptr_hist, hist_info] = hhi_pair;
+        ptr_hist->Reset("ICESM");
+    }
+
+    for (auto const& [hist_name, hhi_pair]: m_hists_2d)
+    {
+        auto const& [ptr_hist, hist_info] = hhi_pair;
+        ptr_hist->Reset("ICESM");
+    }
+}

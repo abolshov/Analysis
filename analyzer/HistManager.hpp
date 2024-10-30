@@ -81,6 +81,7 @@ class HistManager
     void FillWeighted(std::string const& hist_name, double xval, double yval, double weight);
     void Draw() const;
     void DrawStack(std::vector<std::string> const& names, std::string const& title, std::string const& name) const;
+    void Reset();
 };
 
 #endif
