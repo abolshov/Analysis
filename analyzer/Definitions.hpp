@@ -7,6 +7,7 @@
 
 #include "Math/GenVector/LorentzVector.h"
 #include "Math/Vector4D.h"
+#include "Math/VectorUtil.h"
 
 #include "TH1.h"
 #include "TH2.h"
@@ -23,5 +24,7 @@ using VecLVF_t = std::vector<LorentzVectorF_t>;
 using OptionalPair_t = std::optional<std::pair<double, double>>;
 using OptionalLV_t = std::optional<LorentzVectorF_t>;
 using OptionalLVPair_t = std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>;
+
+using ROOT::Math::VectorUtil::DeltaR;
 
 #endif

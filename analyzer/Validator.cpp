@@ -111,14 +111,26 @@ void Validator::ClearVariables()
 
 void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failures)
 {
-    // reorder b1 and b2 to make quark with larger pt b1
-    if (gen_truth_p4[truth_index["b1"]].Pt() < gen_truth_p4[truth_index["b2"]].Pt())
+    // // reorder b1 and b2 to make quark with larger pt b1
+    // if (gen_truth_p4[truth_index["b1"]].Pt() < gen_truth_p4[truth_index["b2"]].Pt())
+    // {
+    //     std::swap(gen_truth_p4[truth_index["b1"]], gen_truth_p4[truth_index["b2"]]);
+    // }
+
+    LorentzVectorF_t raw_bj1, raw_bj2;
+    if (reco_jet_p4[0].Pt() > reco_jet_p4[1].Pt())
     {
-        std::swap(gen_truth_p4[truth_index["b1"]], gen_truth_p4[truth_index["b2"]]);
+        raw_bj1 = reco_jet_p4[0];
+        raw_bj2 = reco_jet_p4[1];
+    }
+    else
+    {
+        raw_bj2 = reco_jet_p4[0];
+        raw_bj1 = reco_jet_p4[1];
     }
 
-    LorentzVectorF_t const& bq1 = gen_truth_p4[truth_index["b1"]];
-    LorentzVectorF_t const& bq2 = gen_truth_p4[truth_index["b2"]];
+    LorentzVectorF_t const& bq1 = DeltaR(gen_truth_p4[truth_index["b1"]], raw_bj1) < DeltaR(gen_truth_p4[truth_index["b2"]], raw_bj1) ? gen_truth_p4[truth_index["b1"]] : gen_truth_p4[truth_index["b2"]];
+    LorentzVectorF_t const& bq2 = DeltaR(gen_truth_p4[truth_index["b1"]], raw_bj2) < DeltaR(gen_truth_p4[truth_index["b2"]], raw_bj2) ? gen_truth_p4[truth_index["b1"]] : gen_truth_p4[truth_index["b2"]];
     LorentzVectorF_t const& genMET = gen_truth_p4[truth_index["met"]];
 
     hm.Fill("true_px_met", genMET.Px());
@@ -152,31 +164,19 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
     auto hist_ratio_E_2 = std::make_unique<TH1F>("hist_ratio_E_2", "hist_ratio_E_2", 100, 0, 25);
 
     // histograms for accumulating effective momentum values for one event
-    auto hist_px_1 = std::make_unique<TH1F>("hist_px_1", "hist_px_1", 200, -1000.0, 1000.0);
-    auto hist_py_1 = std::make_unique<TH1F>("hist_py_1", "hist_py_1", 200, -1000.0, 1000.0);
-    auto hist_pz_1 = std::make_unique<TH1F>("hist_pz_1", "hist_pz_1", 200, -1000.0, 1000.0);
-    auto hist_E_1 = std::make_unique<TH1F>("hist_E_1", "hist_E_1", 200, 0.0, 1000.0);
+    auto hist_px_1 = std::make_unique<TH1F>("hist_px_1", "hist_px_1", 100, -400.0, 400.0);
+    auto hist_py_1 = std::make_unique<TH1F>("hist_py_1", "hist_py_1", 100, -400.0, 400.0);
+    auto hist_pz_1 = std::make_unique<TH1F>("hist_pz_1", "hist_pz_1", 100, -400.0, 400.0);
+    auto hist_E_1 = std::make_unique<TH1F>("hist_E_1", "hist_E_1", 100, 0.0, 400.0);
 
-    auto hist_px_2 = std::make_unique<TH1F>("hist_px_2", "hist_px_2", 200, -1000.0, 1000.0);
-    auto hist_py_2 = std::make_unique<TH1F>("hist_py_2", "hist_py_2", 200, -1000.0, 1000.0);
-    auto hist_pz_2 = std::make_unique<TH1F>("hist_pz_2", "hist_pz_2", 200, -1000.0, 1000.0);
-    auto hist_E_2 = std::make_unique<TH1F>("hist_E_2", "hist_E_2", 200, 0.0, 1000.0);
+    auto hist_px_2 = std::make_unique<TH1F>("hist_px_2", "hist_px_2", 100, -400.0, 400.0);
+    auto hist_py_2 = std::make_unique<TH1F>("hist_py_2", "hist_py_2", 100, -400.0, 400.0);
+    auto hist_pz_2 = std::make_unique<TH1F>("hist_pz_2", "hist_pz_2", 100, -400.0, 400.0);
+    auto hist_E_2 = std::make_unique<TH1F>("hist_E_2", "hist_E_2", 100, 0.0, 400.0);
 
     // histograms for accumulating effective MET momentum values for one event
     auto hist_px_met = std::make_unique<TH1F>("hist_px_met", "hist_px_met", 100, -200.0, 200.0);
     auto hist_py_met = std::make_unique<TH1F>("hist_py_met", "hist_py_met", 100, -200.0, 200.0);
-
-    LorentzVectorF_t raw_bj1, raw_bj2;
-    if (reco_jet_p4[0].Pt() > reco_jet_p4[1].Pt())
-    {
-        raw_bj1 = reco_jet_p4[0];
-        raw_bj2 = reco_jet_p4[1];
-    }
-    else
-    {
-        raw_bj2 = reco_jet_p4[0];
-        raw_bj1 = reco_jet_p4[1];
-    }
 
     hm.Fill("raw_ratio_px_1", raw_bj1.Px()/bq1.Px());
     hm.Fill("raw_ratio_py_1", raw_bj1.Py()/bq1.Py());
@@ -283,7 +283,7 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
 
     auto GetEffValue = [](UHist1d_t& h){ return h->GetEntries() ? h->GetXaxis()->GetBinCenter(h->GetMaximumBin()) : 0.0; };
 
-    if (rg.Uniform(0, 1) > 0.998)
+    if (event_number % 100 == 54)
     {
         auto c1 = std::make_unique<TCanvas>("c1", "c1");
 
