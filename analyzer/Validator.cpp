@@ -152,15 +152,15 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
     auto hist_ratio_E_2 = std::make_unique<TH1F>("hist_ratio_E_2", "hist_ratio_E_2", 100, 0, 25);
 
     // histograms for accumulating effective momentum values for one event
-    auto hist_px_1 = std::make_unique<TH1F>("hist_px_1", "hist_px_1", 100, -400.0, 400.0);
-    auto hist_py_1 = std::make_unique<TH1F>("hist_py_1", "hist_py_1", 100, -400.0, 400.0);
-    auto hist_pz_1 = std::make_unique<TH1F>("hist_pz_1", "hist_pz_1", 100, -400.0, 400.0);
-    auto hist_E_1 = std::make_unique<TH1F>("hist_E_1", "hist_E_1", 100, 0.0, 400.0);
+    auto hist_px_1 = std::make_unique<TH1F>("hist_px_1", "hist_px_1", 200, -1000.0, 1000.0);
+    auto hist_py_1 = std::make_unique<TH1F>("hist_py_1", "hist_py_1", 200, -1000.0, 1000.0);
+    auto hist_pz_1 = std::make_unique<TH1F>("hist_pz_1", "hist_pz_1", 200, -1000.0, 1000.0);
+    auto hist_E_1 = std::make_unique<TH1F>("hist_E_1", "hist_E_1", 200, 0.0, 1000.0);
 
-    auto hist_px_2 = std::make_unique<TH1F>("hist_px_2", "hist_px_2", 100, -400.0, 400.0);
-    auto hist_py_2 = std::make_unique<TH1F>("hist_py_2", "hist_py_2", 100, -400.0, 400.0);
-    auto hist_pz_2 = std::make_unique<TH1F>("hist_pz_2", "hist_pz_2", 100, -400.0, 400.0);
-    auto hist_E_2 = std::make_unique<TH1F>("hist_E_2", "hist_E_2", 100, 0.0, 400.0);
+    auto hist_px_2 = std::make_unique<TH1F>("hist_px_2", "hist_px_2", 200, -1000.0, 1000.0);
+    auto hist_py_2 = std::make_unique<TH1F>("hist_py_2", "hist_py_2", 200, -1000.0, 1000.0);
+    auto hist_pz_2 = std::make_unique<TH1F>("hist_pz_2", "hist_pz_2", 200, -1000.0, 1000.0);
+    auto hist_E_2 = std::make_unique<TH1F>("hist_E_2", "hist_E_2", 200, 0.0, 1000.0);
 
     // histograms for accumulating effective MET momentum values for one event
     auto hist_px_met = std::make_unique<TH1F>("hist_px_met", "hist_px_met", 100, -200.0, 200.0);
@@ -211,7 +211,7 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
 
         if (use_2d_pdf)
         {
-            pdf2d->GetRandom2(c1, c2);
+            pdf2d->GetRandom2(c1, c2, &rg);
         }
         else 
         {
@@ -283,73 +283,99 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
 
     auto GetEffValue = [](UHist1d_t& h){ return h->GetEntries() ? h->GetXaxis()->GetBinCenter(h->GetMaximumBin()) : 0.0; };
 
-    if (event_number % 10000 == 0)
+    if (rg.Uniform(0, 1) > 0.998)
     {
         auto c1 = std::make_unique<TCanvas>("c1", "c1");
+
+        char const* pdf_type = use_2d_pdf ? "pdf2d" : "pdf1d";
 
         hist_px_1->Draw();
         double x1 = bq1.Px();
         double y2 = hist_px_1->GetBinContent(hist_px_1->GetMaximumBin());
-        TLine l_px_1(x1, 0.0, x1, y2);
-        l_px_1.SetLineColor(kRed);
-        l_px_1.Draw("same");
-        c1->SaveAs(Form("valid_plots/px1_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_px_1(x1, 0.0, x1, y2);
+        l_true_px_1.SetLineColor(kRed);
+        l_true_px_1.Draw("same");
+        TLine l_raw_px_1(raw_bj1.Px(), 0.0, raw_bj1.Px(), y2);
+        l_raw_px_1.SetLineColor(kGreen);
+        l_raw_px_1.Draw("same");
+        c1->SaveAs(Form("valid_plots/px/px1_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
 
         hist_px_2->Draw();
         x1 = bq2.Px();
         y2 = hist_px_2->GetBinContent(hist_px_2->GetMaximumBin());
-        TLine l_px_2(x1, 0.0, x1, y2);
-        l_px_2.SetLineColor(kRed);
-        l_px_2.Draw("same");
-        c1->SaveAs(Form("valid_plots/px2_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_px_2(x1, 0.0, x1, y2);
+        l_true_px_2.SetLineColor(kRed);
+        l_true_px_2.Draw("same");
+        TLine l_raw_px_2(raw_bj2.Px(), 0.0, raw_bj2.Px(), y2);
+        l_raw_px_2.SetLineColor(kGreen);
+        l_raw_px_2.Draw("same");
+        c1->SaveAs(Form("valid_plots/px/px2_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
 
         hist_py_1->Draw();
         x1 = bq1.Py();
         y2 = hist_py_1->GetBinContent(hist_py_1->GetMaximumBin());
-        TLine l_py_1(x1, 0.0, x1, y2);
-        l_py_1.SetLineColor(kRed);
-        l_py_1.Draw("same");
-        c1->SaveAs(Form("valid_plots/py1_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_py_1(x1, 0.0, x1, y2);
+        l_true_py_1.SetLineColor(kRed);
+        l_true_py_1.Draw("same");
+        TLine l_raw_py_1(raw_bj1.Py(), 0.0, raw_bj1.Py(), y2);
+        l_raw_py_1.SetLineColor(kGreen);
+        l_raw_py_1.Draw("same");
+        c1->SaveAs(Form("valid_plots/py/py1_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
 
         hist_py_2->Draw();
         x1 = bq2.Py();
         y2 = hist_py_2->GetBinContent(hist_py_2->GetMaximumBin());
-        TLine l_py_2(x1, 0.0, x1, y2);
-        l_py_2.SetLineColor(kRed);
-        l_py_2.Draw("same");
-        c1->SaveAs(Form("valid_plots/py2_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_py_2(x1, 0.0, x1, y2);
+        l_true_py_2.SetLineColor(kRed);
+        l_true_py_2.Draw("same");
+        TLine l_raw_py_2(raw_bj2.Py(), 0.0, raw_bj2.Py(), y2);
+        l_raw_py_2.SetLineColor(kGreen);
+        l_raw_py_2.Draw("same");
+        c1->SaveAs(Form("valid_plots/py/py2_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
 
         hist_pz_1->Draw();
         x1 = bq1.Pz();
         y2 = hist_pz_1->GetBinContent(hist_pz_1->GetMaximumBin());
-        TLine l_pz_1(x1, 0.0, x1, y2);
-        l_pz_1.SetLineColor(kRed);
-        l_pz_1.Draw("same");
-        c1->SaveAs(Form("valid_plots/pz1_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_pz_1(x1, 0.0, x1, y2);
+        l_true_pz_1.SetLineColor(kRed);
+        l_true_pz_1.Draw("same");
+        TLine l_raw_pz_1(raw_bj1.Pz(), 0.0, raw_bj1.Pz(), y2);
+        l_raw_pz_1.SetLineColor(kGreen);
+        l_raw_pz_1.Draw("same");
+        c1->SaveAs(Form("valid_plots/pz/pz1_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
 
         hist_pz_2->Draw();
         x1 = bq2.Pz();
         y2 = hist_pz_2->GetBinContent(hist_pz_2->GetMaximumBin());
-        TLine l_pz_2(x1, 0.0, x1, y2);
-        l_pz_2.SetLineColor(kRed);
-        l_pz_2.Draw("same");
-        c1->SaveAs(Form("valid_plots/pz2_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_pz_2(x1, 0.0, x1, y2);
+        l_true_pz_2.SetLineColor(kRed);
+        l_true_pz_2.Draw("same");
+        TLine l_raw_pz_2(raw_bj2.Pz(), 0.0, raw_bj2.Pz(), y2);
+        l_raw_pz_2.SetLineColor(kGreen);
+        l_raw_pz_2.Draw("same");
+        c1->SaveAs(Form("valid_plots/pz/pz2_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
 
         hist_E_1->Draw();
         x1 = bq1.E();
         y2 = hist_E_1->GetBinContent(hist_E_1->GetMaximumBin());
-        TLine l_E_1(x1, 0.0, x1, y2);
-        l_E_1.SetLineColor(kRed);
-        l_E_1.Draw("same");
-        c1->SaveAs(Form("valid_plots/E1_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_E_1(x1, 0.0, x1, y2);
+        l_true_E_1.SetLineColor(kRed);
+        l_true_E_1.Draw("same");
+        TLine l_raw_E_1(raw_bj1.E(), 0.0, raw_bj1.E(), y2);
+        l_raw_E_1.SetLineColor(kGreen);
+        l_raw_E_1.Draw("same");
+        c1->SaveAs(Form("valid_plots/E/E1_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
 
         hist_E_2->Draw();
         x1 = bq2.E();
         y2 = hist_E_2->GetBinContent(hist_E_2->GetMaximumBin());
-        TLine l_E_2(x1, 0.0, x1, y2);
-        l_E_2.SetLineColor(kRed);
-        l_E_2.Draw("same");
-        c1->SaveAs(Form("valid_plots/E2_evt_%d.png", static_cast<int>(event_number)));
+        TLine l_true_E_2(x1, 0.0, x1, y2);
+        l_true_E_2.SetLineColor(kRed);
+        l_true_E_2.Draw("same");
+        TLine l_raw_E_2(raw_bj2.E(), 0.0, raw_bj2.E(), y2);
+        l_raw_E_2.SetLineColor(kGreen);
+        l_raw_E_2.Draw("same");
+        c1->SaveAs(Form("valid_plots/E/E2_%s_evt_%d.png", pdf_type, static_cast<int>(event_number)));
     }
     
     double eff_ratio_px_1 = GetEffValue(hist_ratio_px_1);
