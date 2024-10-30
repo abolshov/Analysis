@@ -6,12 +6,12 @@
 #include "TLegend.h"
 #include "TString.h"
 
-void HistManager::Add(std::string hist_name, std::string const& title, Label const& labels, Range const& range, int n_bins)
+void HistManager::Add(std::string hist_name, std::string const& title, Labels const& labels, Range const& range, int n_bins)
 {
     m_hists_1d.insert({std::move(hist_name), MakeItem1D(hist_name, title, labels, range, n_bins)});
 }
 
-void HistManager::Add(std::string hist_name, std::string const& title, Label const& labels, Range const& xrange, Range const& yrange, Bins const& bins)
+void HistManager::Add(std::string hist_name, std::string const& title, Labels const& labels, Range const& xrange, Range const& yrange, Bins const& bins)
 {
     m_hists_2d.insert({std::move(hist_name), MakeItem2D(hist_name, title, labels, xrange, yrange, bins)});
 }

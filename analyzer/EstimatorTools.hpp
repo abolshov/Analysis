@@ -8,6 +8,6 @@
 
 // computes rescaling factors for jets using rescale pdf and mass of particle->jj
 // has side effect: may swap j1 and j2
-OptionalPair JetRescFact(LorentzVectorF_t& j1, LorentzVectorF_t& j2, UHist1d_t& pdf, double mass);
+OptionalPair_t JetRescFact(LorentzVectorF_t& j1, LorentzVectorF_t& j2, UHist1d_t& pdf, double mass);
 
 #endif

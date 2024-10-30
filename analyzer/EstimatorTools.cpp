@@ -1,7 +1,7 @@
 #include "EstimatorTools.hpp"
 #include "RealQuadEqn.hpp"
 
-OptionalPair JetRescFact(LorentzVectorF_t& j1, LorentzVectorF_t& j2, UHist1d_t& pdf, double mass)
+OptionalPair_t JetRescFact(LorentzVectorF_t& j1, LorentzVectorF_t& j2, UHist1d_t& pdf, double mass)
 {
     if (j1.Pt() <= j2.Pt()) 
     {

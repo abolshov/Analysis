@@ -20,6 +20,8 @@ using HistVec2d_t = std::vector<UHist2d_t>;
 using LorentzVectorF_t = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<Float_t>>;
 using VecLVF_t = std::vector<LorentzVectorF_t>;
 
-using OptionalPair = std::optional<std::pair<double, double>>;
+using OptionalPair_t = std::optional<std::pair<double, double>>;
+using OptionalLV_t = std::optional<LorentzVectorF_t>;
+using OptionalLVPair_t = std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>;
 
 #endif

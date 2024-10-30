@@ -33,6 +33,7 @@ Event::Event(TTree* tree, Channel ch)
     // initialize gen truth variables
     for (auto const& [obj_name, branch_name]: m_branch_map)
     {
+        size_t offset = m_index.at(obj_name);
         for (auto const& var_name: KinVarNames)
         {
             if (obj_name == "met" && (var_name == "_mass" || var_name == "_eta"))
@@ -41,7 +42,6 @@ Event::Event(TTree* tree, Channel ch)
             }
 
             std::string branch_full_name = branch_name + var_name;
-            size_t offset = m_index.at(obj_name);
             AddressFunc_t ptr = truth_address_map.at(var_name);
             Float_t* address = (this->*ptr)() + offset;
             m_tree->SetBranchAddress(branch_full_name.c_str(), address);

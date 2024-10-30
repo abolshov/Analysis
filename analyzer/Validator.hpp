@@ -6,26 +6,28 @@
 #include "HistManager.hpp"
 
 #include "TFile.h"
+#include "TRandom3.h"
 
 class Validator 
 {
     public:
     Validator();
-    void FillVariables(Event const& event);
+
+    // utility functions
     inline void Set1dPDF(HistVec1d_t&& pdf1d) { pdf_1d = std::move(pdf1d); }
     inline void Set2dPDF(HistVec2d_t&& pdf2d) { pdf_2d = std::move(pdf2d); }
     inline void SetTruthIndex(std::map<std::string, size_t> const& index) { truth_index = index; }
     inline void SetPDF1dIndex(std::map<std::string, size_t> const& index) { pdf1d_index = index; }
     inline void SetPDF2dIndex(std::map<std::string, size_t> const& index) { pdf2d_index = index; }
-
-    void Clear();
-
-    void CompareJetsToQuarksB(bool use_2d_pdf, bool skip_failures = false);
     inline void ResetHistograms() { hm.Reset(); }
     inline void DrawStack(std::vector<std::string> const& names, std::string const& title, std::string const& name) { hm.DrawStack(names, title, name); }
     inline void Draw() { hm.Draw(); }
+    void FillVariables(Event const& event);
+    void ClearVariables();
 
-
+    // comparison functions
+    void Compare(long long event_number, bool use_2d_pdf, bool skip_failures = false);
+    
     private:
     std::map<std::string, size_t> truth_index;
     std::map<std::string, size_t> pdf1d_index;
@@ -44,6 +46,7 @@ class Validator
     LorentzVectorF_t recoMET; 
 
     HistManager hm;
+    TRandom3 rg;
 };
 
 #endif
