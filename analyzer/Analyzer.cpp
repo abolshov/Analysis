@@ -123,6 +123,16 @@ void Analyzer::RunValidation(Event const& event, TTree* tree)
     validator.DrawStack({"true_px_met", "corr_px_met", "raw_px_met"}, "Px comparison for MET with 1d PDF", "px_met_pdf1d_cmp");
     validator.DrawStack({"true_py_met", "corr_py_met", "raw_py_met"}, "Py comparison for MET with 1d PDF", "py_met_pdf1d_cmp");
 
+    validator.DrawStack({"true_raw_px_1_diff", "true_corr_px_1_diff"}, "Px difference comparison for pair 1 with 1d PDF", "diff_px_1_pdf1d_cmp");
+    validator.DrawStack({"true_raw_py_1_diff", "true_corr_py_1_diff"}, "Py difference comparison for pair 1 with 1d PDF", "diff_py_1_pdf1d_cmp");
+    validator.DrawStack({"true_raw_pz_1_diff", "true_corr_pz_1_diff"}, "Pz difference comparison for pair 1 with 1d PDF", "diff_pz_1_pdf1d_cmp");
+    validator.DrawStack({"true_raw_E_1_diff", "true_corr_E_1_diff"}, "E difference comparison for pair 1 with 1d PDF", "diff_E_1_pdf1d_cmp");
+
+    validator.DrawStack({"true_raw_px_2_diff", "true_corr_px_2_diff"}, "Px difference comparison for pair 2 with 1d PDF", "diff_px_2_pdf1d_cmp");
+    validator.DrawStack({"true_raw_py_2_diff", "true_corr_py_2_diff"}, "Px difference comparison for pair 2 with 1d PDF", "diff_py_2_pdf1d_cmp");
+    validator.DrawStack({"true_raw_pz_2_diff", "true_corr_pz_2_diff"}, "Px difference comparison for pair 2 with 1d PDF", "diff_pz_2_pdf1d_cmp");
+    validator.DrawStack({"true_raw_E_2_diff", "true_corr_E_2_diff"}, "Px difference comparison for pair 2 with 1d PDF", "diff_E_2_pdf1d_cmp");
+
     // reset histograms and run validation with 2d pdf
     validator.ResetHistograms();
 
@@ -156,4 +166,14 @@ void Analyzer::RunValidation(Event const& event, TTree* tree)
 
     validator.DrawStack({"true_px_met", "corr_px_met", "raw_px_met"}, "Px comparison for MET with 2d PDF", "px_met_pdf2d_cmp");
     validator.DrawStack({"true_py_met", "corr_py_met", "raw_py_met"}, "Py comparison for MET with 2d PDF", "py_met_pdf2d_cmp");
+
+    validator.DrawStack({"true_raw_px_1_diff", "true_corr_px_1_diff"}, "Px difference comparison for pair 1 with 2d PDF", "diff_px_1_pdf2d_cmp");
+    validator.DrawStack({"true_raw_py_1_diff", "true_corr_py_1_diff"}, "Py difference comparison for pair 1 with 2d PDF", "diff_py_1_pdf2d_cmp");
+    validator.DrawStack({"true_raw_pz_1_diff", "true_corr_pz_1_diff"}, "Pz difference comparison for pair 1 with 2d PDF", "diff_pz_1_pdf2d_cmp");
+    validator.DrawStack({"true_raw_E_1_diff", "true_corr_E_1_diff"}, "E difference comparison for pair 1 with 2d PDF", "diff_E_1_pdf2d_cmp");
+
+    validator.DrawStack({"true_raw_px_2_diff", "true_corr_px_2_diff"}, "Px difference comparison for pair 2 with 2d PDF", "diff_px_2_pdf2d_cmp");
+    validator.DrawStack({"true_raw_py_2_diff", "true_corr_py_2_diff"}, "Py difference comparison for pair 2 with 2d PDF", "diff_py_2_pdf2d_cmp");
+    validator.DrawStack({"true_raw_pz_2_diff", "true_corr_pz_2_diff"}, "Pz difference comparison for pair 2 with 2d PDF", "diff_pz_2_pdf2d_cmp");
+    validator.DrawStack({"true_raw_E_2_diff", "true_corr_E_2_diff"}, "E difference comparison for pair 2 with 2d PDF", "diff_E_2_pdf2d_cmp");
 }

@@ -63,14 +63,35 @@ Validator::Validator()
     hm.Add("true_E_2", "True E of quark 2", {"E, [GeV]", "Count"}, {0, 400.0}, 100);
 
     // px and py of met
-    hm.Add("true_px_met", "True (gen) Px of MET", {"Px, [GeV]", "Count"}, {-200.0, 200.0}, 100);
-    hm.Add("true_py_met", "True (gen) Py of MET", {"Py, [GeV]", "Count"}, {-200.0, 200.0}, 100);
+    hm.Add("true_px_met", "True (gen) Px of MET", {"Px, [GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_py_met", "True (gen) Py of MET", {"Py, [GeV]", "Count"}, {-400.0, 400.0}, 100);
 
-    hm.Add("corr_px_met", "Corrected Px of MET", {"Px, [GeV]", "Count"}, {-200.0, 200.0}, 100);
-    hm.Add("corr_py_met", "Corrected Py of MET", {"Py, [GeV]", "Count"}, {-200.0, 200.0}, 100);
+    hm.Add("corr_px_met", "Corrected Px of MET", {"Px, [GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("corr_py_met", "Corrected Py of MET", {"Py, [GeV]", "Count"}, {-400.0, 400.0}, 100);
 
-    hm.Add("raw_px_met", "Raw Px of MET", {"Px, [GeV]", "Count"}, {-200.0, 200.0}, 100);
-    hm.Add("raw_py_met", "Raw Py of MET", {"Py, [GeV]", "Count"}, {-200.0, 200.0}, 100);
+    hm.Add("raw_px_met", "Raw Px of MET", {"Px, [GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("raw_py_met", "Raw Py of MET", {"Py, [GeV]", "Count"}, {-400.0, 400.0}, 100);
+
+    // differences
+    hm.Add("true_corr_px_1_diff", "Difference between corrected Px and true Px of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_corr_py_1_diff", "Difference between corrected Py and true Py of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_corr_pz_1_diff", "Difference between corrected Pz and true Pz of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_corr_E_1_diff", "Difference between corrected E and true E of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+
+    hm.Add("true_corr_px_2_diff", "Difference between corrected Px and true Px of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_corr_py_2_diff", "Difference between corrected Py and true Py of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_corr_pz_2_diff", "Difference between corrected Pz and true Pz of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_corr_E_2_diff", "Difference between corrected E and true E of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+
+    hm.Add("true_raw_px_1_diff", "Difference between raw Px and true Px of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_raw_py_1_diff", "Difference between raw Py and true Py of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_raw_pz_1_diff", "Difference between raw Pz and true Pz of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_raw_E_1_diff", "Difference between raw E and true E of jet 1", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+
+    hm.Add("true_raw_px_2_diff", "Difference between raw Px and true Px of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_raw_py_2_diff", "Difference between raw Py and true Py of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_raw_pz_2_diff", "Difference between raw Pz and true Pz of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
+    hm.Add("true_raw_E_2_diff", "Difference between raw E and true E of jet 2", {"[GeV]", "Count"}, {-400.0, 400.0}, 100);
 }
 
 void Validator::FillVariables(Event const& event)
@@ -111,11 +132,14 @@ void Validator::ClearVariables()
 
 void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failures)
 {
-    // // reorder b1 and b2 to make quark with larger pt b1
-    // if (gen_truth_p4[truth_index["b1"]].Pt() < gen_truth_p4[truth_index["b2"]].Pt())
-    // {
-    //     std::swap(gen_truth_p4[truth_index["b1"]], gen_truth_p4[truth_index["b2"]]);
-    // }
+    // reorder b1 and b2 to make quark with larger pt b1
+    if (gen_truth_p4[truth_index["b1"]].Pt() < gen_truth_p4[truth_index["b2"]].Pt())
+    {
+        std::swap(gen_truth_p4[truth_index["b1"]], gen_truth_p4[truth_index["b2"]]);
+    }
+
+    LorentzVectorF_t const& bq1 = gen_truth_p4[truth_index["b1"]];
+    LorentzVectorF_t const& bq2 = gen_truth_p4[truth_index["b2"]];
 
     LorentzVectorF_t raw_bj1, raw_bj2;
     if (reco_jet_p4[0].Pt() > reco_jet_p4[1].Pt())
@@ -129,8 +153,6 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
         raw_bj1 = reco_jet_p4[1];
     }
 
-    LorentzVectorF_t const& bq1 = DeltaR(gen_truth_p4[truth_index["b1"]], raw_bj1) < DeltaR(gen_truth_p4[truth_index["b2"]], raw_bj1) ? gen_truth_p4[truth_index["b1"]] : gen_truth_p4[truth_index["b2"]];
-    LorentzVectorF_t const& bq2 = DeltaR(gen_truth_p4[truth_index["b1"]], raw_bj2) < DeltaR(gen_truth_p4[truth_index["b2"]], raw_bj2) ? gen_truth_p4[truth_index["b1"]] : gen_truth_p4[truth_index["b2"]];
     LorentzVectorF_t const& genMET = gen_truth_p4[truth_index["met"]];
 
     hm.Fill("true_px_met", genMET.Px());
@@ -150,6 +172,7 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
     hm.Fill("true_E_2", bq2.E());
 
     UHist1d_t& pdf1d = pdf_1d[pdf1d_index["pdf_b1"]];
+    UHist1d_t& pdf_mbb = pdf_1d[pdf1d_index["pdf_mbb"]];
     UHist2d_t& pdf2d = pdf_2d[pdf2d_index["pdf_b1b2"]];
 
     // histograms for accumulating effective ratio values for one event
@@ -175,8 +198,8 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
     auto hist_E_2 = std::make_unique<TH1F>("hist_E_2", "hist_E_2", 100, 0.0, 400.0);
 
     // histograms for accumulating effective MET momentum values for one event
-    auto hist_px_met = std::make_unique<TH1F>("hist_px_met", "hist_px_met", 100, -200.0, 200.0);
-    auto hist_py_met = std::make_unique<TH1F>("hist_py_met", "hist_py_met", 100, -200.0, 200.0);
+    auto hist_px_met = std::make_unique<TH1F>("hist_px_met", "hist_px_met", 100, -400.0, 400.0);
+    auto hist_py_met = std::make_unique<TH1F>("hist_py_met", "hist_py_met", 100, -400.0, 400.0);
 
     hm.Fill("raw_ratio_px_1", raw_bj1.Px()/bq1.Px());
     hm.Fill("raw_ratio_py_1", raw_bj1.Py()/bq1.Py());
@@ -234,6 +257,14 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
         bj1 *= c1;
         bj2 *= c2;
 
+        double w = 1.0;
+        if (use_2d_pdf)
+        {
+            double mbb = (bj1 + bj2).M();
+            int bin = pdf_mbb->FindBin(mbb);
+            w = pdf_mbb->GetBinContent(bin);
+        }
+
         // corrections to met due to b jets
         double dpx_bjet = -(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
         double dpy_bjet = -(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
@@ -247,43 +278,71 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
         double reco_met_corr_px = reco_met_px + dpx_bjet + dpx_smear;
         double reco_met_corr_py = reco_met_py + dpy_bjet + dpy_smear;
 
+        if (reco_met_corr_px > 400.0)
+        {
+            std::cout << "event " << event_number << ":\n";
+            std::cout << "\tc1=" << c1 << ", c2=" << c2 << "\n";
+
+            std::cout << "\traw_bj1=(" << raw_bj1.E() << ", " << raw_bj1.Px() << ", " << raw_bj1.Py() << ", " << raw_bj1.Pz() << ")\n";
+            std::cout << "\tcor_bj1=(" << bj1.E() << ", " << bj1.Px() << ", " << bj1.Py() << ", " << bj1.Pz() << ")\n";  
+
+            std::cout << "\traw_bj2=(" << raw_bj2.E() << ", " << raw_bj2.Px() << ", " << raw_bj2.Py() << ", " << raw_bj2.Pz() << ")\n";
+            std::cout << "\tcor_bj2=(" << bj2.E() << ", " << bj2.Px() << ", " << bj2.Py() << ", " << bj2.Pz() << ")\n";  
+
+            std::cout << "\tm(bb)=" << (bj1 + bj2).M() << "\n";
+            std::cout << "\tw=" << w << "\n";
+
+            std::cout << "\treco_met_corr_px=" << reco_met_corr_px 
+                      << ", reco_met_px=" << reco_met_px 
+                      << ", dpx_bjet=" << dpx_bjet
+                      << ", dpx_smear=" << dpx_smear << "\n";
+
+            std::cout << "\treco_met_corr_py=" << reco_met_corr_py 
+                      << ", reco_met_py=" << reco_met_py 
+                      << ", dpy_bjet=" << dpy_bjet
+                      << ", dpy_smear=" << dpy_smear << "\n";
+            std::cout << "\n";
+
+            std::cin.get();
+        }
+
         hist_px_met->Fill(reco_met_corr_px);
         hist_py_met->Fill(reco_met_corr_py);
 
-        hist_px_1->Fill(bj1.Px());
-        hist_py_1->Fill(bj1.Py());
-        hist_pz_1->Fill(bj1.Pz());
-        hist_E_1->Fill(bj1.E());
+        hist_px_1->Fill(bj1.Px(), w);
+        hist_py_1->Fill(bj1.Py(), w);
+        hist_pz_1->Fill(bj1.Pz(), w);
+        hist_E_1->Fill(bj1.E(), w);
 
-        hist_px_2->Fill(bj2.Px());
-        hist_py_2->Fill(bj2.Py());
-        hist_pz_2->Fill(bj2.Pz());
-        hist_E_2->Fill(bj2.E());
+        hist_px_2->Fill(bj2.Px(), w);
+        hist_py_2->Fill(bj2.Py(), w);
+        hist_pz_2->Fill(bj2.Pz(), w);
+        hist_E_2->Fill(bj2.E(), w);
 
         double ratio_px_1 = bj1.Px()/bq1.Px();
         double ratio_py_1 = bj1.Py()/bq1.Py();
         double ratio_pz_1 = bj1.Pz()/bq1.Pz();
         double ratio_E_1 = bj1.E()/bq1.E();
 
-        hist_ratio_px_1->Fill(ratio_px_1);
-        hist_ratio_py_1->Fill(ratio_py_1);
-        hist_ratio_pz_1->Fill(ratio_pz_1);
-        hist_ratio_E_1->Fill(ratio_E_1);
+        hist_ratio_px_1->Fill(ratio_px_1, w);
+        hist_ratio_py_1->Fill(ratio_py_1, w);
+        hist_ratio_pz_1->Fill(ratio_pz_1, w);
+        hist_ratio_E_1->Fill(ratio_E_1, w);
 
         double ratio_px_2 = bj2.Px()/bq2.Px();
         double ratio_py_2 = bj2.Py()/bq2.Py();
         double ratio_pz_2 = bj2.Pz()/bq2.Pz();
         double ratio_E_2 = bj2.E()/bq2.E();
 
-        hist_ratio_px_2->Fill(ratio_px_2);
-        hist_ratio_py_2->Fill(ratio_py_2);
-        hist_ratio_pz_2->Fill(ratio_pz_2);
-        hist_ratio_E_2->Fill(ratio_E_2);
+        hist_ratio_px_2->Fill(ratio_px_2, w);
+        hist_ratio_py_2->Fill(ratio_py_2, w);
+        hist_ratio_pz_2->Fill(ratio_pz_2, w);
+        hist_ratio_E_2->Fill(ratio_E_2, w);
     }
 
     auto GetEffValue = [](UHist1d_t& h){ return h->GetEntries() ? h->GetXaxis()->GetBinCenter(h->GetMaximumBin()) : 0.0; };
 
-    if (event_number % 100 == 54)
+    if (event_number % 413 == 54)
     {
         auto c1 = std::make_unique<TCanvas>("c1", "c1");
 
@@ -425,6 +484,26 @@ void Validator::Compare(long long event_number, bool use_2d_pdf, bool skip_failu
 
     hm.Fill("corr_px_met", eff_px_met);
     hm.Fill("corr_py_met", eff_py_met);
+
+    hm.Fill("true_corr_px_1_diff", bq1.Px() - eff_px_1);
+    hm.Fill("true_corr_py_1_diff", bq1.Py() - eff_py_1);
+    hm.Fill("true_corr_pz_1_diff", bq1.Pz() - eff_pz_1);
+    hm.Fill("true_corr_E_1_diff", bq1.E() - eff_E_1);
+
+    hm.Fill("true_corr_px_2_diff", bq2.Px() - eff_px_2);
+    hm.Fill("true_corr_py_2_diff", bq2.Py() - eff_py_2);
+    hm.Fill("true_corr_pz_2_diff", bq2.Pz() - eff_pz_2);
+    hm.Fill("true_corr_E_2_diff", bq2.E() - eff_E_2);
+
+    hm.Fill("true_raw_px_1_diff", bq1.Px() - raw_bj1.Px());
+    hm.Fill("true_raw_py_1_diff", bq1.Py() - raw_bj1.Py());
+    hm.Fill("true_raw_pz_1_diff", bq1.Pz() - raw_bj1.Pz());
+    hm.Fill("true_raw_E_1_diff", bq1.E() - raw_bj1.E());
+
+    hm.Fill("true_raw_px_2_diff", bq2.Px() - raw_bj2.Px());
+    hm.Fill("true_raw_py_2_diff", bq2.Py() - raw_bj2.Py());
+    hm.Fill("true_raw_pz_2_diff", bq2.Pz() - raw_bj2.Pz());
+    hm.Fill("true_raw_E_2_diff", bq2.E() - raw_bj2.E());
 
     ClearVariables();
 }
