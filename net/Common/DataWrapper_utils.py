@@ -81,15 +81,25 @@ def IsCorrectLepton(branches, lep):
     return lep_correct
 
 
-def Acceptance(branches):
-    jet_multiplicity = (branches['ncentralJet'] >= 4)
+def Acceptance(branches, n_lep):
+    jet_multiplicity = (branches['ncentralJet'] >= 4) if n_lep == 1 else (branches['ncentralJet'] >= 2)
 
     lep1_correct = IsCorrectLepton(branches, 1)
+    lep2_correct = IsCorrectLepton(branches, 2)
+    lep_correct = lep1_correct if n_lep == 1 else np.logical_and(lep1_correct, lep2_correct)
 
-    light_quarks_accept = ((branches['genV2prod1_pt'] > 20.0) & (np.abs(branches['genV2prod1_eta']) < 5.0)) & ((branches['genV2prod2_pt'] > 20.0) & (np.abs(branches['genV2prod2_eta']) < 5.0))
-    b_quarks_accept = ((branches['genb1_pt'] > 20.0) & (np.abs(branches['genb1_eta']) < 2.5)) & ((branches['genb2_pt'] > 20.0) & (np.abs(branches['genb2_eta']) < 2.5))
-    quarks_accept = light_quarks_accept & b_quarks_accept
+    print(f"Lepton acceptance efficiency: {ak.count_nonzero(lep_correct)/ak.count(lep_correct):.2f}")
 
-    matching = (branches['genV2prod1_vis_pt'] > 0.0) & (branches['genV2prod2_vis_pt'] > 0.0) & (branches['genb1_vis_pt'] > 0.0) & (branches['genb2_vis_pt'] > 0.0)
+    light_quark_accept = ak.Array(np.ones(len(branches)) == 1)
+    light_quark_matching = ak.Array(np.ones(len(branches)) == 1)
+    if n_lep == 1:
+        light_quark_accept = ((branches['genV2prod1_pt'] > 20.0) & (np.abs(branches['genV2prod1_eta']) < 5.0)) & ((branches['genV2prod2_pt'] > 20.0) & (np.abs(branches['genV2prod2_eta']) < 5.0))
+        light_quark_matching = (branches['genV2prod1_vis_pt'] > 0.0) & (branches['genV2prod2_vis_pt'] > 0.0)
 
-    return quarks_accept & matching & jet_multiplicity & lep1_correct
+    b_quark_accept = ((branches['genb1_pt'] > 20.0) & (np.abs(branches['genb1_eta']) < 2.5)) & ((branches['genb2_pt'] > 20.0) & (np.abs(branches['genb2_eta']) < 2.5))
+    b_quark_matching = (branches['genb1_vis_pt'] > 0.0) & (branches['genb2_vis_pt'] > 0.0)
+    
+    quark_accept = light_quark_accept & b_quark_accept
+    quark_matching = light_quark_matching & b_quark_matching
+
+    return quark_accept & quark_matching & jet_multiplicity & lep_correct

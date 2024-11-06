@@ -10,12 +10,13 @@ from Common.JetNet_utils import MXLossFunc, GetMXPred
 class JetNet():
     def __init__(self, cfg):
         n_jets = cfg['n_jets']
+        n_lep = cfg['n_lep']
         jet_obs = cfg['jet_observables']
         lep_obs = cfg['lep_observables']
         met_obs = cfg['met_observables']
 
-        jet_featrues = [f"centralJet{i}_{obs}" for i in range(n_jets) for obs in jet_obs]
-        lep_features = [f"lep1_{var}" for var in lep_obs]
+        jet_featrues = [f"centralJet{i + 1}_{obs}" for i in range(n_jets) for obs in jet_obs]
+        lep_features = [f"lep{i + 1}_{var}" for i in range(n_lep) for var in lep_obs]
         met_features = [f"met_{var}" for var in met_obs]
         features = jet_featrues + lep_features + met_features
         
