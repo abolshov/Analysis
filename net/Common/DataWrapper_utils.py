@@ -103,3 +103,11 @@ def Acceptance(branches, n_lep):
     quark_matching = light_quark_matching & b_quark_matching
 
     return quark_accept & quark_matching & jet_multiplicity & lep_correct
+
+
+def TransformPNetFactorsToResolutions(df, n_jets):
+    for i in range(n_jets):
+        name = f"centralJet{i + 1}"
+        pt = np.sqrt(df[f"{name}_px"]*df[f"{name}_px"] + df[f"{name}_py"]*df[f"{name}_py"])
+        pt *= df[f"{name}_PNetRegPtRawCorr"]
+        df[f"{name}_PNetRegPtRawRes"] = df[f"{name}_PNetRegPtRawRes"]*pt

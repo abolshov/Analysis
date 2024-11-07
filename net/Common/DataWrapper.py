@@ -126,6 +126,7 @@ class DataWrapper():
         data_dict = d1 | d2
 
         df = pd.DataFrame.from_dict(data_dict)
+        TransformPNetFactorsToResolutions(df, self.n_jets)
         print(f"\tnumber of events selected: {df.shape[0]}")
         self.data = pd.concat([self.data, df]) 
 
@@ -141,7 +142,7 @@ class DataWrapper():
         self.data = shuffle(self.data)
 
 
-    def TrainTestSplit(self):
+    def TrainTestSplit(self, is_test):
         self.Shuffle()
         train_df = self.SelectEvents(self.train_val, self.modulo)
         test_df = self.SelectEvents(self.test_val, self.modulo)
@@ -159,7 +160,10 @@ class DataWrapper():
         self.test_features = test_df[self.features] # contain all possible centralJet variables for all central jets (for test)
         self.train_labels = train_df[self.labels] # contain X_mass
 
-        print(f"Training dataset contains {len(train_df)} events")
+        if is_test:
+            print(f"Test dataset contains {len(test_df)} events")
+        else:
+            print(f"Training dataset contains {len(train_df)} events")
 
 
     def SelectEvents(self, value, modulo):

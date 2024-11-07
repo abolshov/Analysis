@@ -28,7 +28,8 @@ def main():
         dw = DataWrapper(cfg)
         dw.ReadFiles(test_files)
 
-        dw.TrainTestSplit()  
+        is_test = True
+        dw.TrainTestSplit(is_test)  
         model_name = cfg['name']
 
         net = JetNet(cfg)

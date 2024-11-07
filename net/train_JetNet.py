@@ -27,8 +27,9 @@ def main():
         dw = DataWrapper(cfg)
         dw.ReadFiles(train_files)
         
-        dw.TrainTestSplit()        
-
+        is_test = False
+        dw.TrainTestSplit(is_test)      
+          
         net = JetNet(cfg)
         net.ConfigureModel(dw.train_features.shape)
         history = net.Fit(dw.train_features, dw.train_labels)
