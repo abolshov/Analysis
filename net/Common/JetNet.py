@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import uproot
 import pandas as pd
+import os
 
 from Common.JetNet_utils import MXLossFunc, GetMXPred
 
@@ -22,6 +23,8 @@ class JetNet():
         
         # self.features = features
         # self.labels = cfg['labels']
+
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
         # training parameters
         self.lr = cfg['learning_rate']

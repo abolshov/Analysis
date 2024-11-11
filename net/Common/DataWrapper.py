@@ -43,31 +43,32 @@ class DataWrapper():
 
 
     def ReadFile(self, file_name):
-        print(f"Reading from {file_name}:")
         file = uproot.open(file_name)
         tree = file[self.tree_name]
         branches = tree.arrays()
 
         auxilliary_columns = self.labels + self.extra_data
-        df = pd.DataFrame({s: branches[s].to_numpy() for s in auxilliary_columns})
+        df = pd.DataFrame({s: branches[s].to_numpy().astype(float) for s in auxilliary_columns})
 
-        AddKinematicFeatures(df, branches, self.n_lep, self.n_jets)
-        AddJetFeatures(df, branches, self.jet_obs, self.n_jets)
+        df = AddKinematicFeatures(df, branches, self.n_lep, self.n_jets)
+        df = AddJetFeatures(df, branches, self.jet_obs, self.n_jets)
 
         self.features = [name for name in df.columns if name not in auxilliary_columns]
 
         if self.apply_fiducial_cut:
-            ApplyFiducialSelection(df, branches, self.n_lep)
+            df = ApplyFiducialSelection(df, branches, self.n_lep)
 
         to_drop = [name for name in df.columns if name not in self.features + auxilliary_columns]
-        print("columns to drop:")
-        print(to_drop)
         df = df.drop(columns=to_drop)
 
-        if self.data:
+        # df = TransformPNetFactorsToResolutions(df, self.n_jets)
+
+        if self.data is not None:
             self.data = pd.concat([self.data, df]) 
         else:
             self.data = df
+
+        print(f"Reading from {file_name}: {df.shape[0]} events")
 
 
     def ReadFiles(self, input_files):
@@ -81,46 +82,25 @@ class DataWrapper():
         self.data = shuffle(self.data)
 
 
-    def TrainTestSplit(self, is_test):
-        if not is_test:
-            self.Shuffle()
-        train_df = self.SelectEvents(self.train_val, self.modulo)
-        test_df = self.SelectEvents(self.test_val, self.modulo)
-
-        self.test_labels = test_df[self.labels] # true X_mass (and nothing else!!!)
-        test_df = test_df.drop(self.labels, axis=1)
-        
-        self.train_events = train_df['event'] 
-        self.test_events = test_df['event']
-
-        test_df = test_df.drop(['event'], axis=1)
-        train_df = train_df.drop(['event'], axis=1)
-       
-        self.train_features = train_df[self.features] # contain all possible centralJet variables for all central jets (for train)
-        self.test_features = test_df[self.features] # contain all possible centralJet variables for all central jets (for test)
-        self.train_labels = train_df[self.labels] # contain X_mass
-
-        if is_test:
-            print(f"Test dataset contains {len(test_df)} events")
-        else:
-            print(f"Training dataset contains {len(train_df)} events")
-
-
     def SelectEvents(self, value, modulo):
         return self.data[self.data['event'] % modulo == value]
 
 
     def FormTrainSet(self):
         self.Shuffle()
-        self.train_data = SelectEvents(self.train_val, self.modulo)
+        self.train_data = self.SelectEvents(self.train_val, self.modulo)
 
         self.train_labels = self.train_data[self.labels]
         self.train_features = self.train_data[self.features]
 
+        print(f"Training set contains {self.train_features.shape[1]} features for {self.train_features.shape[0]} events")
+
 
     def FormTestSet(self):
-        self.test_data = SelectEvents(self.test_val, self.modulo)
+        self.test_data = self.SelectEvents(self.test_val, self.modulo)
         self.test_features = self.test_data[self.features]
+        self.test_labels = self.test_data[self.labels]
+        self.test_events = self.test_data['event']
 
 
     def Print(self):

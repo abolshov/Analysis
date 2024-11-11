@@ -27,10 +27,12 @@ def IsCorrectLepton(df, lep):
 
 def TransformPNetFactorsToResolutions(df, n_jets):
     for i in range(n_jets):
-        name = f"centralJet{i + 1}"
+        name = f"jet{i + 1}"
         pt = np.sqrt(df[f"{name}_px"]*df[f"{name}_px"] + df[f"{name}_py"]*df[f"{name}_py"])
         pt *= df[f"{name}_PNetRegPtRawCorr"]
         df[f"{name}_PNetRegPtRawRes"] = df[f"{name}_PNetRegPtRawRes"]*pt
+
+    return df
 
 
 # add px, py, pz, E of n objects with base name to df from array of their 4-vectors
@@ -44,12 +46,16 @@ def AddKinematics(df, p4, base_name, n):
                 'pz': lambda x: x.pz,
                 'E': lambda x: x.E}
 
+    tmp_dict = {}
     for obj in objects:
         idx = int(obj[-1]) - 1
         obj_p4 = p4[:, idx]
         for var in variables:
             name = f'{obj}_{var}'
-            df[name] = func_map[var](obj_p4).to_numpy()
+            tmp_dict[name] = func_map[var](obj_p4).to_numpy()
+
+    df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
+    return df
 
 
 # create df with px, py, pz, E of jets, leptons and met
@@ -63,7 +69,7 @@ def AddKinematicFeatures(df, branches, n_lep, n_jet):
     mass = ak.fill_none(ak.pad_none(branches['centralJet_mass'], n_jet_max), 0.0)
     jet = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
     jet = jet[:, :n_jet]
-    AddKinematics(df, jet, "jet", n_jet)
+    df = AddKinematics(df, jet, "jet", n_jet)
 
     lep1_p4 = vector.zip({'pt': branches['lep1_pt'],
                          'eta': branches['lep1_eta'],
@@ -78,11 +84,13 @@ def AddKinematicFeatures(df, branches, n_lep, n_jet):
                               'phi': branches['lep2_phi'],
                               'mass': branches['lep2_mass']})
     lep = ak.concatenate([ak.unflatten(lep1_p4, 1), ak.unflatten(lep2_p4, 1)], axis=1)
-    AddKinematics(df, lep, "lep", n_lep)
+    df = AddKinematics(df, lep, "lep", n_lep)
 
     met_p4 = lep1_p4 = vector.zip({'pt': branches['PuppiMET_pt'], 'eta': 0.0, 'phi': branches['PuppiMET_phi'], 'mass': 0.0})
     df['met_px'] = met_p4.px.to_numpy()
     df['met_py'] = met_p4.py.to_numpy()
+
+    return df
 
 
 def IsKinematic(feature_name):
@@ -101,9 +109,10 @@ def AddJetFeatures(df, branches, feature_list, n):
         n_jet_max = np.max(ak.count(branches['centralJet_pt'], axis=1))
         feature_branch = ak.fill_none(ak.pad_none(branches[branch_name], n_jet_max), 0.0)
 
-        for i in range(n):
-            feature_name = f"jet{i + 1}_{feature}" 
-            df[feature_name] = feature_branch[:, i].to_numpy()
+        tmp_dict = {f"jet{i + 1}_{feature}": feature_branch[:, i].to_numpy() for i in range(n)}
+        df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
+        
+    return df
 
 
 def ApplyFiducialSelection(df, branches, n_lep):
@@ -117,30 +126,22 @@ def ApplyFiducialSelection(df, branches, n_lep):
                         'phi': branches['genb2_phi'],
                         'mass': branches['genb2_mass']})
 
-    df['bb_dr'] = b1_p4.deltaR(b2_p4)
-    df['b1_pt'] = branches['genb1_pt'].to_numpy()
-    df['b1_eta'] = branches['genb1_eta'].to_numpy()
-    df['b2_pt'] = branches['genb2_pt'].to_numpy()
-    df['b2_eta'] = branches['genb2_eta'].to_numpy()
-    df['b1_vis_pt'] = branches['genb1_vis_pt'].to_numpy()
-    df['b2_vis_pt'] = branches['genb2_vis_pt'].to_numpy()
-
-    df['n_jet'] = branches['ncentralJet'].to_numpy()
-
-    df['lep1_type'] = branches['lep1_type'].to_numpy()
-    df['lep1_genLep_kind'] = branches['lep1_genLep_kind'].to_numpy()
-    df['lep2_type'] = branches['lep2_type'].to_numpy()
-    df['lep2_genLep_kind'] = branches['lep2_genLep_kind'].to_numpy()
-
-    # apply cuts
-    df = df[df['n_jet'] >= 2]
-    df = df[df['b1_vis_pt'] > 0.0]
-    df = df[df['b2_vis_pt'] > 0.0]
-    df = df[df['bb_dr'] > 0.4]
-    df = df[df['b1_pt'] > 20.0]
-    df = df[df['b2_pt'] > 20.0]
-    df = df[np.abs(df['b1_eta']) < 2.5]
-    df = df[np.abs(df['b2_eta']) < 2.5]
+    col_names = ['b1_pt', 'b2_pt', 'b1_eta', 'b2_eta', 'b1_vis_pt', 'b2_vis_pt',
+                 'n_jet', 'lep1_type', 'lep2_type', 'lep1_genLep_kind', 'lep2_genLep_kind']
+    branch_name_map = {'b1_pt': 'genb1_pt',
+                       'b1_eta': 'genb1_eta',
+                       'b2_pt': 'genb2_pt',
+                       'b2_eta': 'genb2_eta',
+                       'b1_vis_pt': 'genb1_vis_pt',
+                       'b2_vis_pt': 'genb2_vis_pt',
+                       'n_jet': 'ncentralJet',
+                       'lep1_type': 'lep1_type', 
+                       'lep2_type': 'lep2_type', 
+                       'lep1_genLep_kind': 'lep1_genLep_kind', 
+                       'lep2_genLep_kind': 'lep2_genLep_kind'}
+    tmp_dict = {name: branches[branch_name_map[name]].to_numpy() for name in col_names}
+    tmp_dict['bb_dr'] = b1_p4.deltaR(b2_p4)
+    df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
 
     if n_lep == 1:
         q1_p4 = vector.zip({'pt': branches['genV2prod1_pt'],
@@ -153,14 +154,35 @@ def ApplyFiducialSelection(df, branches, n_lep):
                             'phi': branches['genV2prod2_phi'],
                             'mass': branches['genV2prod2_mass']})
 
-        df['qq_dr'] = q1_p4.deltaR(q2_p4)
-        df['q1_pt'] = branches['genV2prod1_pt'].to_numpy()
-        df['q1_eta'] = branches['genV2prod1_eta'].to_numpy()
-        df['q2_pt'] = branches['genV2prod2_pt'].to_numpy()
-        df['q2_eta'] = branches['genV2prod2_eta'].to_numpy()
-        df['q1_vis_pt'] = branches['genV2prod1_vis_pt'].to_numpy()
-        df['q2_vis_pt'] = branches['genV2prod2_vis_pt'].to_numpy()
+        col_names = ['q1_pt', 'q2_pt', 'q1_eta', 'q2_eta', 'q1_vis_pt', 'q2_vis_pt']
+        branch_name_map = {'q1_pt': 'genV2prod1_pt',
+                           'q1_eta': 'genV2prod1_eta',
+                           'q2_pt': 'genV2prod2_pt',
+                           'q2_eta': 'genV2prod2_eta',
+                           'q1_vis_pt': 'genV2prod1_vis_pt',
+                           'q2_vis_pt': 'genV2prod2_vis_pt'}
 
+        tmp_dict = {name: branches[branch_name_map[name]].to_numpy() for name in col_names}
+        tmp_dict['qq_dr'] = q1_p4.deltaR(q2_p4)
+        df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
+
+    # apply cuts
+    # cuts to b quarks are applied anyway
+    df = df[df['b1_vis_pt'] > 0.0]
+    df = df[df['b2_vis_pt'] > 0.0]
+    df = df[df['bb_dr'] > 0.4]
+    df = df[df['b1_pt'] > 20.0]
+    df = df[df['b2_pt'] > 20.0]
+    df = df[np.abs(df['b1_eta']) < 2.5]
+    df = df[np.abs(df['b2_eta']) < 2.5]
+
+    if n_lep == 2:
+        # cuts specific to DL channel
+        df = df[df['n_jet'] >= 2]
+        df = df[IsCorrectLepton(df, 1)]
+        df = df[IsCorrectLepton(df, 2)]
+    elif n_lep == 1:
+        # cuts specific to SL channel
         df = df[df['n_jet'] >= 4]
         df = df[df['q1_vis_pt'] > 0.0]
         df = df[df['q2_vis_pt'] > 0.0]
@@ -170,8 +192,7 @@ def ApplyFiducialSelection(df, branches, n_lep):
         df = df[np.abs(df['q1_eta']) < 5.0]
         df = df[np.abs(df['q2_eta']) < 5.0]
         df = df[IsCorrectLepton(df, 1)]
-    elif n_lep == 2:
-        df = df[IsCorrectLepton(df, 1)]
-        df = df[IsCorrectLepton(df, 2)]
     else:
         raise RuntimeError("Wrong number of leptons")
+
+    return df
