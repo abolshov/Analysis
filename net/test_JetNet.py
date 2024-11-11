@@ -41,7 +41,8 @@ def main():
         w = np.quantile(pred_df['X_mass_pred'], 0.84) - np.quantile(pred_df['X_mass_pred'], 0.16)
         print(f"width   {w:.6f}")
         PlotPrediction(dw.test_labels, pred_df, model_name)
-        np.savetxt(f"Output/output_{model_name}.txt", pred_df.values, fmt='%10.5f')
+        np.savetxt(f"Output/mass_{model_name}.txt", pred_df.values, fmt='%10.5f')
+        np.savetxt(f"Output/eventIds_{model_name}.txt", dw.test_events, fmt='%10.1i')
     
     
 if __name__ == '__main__':

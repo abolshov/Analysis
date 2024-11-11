@@ -9,19 +9,19 @@ from Common.JetNet_utils import MXLossFunc, GetMXPred
 
 class JetNet():
     def __init__(self, cfg):
-        n_jets = cfg['n_jets']
-        n_lep = cfg['n_lep']
-        jet_obs = cfg['jet_observables']
-        lep_obs = cfg['lep_observables']
-        met_obs = cfg['met_observables']
+        # n_jets = cfg['n_jets']
+        # n_lep = cfg['n_lep']
+        # jet_obs = cfg['jet_observables']
+        # lep_obs = cfg['lep_observables']
+        # met_obs = cfg['met_observables']
 
-        jet_featrues = [f"centralJet{i + 1}_{obs}" for i in range(n_jets) for obs in jet_obs]
-        lep_features = [f"lep{i + 1}_{var}" for i in range(n_lep) for var in lep_obs]
-        met_features = [f"met_{var}" for var in met_obs]
-        features = jet_featrues + lep_features + met_features
+        # jet_featrues = [f"centralJet{i + 1}_{obs}" for i in range(n_jets) for obs in jet_obs]
+        # lep_features = [f"lep{i + 1}_{var}" for i in range(n_lep) for var in lep_obs]
+        # met_features = [f"met_{var}" for var in met_obs]
+        # features = jet_featrues + lep_features + met_features
         
-        self.features = features
-        self.labels = cfg['labels']
+        # self.features = features
+        # self.labels = cfg['labels']
 
         # training parameters
         self.lr = cfg['learning_rate']
@@ -57,8 +57,8 @@ class JetNet():
 
 
     def Predict(self, test_features):
-        if not np.all(test_features.columns == self.features):
-            raise RuntimeError(f"Features pased for prediction do not match expected features: passed {test_features.columns}, while expected {self.features}")
+        # if not np.all(test_features.columns == self.features):
+        #     raise RuntimeError(f"Features pased for prediction do not match expected features: passed {test_features.columns}, while expected {self.features}")
         # returns predicted variables: px, py, pz of H->bb and H->WW
         output = self.model.predict(test_features)
         pred_df = pd.DataFrame({"X_mass_pred": GetMXPred(output).numpy().ravel()})

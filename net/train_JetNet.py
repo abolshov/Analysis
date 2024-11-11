@@ -26,15 +26,16 @@ def main():
 
         dw = DataWrapper(cfg)
         dw.ReadFiles(train_files)
+        dw.Print()
         
-        is_test = False
-        dw.TrainTestSplit(is_test)      
+        # is_test = False
+        # dw.TrainTestSplit(is_test)      
           
-        net = JetNet(cfg)
-        net.ConfigureModel(dw.train_features.shape)
-        history = net.Fit(dw.train_features, dw.train_labels)
-        net.SaveModel(path_to_model)
-        PlotLoss(history, cfg['name'])
+        # net = JetNet(cfg)
+        # net.ConfigureModel(dw.train_features.shape)
+        # history = net.Fit(dw.train_features, dw.train_labels)
+        # net.SaveModel(path_to_model)
+        # PlotLoss(history, cfg['name'])
 
     
 if __name__ == '__main__':
