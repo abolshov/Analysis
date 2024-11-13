@@ -31,6 +31,7 @@ class DataWrapper():
         self.qq_boosted = cfg['qq_boosted']
 
         self.apply_fiducial_cut = cfg['apply_fiducial_cut']
+        self.is_bkg = cfg['is_bkg']
 
         if not self.bb_resolved and not self.bb_boosted:
             raise RuntimeError("Wrong topology configuration provided: check bb_resolved and bb_boosted parameters")
@@ -56,7 +57,10 @@ class DataWrapper():
         self.features = [name for name in df.columns if name not in auxilliary_columns]
 
         if self.apply_fiducial_cut:
-            df = ApplyFiducialSelection(df, branches, self.n_lep)
+            if not self.is_bkg:
+                df = ApplySignalFiducialSelection(df, branches, self.n_lep)
+            else:
+                df = ApplyBkgFiducialSelection(df, branches, self.n_lep)
 
         to_drop = [name for name in df.columns if name not in self.features + auxilliary_columns]
         df = df.drop(columns=to_drop)

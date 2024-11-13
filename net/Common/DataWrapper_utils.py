@@ -60,21 +60,19 @@ def AddKinematics(df, p4, base_name, n):
 
 # create df with px, py, pz, E of jets, leptons and met
 def AddKinematicFeatures(df, branches, n_lep, n_jet):
-    # make an array of jet p4 with resulting shape (n_events, n_jet_max)
-    # TODO: process case when n_jet > n_jet_max
-    n_jet_max = np.max(ak.count(branches['centralJet_pt'], axis=1))
-    pt = ak.fill_none(ak.pad_none(branches['centralJet_pt'], n_jet_max), 0.0)
-    eta = ak.fill_none(ak.pad_none(branches['centralJet_eta'], n_jet_max), 0.0)
-    phi = ak.fill_none(ak.pad_none(branches['centralJet_phi'], n_jet_max), 0.0)
-    mass = ak.fill_none(ak.pad_none(branches['centralJet_mass'], n_jet_max), 0.0)
+    # make an array of jet p4 with resulting shape (n_events, n_jet)
+    pt = ak.fill_none(ak.pad_none(branches['centralJet_pt'], n_jet), 0.0)
+    eta = ak.fill_none(ak.pad_none(branches['centralJet_eta'], n_jet), 0.0)
+    phi = ak.fill_none(ak.pad_none(branches['centralJet_phi'], n_jet), 0.0)
+    mass = ak.fill_none(ak.pad_none(branches['centralJet_mass'], n_jet), 0.0)
     jet = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
     jet = jet[:, :n_jet]
     df = AddKinematics(df, jet, "jet", n_jet)
 
     lep1_p4 = vector.zip({'pt': branches['lep1_pt'],
-                         'eta': branches['lep1_eta'],
-                         'phi': branches['lep1_phi'],
-                         'mass': branches['lep1_mass']})
+                          'eta': branches['lep1_eta'],
+                          'phi': branches['lep1_phi'],
+                          'mass': branches['lep1_mass']})
     sz = len(lep1_p4)
     zero_arr = ak.Array(np.zeros(sz))
     lep2_p4 = vector.zip({'pt': zero_arr, 'eta': zero_arr, 'phi': zero_arr, 'mass': zero_arr})
@@ -100,22 +98,46 @@ def IsKinematic(feature_name):
     return False
 
 
-def AddJetFeatures(df, branches, feature_list, n):
+def AddJetFeatures(df, branches, feature_list, n_jet):
     for feature in feature_list:
         if IsKinematic(feature):
             continue
         
         branch_name = f"centralJet_{feature}"
-        n_jet_max = np.max(ak.count(branches['centralJet_pt'], axis=1))
-        feature_branch = ak.fill_none(ak.pad_none(branches[branch_name], n_jet_max), 0.0)
+        feature_branch = ak.fill_none(ak.pad_none(branches[branch_name], n_jet), 0.0)
 
-        tmp_dict = {f"jet{i + 1}_{feature}": feature_branch[:, i].to_numpy() for i in range(n)}
+        tmp_dict = {f"jet{i + 1}_{feature}": feature_branch[:, i].to_numpy() for i in range(n_jet)}
         df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
         
     return df
 
 
-def ApplyFiducialSelection(df, branches, n_lep):
+def ApplyBkgFiducialSelection(df, branches, n_lep):
+    col_names = ['n_jet', 'lep1_type', 'lep2_type', 'lep1_genLep_kind', 'lep2_genLep_kind']
+    branch_name_map = {'n_jet': 'ncentralJet',
+                       'lep1_type': 'lep1_type', 
+                       'lep2_type': 'lep2_type', 
+                       'lep1_genLep_kind': 'lep1_genLep_kind', 
+                       'lep2_genLep_kind': 'lep2_genLep_kind'}
+    tmp_dict = {name: branches[branch_name_map[name]].to_numpy() for name in col_names}
+    df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
+
+    if n_lep == 2:
+        # cuts specific to DL channel
+        df = df[df['n_jet'] >= 2]
+        df = df[IsCorrectLepton(df, 1)]
+        df = df[IsCorrectLepton(df, 2)]
+    elif n_lep == 1:
+        # cuts specific to SL channel
+        df = df[df['n_jet'] >= 4]
+        df = df[IsCorrectLepton(df, 1)]
+    else:
+        raise RuntimeError("Wrong number of leptons")
+
+    return df
+
+
+def ApplySignalFiducialSelection(df, branches, n_lep):
     b1_p4 = vector.zip({'pt': branches['genb1_pt'],
                        'eta': branches['genb1_eta'],
                        'phi': branches['genb1_phi'],
