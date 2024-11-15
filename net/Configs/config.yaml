@@ -1,0 +1,38 @@
+batch_size: 128
+learning_rate: 0.0001
+n_epochs: 50
+name: 'dl_test_model_4'
+topology:
+- 256
+- 128
+- 64
+- 64
+- 16
+- 8
+valid_split: 0.2
+verbosity: 1
+tree_name: 'Events'
+jet_observables:
+- 'btagPNetB' 
+- 'PNetRegPtRawCorr'
+- 'PNetRegPtRawCorrNeutrino' 
+- 'PNetRegPtRawRes'
+- 'btagPNetCvB'
+- 'btagPNetCvL'
+- 'btagPNetCvNotB'
+- 'btagPNetQvG'
+n_jets: 10
+labels:
+- 'X_mass'
+extra_data:
+- 'event'
+modulo: 2
+train_val: 0
+test_val: 1
+n_lep: 2
+bb_resolved: True
+qq_resolved: True
+bb_boosted: False
+qq_boosted: False
+apply_fiducial_cut: True
+is_bkg: False
