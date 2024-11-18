@@ -68,7 +68,7 @@ def AddKinematicFeatures(df, branches, n_lep, n_jet):
     jet = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
     jet = jet[:, :n_jet]
     df = AddKinematics(df, jet, "jet", n_jet)
-
+    
     lep1_p4 = vector.zip({'pt': branches['lep1_pt'],
                           'eta': branches['lep1_eta'],
                           'phi': branches['lep1_phi'],
@@ -112,32 +112,49 @@ def AddJetFeatures(df, branches, feature_list, n_jet):
     return df
 
 
-def ApplyBkgFiducialSelection(df, branches, n_lep):
-    col_names = ['n_jet', 'lep1_type', 'lep2_type', 'lep1_genLep_kind', 'lep2_genLep_kind']
-    branch_name_map = {'n_jet': 'ncentralJet',
-                       'lep1_type': 'lep1_type', 
-                       'lep2_type': 'lep2_type', 
-                       'lep1_genLep_kind': 'lep1_genLep_kind', 
-                       'lep2_genLep_kind': 'lep2_genLep_kind'}
-    tmp_dict = {name: branches[branch_name_map[name]].to_numpy() for name in col_names}
-    df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
+def AddMindR(df, branches, n_lep, n_jet):
+    pt = ak.fill_none(ak.pad_none(branches['centralJet_pt'], n_jet), 0.0)
+    eta = ak.fill_none(ak.pad_none(branches['centralJet_eta'], n_jet), 0.0)
+    phi = ak.fill_none(ak.pad_none(branches['centralJet_phi'], n_jet), 0.0)
+    mass = ak.fill_none(ak.pad_none(branches['centralJet_mass'], n_jet), 0.0)
+    jets_p4 = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
+    jets_p4 = jets_p4[:, :n_jet]
 
-    if n_lep == 2:
-        # cuts specific to DL channel
-        df = df[df['n_jet'] >= 2]
-        df = df[IsCorrectLepton(df, 1)]
-        df = df[IsCorrectLepton(df, 2)]
-    elif n_lep == 1:
-        # cuts specific to SL channel
-        df = df[df['n_jet'] >= 4]
-        df = df[IsCorrectLepton(df, 1)]
-    else:
-        raise RuntimeError("Wrong number of leptons")
+    b1_p4 = vector.zip({'pt': branches['genb1_pt'],
+                       'eta': branches['genb1_eta'],
+                       'phi': branches['genb1_phi'],
+                       'mass': branches['genb1_mass']})
 
-    return df
+    b2_p4 = vector.zip({'pt': branches['genb2_pt'],
+                        'eta': branches['genb2_eta'],
+                        'phi': branches['genb2_phi'],
+                        'mass': branches['genb2_mass']})
+
+    mindR_b1 = ak.min(b1_p4.deltaR(jets_p4), axis=1)
+    mindR_b2 = ak.min(b2_p4.deltaR(jets_p4), axis=1)
+    df['mindR_b1'] = mindR_b1.to_numpy()
+    df['mindR_b2'] = mindR_b2.to_numpy()
+
+    if n_lep == 1:
+        q1_p4 = vector.zip({'pt': branches['genV2prod1_pt'],
+                            'eta': branches['genV2prod1_eta'],
+                            'phi': branches['genV2prod1_phi'],
+                            'mass': branches['genV2prod1_mass']})
+
+        q2_p4 = vector.zip({'pt': branches['genV2prod2_pt'],
+                            'eta': branches['genV2prod2_eta'],
+                            'phi': branches['genV2prod2_phi'],
+                            'mass': branches['genV2prod2_mass']})
+
+        mindR_q1 = ak.min(q1_p4.deltaR(jets_p4), axis=1)
+        mindR_q2 = ak.min(q2_p4.deltaR(jets_p4), axis=1)
+        df['mindR_q1'] = mindR_q1.to_numpy()
+        df['mindR_q2'] = mindR_q2.to_numpy()
+
+    return df    
 
 
-def ApplySignalFiducialSelection(df, branches, n_lep):
+def ApplyFiducialSelection(df, branches, n_lep, n_jet, apply_gen_reco_match):
     b1_p4 = vector.zip({'pt': branches['genb1_pt'],
                        'eta': branches['genb1_eta'],
                        'phi': branches['genb1_phi'],
@@ -188,6 +205,9 @@ def ApplySignalFiducialSelection(df, branches, n_lep):
         tmp_dict['qq_dr'] = q1_p4.deltaR(q2_p4)
         df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
 
+    if apply_gen_reco_match:
+        df = AddMindR(df, branches, n_lep, n_jet)
+
     # apply cuts
     # cuts to b quarks are applied anyway
     df = df[df['b1_vis_pt'] > 0.0]
@@ -197,6 +217,12 @@ def ApplySignalFiducialSelection(df, branches, n_lep):
     df = df[df['b2_pt'] > 20.0]
     df = df[np.abs(df['b1_eta']) < 2.5]
     df = df[np.abs(df['b2_eta']) < 2.5]
+    if apply_gen_reco_match:
+        # I want to apply this cut in the very end to make sure I already have correct objects
+        df = df[df['mindR_b1'] < 0.4]
+        df = df[df['mindR_b2'] < 0.4]
+        # cut = np.logical_or(df['mindR_b1'] >= 0.4, df['mindR_b2'] >= 0.4)
+        # df = df[cut]
 
     if n_lep == 2:
         # cuts specific to DL channel
@@ -214,6 +240,9 @@ def ApplySignalFiducialSelection(df, branches, n_lep):
         df = df[np.abs(df['q1_eta']) < 5.0]
         df = df[np.abs(df['q2_eta']) < 5.0]
         df = df[IsCorrectLepton(df, 1)]
+        if apply_gen_reco_match:
+            df = df[df['mindR_q1'] < 0.4]
+            df = df[df['mindR_q2'] < 0.4]
     else:
         raise RuntimeError("Wrong number of leptons")
 

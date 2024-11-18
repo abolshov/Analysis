@@ -1,7 +1,7 @@
 batch_size: 128
 learning_rate: 0.0001
 n_epochs: 50
-name: 'dl_test_model_4'
+name: 'dl_test_model_1'
 topology:
 - 256
 - 128
@@ -35,4 +35,5 @@ qq_resolved: True
 bb_boosted: False
 qq_boosted: False
 apply_fiducial_cut: True
+apply_gen_reco_match: True
 is_bkg: False

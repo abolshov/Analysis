@@ -31,6 +31,7 @@ class DataWrapper():
         self.qq_boosted = cfg['qq_boosted']
 
         self.apply_fiducial_cut = cfg['apply_fiducial_cut']
+        self.apply_gen_reco_match = cfg['apply_gen_reco_match']
         self.is_bkg = cfg['is_bkg']
 
         if not self.bb_resolved and not self.bb_boosted:
@@ -58,14 +59,12 @@ class DataWrapper():
 
         if self.apply_fiducial_cut:
             if not self.is_bkg:
-                df = ApplySignalFiducialSelection(df, branches, self.n_lep)
+                df = ApplyFiducialSelection(df, branches, self.n_lep, self.n_jets, self.apply_gen_reco_match)
             else:
-                df = ApplyBkgFiducialSelection(df, branches, self.n_lep)
+                raise RuntimeError("Invalid attempt to apply fiducial selections for background sample")
 
         to_drop = [name for name in df.columns if name not in self.features + auxilliary_columns]
         df = df.drop(columns=to_drop)
-
-        # df = TransformPNetFactorsToResolutions(df, self.n_jets)
 
         if self.data is not None:
             self.data = pd.concat([self.data, df]) 
