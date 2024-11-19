@@ -52,6 +52,12 @@ class DataWrapper():
         auxilliary_columns = self.labels + self.extra_data
         df = pd.DataFrame({s: branches[s].to_numpy().astype(float) for s in auxilliary_columns})
 
+        onshell_mass = np.maximum(df['genV1_mass'], df['genV2_mass'])
+        offshell_mass = np.minimum(df['genV1_mass'], df['genV2_mass'])
+
+        df['genV1_mass'] = onshell_mass
+        df['genV2_mass'] = offshell_mass
+
         df = AddKinematicFeatures(df, branches, self.n_lep, self.n_jets)
         df = AddJetFeatures(df, branches, self.jet_obs, self.n_jets)
 

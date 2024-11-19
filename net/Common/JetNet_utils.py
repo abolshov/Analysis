@@ -80,7 +80,12 @@ def ThreeMassLossFunc(target, output):
     mX_pred = pred[:, 0]
     mW1_pred = pred[:, 1]
     mW2_pred = pred[:, 2]
-    return ((mX_true - mX_pred)**2 + (mW1_true - mW1_pred)**2 + (mW2_true - mW2_pred)**2)/tf.cast(3*len(mX_pred), tf.float32)
+
+    mX_loss = ((mX_true - mX_pred)/mX_true)**2
+    mW1_loss = ((mW1_true - mW1_pred)/tf.maximum(mW1_true, 20.0))**2
+    mW2_loss = ((mW2_true - mW2_pred)/tf.maximum(mW2_true, 20.0))**2
+    
+    return 1000*(mX_loss + mW1_loss + mW2_loss)/tf.cast(3*len(mX_pred), tf.float32)
 
 
 def PlotLoss(history, model):
