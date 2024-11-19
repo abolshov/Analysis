@@ -108,5 +108,6 @@ class DataWrapper():
 
     def Print(self):
         print(self.data.describe())
+        print(self.train_data.head())
         for col in self.data.columns:
             print(col)
