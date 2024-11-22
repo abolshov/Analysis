@@ -1,7 +1,7 @@
 batch_size: 128
 learning_rate: 0.0001
 n_epochs: 50
-name: 'dl_test_model_1'
+name: 'debug'
 topology:
 - 256
 - 128
@@ -24,6 +24,8 @@ jet_observables:
 n_jets: 10
 labels:
 - 'X_mass'
+# - 'genV1_mass'
+# - 'genV2_mass'
 extra_data:
 - 'event'
 modulo: 2
