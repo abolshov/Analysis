@@ -130,10 +130,15 @@ def AddMindR(df, branches, n_lep, n_jet):
                         'phi': branches['genb2_phi'],
                         'mass': branches['genb2_mass']})
 
-    mindR_b1 = ak.min(b1_p4.deltaR(jets_p4), axis=1)
-    mindR_b2 = ak.min(b2_p4.deltaR(jets_p4), axis=1)
-    df['mindR_b1'] = mindR_b1.to_numpy()
-    df['mindR_b2'] = mindR_b2.to_numpy()
+    mindR_b1 = np.minimum(b1_p4.deltaR(jets_p4[:, 0]), b1_p4.deltaR(jets_p4[:, 1]))
+    mindR_b2 = np.minimum(b2_p4.deltaR(jets_p4[:, 0]), b2_p4.deltaR(jets_p4[:, 1]))
+
+    # mindR_b1 = ak.min(b1_p4.deltaR(jets_p4), axis=1)
+    # mindR_b2 = ak.min(b2_p4.deltaR(jets_p4), axis=1)
+    # df['mindR_b1'] = mindR_b1.to_numpy()
+    # df['mindR_b2'] = mindR_b2.to_numpy()
+    df['mindR_b1'] = mindR_b1
+    df['mindR_b2'] = mindR_b2
 
     if n_lep == 1:
         q1_p4 = vector.zip({'pt': branches['genV2prod1_pt'],
@@ -219,10 +224,10 @@ def ApplyFiducialSelection(df, branches, n_lep, n_jet, apply_gen_reco_match):
     df = df[np.abs(df['b2_eta']) < 2.5]
     if apply_gen_reco_match:
         # I want to apply this cut in the very end to make sure I already have correct objects
-        df = df[df['mindR_b1'] < 0.4]
-        df = df[df['mindR_b2'] < 0.4]
-        # cut = np.logical_or(df['mindR_b1'] >= 0.4, df['mindR_b2'] >= 0.4)
-        # df = df[cut]
+        # df = df[df['mindR_b1'] < 0.4]
+        # df = df[df['mindR_b2'] < 0.4]
+        cut = np.logical_or(df['mindR_b1'] >= 0.4, df['mindR_b2'] >= 0.4)
+        df = df[cut]
 
     if n_lep == 2:
         # cuts specific to DL channel

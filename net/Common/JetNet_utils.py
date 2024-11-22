@@ -62,7 +62,8 @@ def GetPredMasses(output):
 @tf.function
 def MXLossFunc(target, output):
     pred = GetMXPred(output)
-    return (target - pred)**2/tf.cast(len(pred), tf.float32)
+    # return (target - pred)**2/tf.cast(len(pred), tf.float32)
+    return ((target - pred)/target)**2
 
 
 # target: (n_events, 3) - true mass of X, W1, W2
@@ -85,7 +86,8 @@ def ThreeMassLossFunc(target, output):
     mW1_loss = ((mW1_true - mW1_pred)/tf.maximum(mW1_true, 20.0))**2
     mW2_loss = ((mW2_true - mW2_pred)/tf.maximum(mW2_true, 20.0))**2
     
-    return 1000*(mX_loss + mW1_loss + mW2_loss)/tf.cast(3*len(mX_pred), tf.float32)
+    return 100.0*mX_loss
+    # return 1000*(mX_loss + mW1_loss + mW2_loss)/tf.cast(3*len(mX_pred), tf.float32)
 
 
 def PlotLoss(history, model):

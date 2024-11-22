@@ -5,12 +5,14 @@ import uproot
 import pandas as pd
 import os
 
-# from Common.JetNet_utils import MXLossFunc, GetMXPred
-from Common.JetNet_utils import ThreeMassLossFunc, GetPredMasses
+from Common.JetNet_utils import MXLossFunc, GetMXPred
+# from Common.JetNet_utils import ThreeMassLossFunc, GetPredMasses
 
 class JetNet():
     def __init__(self, cfg):
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+        os.environ['TF_DETERMINISTIC_OPS'] = '1'
+        tf.random.set_seed(42)
 
         # training parameters
         self.lr = cfg['learning_rate']
@@ -25,13 +27,16 @@ class JetNet():
 
 
     def ConfigureModel(self, dataset_shape):
-        self.model = tf.keras.Sequential([tf.keras.layers.Dense(layer_size, activation='relu') for layer_size in self.topology])
+        self.model = tf.keras.Sequential([tf.keras.layers.Dense(layer_size, 
+                                                                activation='relu',
+                                                                kernel_initializer='random_normal',
+                                                                bias_initializer='random_normal') for layer_size in self.topology])
         # to predict px, py, pz of H->bb (first three) and px, py, pz of H->WW (last three)
-        # self.model.add(tf.keras.layers.Dense(6)) 
-        self.model.add(tf.keras.layers.Dense(10)) 
+        self.model.add(tf.keras.layers.Dense(6)) 
+        # self.model.add(tf.keras.layers.Dense(10)) 
 
-        # self.model.compile(loss=MXLossFunc, optimizer=tf.keras.optimizers.Adam(self.lr))
-        self.model.compile(loss=ThreeMassLossFunc, optimizer=tf.keras.optimizers.Adam(self.lr))
+        self.model.compile(loss=MXLossFunc, optimizer=tf.keras.optimizers.Adam(self.lr))
+        # self.model.compile(loss=ThreeMassLossFunc, optimizer=tf.keras.optimizers.Adam(self.lr))
         self.model.build(dataset_shape)
 
 
@@ -52,14 +57,14 @@ class JetNet():
         #     raise RuntimeError(f"Features pased for prediction do not match expected features: passed {test_features.columns}, while expected {self.features}")
         # returns predicted variables: px, py, pz of H->bb and H->WW
         output = self.model.predict(test_features)
-        # pred_df = pd.DataFrame({"X_mass_pred": GetMXPred(output).numpy().ravel()})
-        pred = GetPredMasses(output)
-        mX = pred[:, 0]
-        mW1 = pred[:, 1]
-        mW2 = pred[:, 2]
-        pred_df = pd.DataFrame({"X_mass_pred": mX.numpy().ravel(),
-                                "W1_mass_pred": mW1.numpy().ravel(),
-                                "W2_mass_pred": mW2.numpy().ravel()})
+        pred_df = pd.DataFrame({"X_mass_pred": GetMXPred(output).numpy().ravel()})
+        # pred = GetPredMasses(output)
+        # mX = pred[:, 0]
+        # mW1 = pred[:, 1]
+        # mW2 = pred[:, 2]
+        # pred_df = pd.DataFrame({"X_mass_pred": mX.numpy().ravel(),
+        #                         "W1_mass_pred": mW1.numpy().ravel(),
+        #                         "W2_mass_pred": mW2.numpy().ravel()})
         return pred_df
 
 
