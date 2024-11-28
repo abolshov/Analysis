@@ -16,7 +16,7 @@
 #include "HistManager.hpp"
 
 inline constexpr size_t N_RECO_JETS = 20;
-inline constexpr size_t N_BINS = 2000;
+inline constexpr size_t N_BINS = 100;
 
 template <class T>
 double GetPDFScaleFactor(std::unique_ptr<T> const& hist)
@@ -141,22 +141,32 @@ int main()
     auto pdf_b1 = std::make_unique<TH1F>("pdf_b1", "1d PDF for leading b jet correction", N_BINS, 0, 8);
     auto pdf_b2 = std::make_unique<TH1F>("pdf_b2", "1d PDF for subleading b jet correction", N_BINS, 0, 8);
     auto pdf_b1b2 = std::make_unique<TH2F>("pdf_b1b2", "2d PDF simultaneous b jet corrrections", N_BINS, 0, 8, N_BINS, 0, 8);
-    auto pdf_mbb = std::make_unique<TH1F>("pdf_mbb", "1d PDF of H->bb mass with true corrections applied", 5*N_BINS, 0, 200);
-    auto pdf_numet = std::make_unique<TH1F>("pdf_numet", "1d PDF nu to met pt ratio with true corrections applied", N_BINS, 0, 8);
+    auto pdf_mbb = std::make_unique<TH1F>("pdf_mbb", "1d PDF of H->bb mass with true corrections applied", N_BINS, 0, 200);
+    auto pdf_numet_pt = std::make_unique<TH1F>("pdf_numet_pt", "1d PDF nu to met pt ratio with true corrections applied", N_BINS, 0, 8);
+    auto pdf_numet_dphi = std::make_unique<TH1F>("pdf_numet_dphi", "1d PDF of dPhi between true nu and MET with true corrections applied", N_BINS, -4, 4);
 
     HistManager hm;
 
-    std::string nu_met_b("nu_met_b");
-    hm.Add(nu_met_b, "nu_met_b", {"ratio", "Count"}, {0, 8}, 100);
+    std::string nu_met_pt_b("nu_met_pt_b");
+    hm.Add(nu_met_pt_b, "nu_met_pt_b", {"ratio", "Count"}, {0, 8}, 100);
 
-    std::string nu_met_b_smear("nu_met_b_smear");
-    hm.Add(nu_met_b_smear, "nu_met_b_smear", {"ratio", "Count"}, {0, 8}, 100);
+    std::string nu_met_pt_b_smear("nu_met_pt_b_smear");
+    hm.Add(nu_met_pt_b_smear, "nu_met_pt_b_smear", {"ratio", "Count"}, {0, 8}, 100);
 
-    std::string nu_met_b_smear_lj("nu_met_b_smear_lj");
-    hm.Add(nu_met_b_smear_lj, "nu_met_b_smear_lj", {"ratio", "Count"}, {0, 8}, 100);
+    std::string nu_met_dphi_b("nu_met_dphi_b");
+    hm.Add(nu_met_dphi_b, "nu_met_dphi_b", {"dphi", "Count"}, {-4, 4}, 100);
 
-    std::string nu_met("nu_met");
-    hm.Add(nu_met, "nu_met", {"ratio", "Count"}, {0, 8}, 100);
+    std::string nu_met_dphi_b_smear("nu_met_dphi_b_smear");
+    hm.Add(nu_met_dphi_b_smear, "nu_met_dphi_b_smear", {"dphi", "Count"}, {-4, 4}, 100);
+
+    // std::string nu_met_b_smear_lj("nu_met_b_smear_lj");
+    // hm.Add(nu_met_b_smear_lj, "nu_met_b_smear_lj", {"ratio", "Count"}, {0, 8}, 100);
+
+    std::string nu_met_pt("nu_met_pt");
+    hm.Add(nu_met_pt, "nu_met_pt", {"ratio", "Count"}, {0, 8}, 100);
+
+    std::string nu_met_dphi("nu_met_dphi");
+    hm.Add(nu_met_dphi, "nu_met_dphi", {"dphi", "Count"}, {-4, 4}, 100);
 
     TRandom3 rg;
     rg.SetSeed(42);
@@ -230,79 +240,86 @@ int main()
         auto smear_x = std::make_unique<TH1F>("smear_x", "smear_x", 100, -50.0, 50.0);
         auto smear_y = std::make_unique<TH1F>("smear_y", "smear_y", 100, -50.0, 50.0);
 
-        double dpx_lj = 0.0;
-        double dpy_lj = 0.0;
-        std::vector<std::unique_ptr<TH1F>> smear_lj_px;
-        std::vector<std::unique_ptr<TH1F>> smear_lj_py;
-        for (size_t i = 0; i < light_jets.size(); ++i)
-        {
-            TString name_x = Form("smear_lj_px_%d", static_cast<int>(i));
-            smear_lj_px.push_back(std::make_unique<TH1F>(name_x, name_x, 100, -50.0, 50.0));
+        // double dpx_lj = 0.0;
+        // double dpy_lj = 0.0;
+        // std::vector<std::unique_ptr<TH1F>> smear_lj_px;
+        // std::vector<std::unique_ptr<TH1F>> smear_lj_py;
+        // for (size_t i = 0; i < light_jets.size(); ++i)
+        // {
+        //     TString name_x = Form("smear_lj_px_%d", static_cast<int>(i));
+        //     smear_lj_px.push_back(std::make_unique<TH1F>(name_x, name_x, 100, -50.0, 50.0));
 
-            TString name_y = Form("smear_lj_py_%d", static_cast<int>(i));
-            smear_lj_py.push_back(std::make_unique<TH1F>(name_y, name_y, 100, -50.0, 50.0));
-        }
+        //     TString name_y = Form("smear_lj_py_%d", static_cast<int>(i));
+        //     smear_lj_py.push_back(std::make_unique<TH1F>(name_y, name_y, 100, -50.0, 50.0));
+        // }
 
         for (int i = 0; i < 1000; ++i)
         {
             smear_x->Fill(rg.Gaus(0, 25.2));
             smear_y->Fill(rg.Gaus(0, 25.2));
-            for (size_t i = 0; i < light_jets.size(); ++i)
-            {
-                auto [dpx, pdy] = GenMETCorrFromJet(rg, light_jets[i], resolutions[i]);
-                smear_lj_px[i]->Fill(dpx);
-                smear_lj_py[i]->Fill(dpy);
-            }
+            // for (size_t i = 0; i < light_jets.size(); ++i)
+            // {
+            //     auto [dpx, pdy] = GenMETCorrFromJet(rg, light_jets[i], resolutions[i]);
+            //     smear_lj_px[i]->Fill(dpx);
+            //     smear_lj_py[i]->Fill(dpy);
+            // }
         }
 
         dpx_smear = smear_x->GetXaxis()->GetBinCenter(smear_x->GetMaximumBin());
         dpy_smear = smear_y->GetXaxis()->GetBinCenter(smear_y->GetMaximumBin());
 
-        for (size_t i = 0; i < light_jets.size(); ++i)
-        {
-            dpx_lj += smear_lj_px[i]->GetXaxis()->GetBinCenter(smear_lj_px[i]->GetMaximumBin());
-            dpy_lj += smear_lj_py[i]->GetXaxis()->GetBinCenter(smear_lj_py[i]->GetMaximumBin());
-        }
+        // for (size_t i = 0; i < light_jets.size(); ++i)
+        // {
+        //     dpx_lj += smear_lj_px[i]->GetXaxis()->GetBinCenter(smear_lj_px[i]->GetMaximumBin());
+        //     dpy_lj += smear_lj_py[i]->GetXaxis()->GetBinCenter(smear_lj_py[i]->GetMaximumBin());
+        // }
 
         {
             TLorentzVector reco_met_corr(reco_met.Px() + dpx, reco_met.Py() + dpy, 0.0, 0.0);
-            hm.Fill(nu_met_b, nu.Pt()/reco_met_corr.Pt());
+            hm.Fill(nu_met_pt_b, nu.Pt()/reco_met_corr.Pt());
+            hm.Fill(nu_met_dphi_b, nu.DeltaPhi(reco_met_corr));
         }
 
         {
             TLorentzVector reco_met_corr(reco_met.Px() + dpx + dpx_smear, reco_met.Py() + dpy + dpy_smear, 0.0, 0.0);
-            hm.Fill(nu_met_b_smear, nu.Pt()/reco_met_corr.Pt());
+            hm.Fill(nu_met_pt_b_smear, nu.Pt()/reco_met_corr.Pt());
+            hm.Fill(nu_met_dphi_b_smear, nu.DeltaPhi(reco_met_corr));
         }
 
-        {
-            TLorentzVector reco_met_corr(reco_met.Px() + dpx + dpx_smear + dpx_lj, reco_met.Py() + dpy + dpy_smear + dpy_lj, 0.0, 0.0);
-            hm.Fill(nu_met_b_smear_lj, nu.Pt()/reco_met_corr.Pt());
-        }
+        // {
+        //     TLorentzVector reco_met_corr(reco_met.Px() + dpx + dpx_smear + dpx_lj, reco_met.Py() + dpy + dpy_smear + dpy_lj, 0.0, 0.0);
+        //     hm.Fill(nu_met_b_smear_lj, nu.Pt()/reco_met_corr.Pt());
+        // }
 
         TLorentzVector reco_met_corr(reco_met.Px() + dpx + dpx_smear, reco_met.Py() + dpy + dpy_smear, 0.0, 0.0);
 
-        pdf_numet->Fill(nu.Pt()/reco_met_corr.Pt());
+        pdf_numet_pt->Fill(nu.Pt()/reco_met_corr.Pt());
+        pdf_numet_dphi->Fill(nu.DeltaPhi(reco_met_corr));
         pdf_b1->Fill(c1);
-        pdf_b2->Fill(c1);
+        pdf_b2->Fill(c2);
         pdf_b1b2->Fill(c1, c2); 
         pdf_mbb->Fill((c1*reco_bj1_p4 + c2*reco_bj2_p4).M());
 
-        hm.Fill(nu_met, nu.Pt()/reco_met.Pt());
-
+        hm.Fill(nu_met_pt, nu.Pt()/reco_met.Pt());
+        hm.Fill(nu_met_dphi, nu.DeltaPhi(reco_met));
     }
 
-    hm.DrawStack({nu_met, nu_met_b, nu_met_b_smear, nu_met_b_smear_lj}, "MET PDF comparison", "met_pdf_cmp");
+    // hm.DrawStack({nu_met_pt, nu_met_pt_b, nu_met_pt_b_smear, nu_met_b_smear_lj}, "MET PDF comparison", "met_pdf_cmp");
+    hm.DrawStack({nu_met_pt, nu_met_pt_b, nu_met_pt_b_smear}, "nu/MET pt PDF comparison", "numet_pt_pdf_cmp");
+    hm.DrawStack({nu_met_dphi, nu_met_dphi_b, nu_met_dphi_b_smear}, "nu-MET dPhi PDF comparison", "numet_dphi_pdf_cmp");
 
     pdf_b1->Scale(1.0/GetPDFScaleFactor(pdf_b1));
     pdf_b2->Scale(1.0/GetPDFScaleFactor(pdf_b2));
     pdf_mbb->Scale(1.0/GetPDFScaleFactor(pdf_mbb));
-    pdf_numet->Scale(1.0/GetPDFScaleFactor(pdf_numet));
+    pdf_numet_pt->Scale(1.0/GetPDFScaleFactor(pdf_numet_pt));
+    pdf_numet_dphi->Scale(1.0/GetPDFScaleFactor(pdf_numet_dphi));
 
     auto output = std::make_unique<TFile>("pdf.root","RECREATE");
     pdf_b1->Write();
     pdf_b2->Write();
     pdf_mbb->Write();
-    pdf_numet->Write();
+    pdf_numet_pt->Write();
+    pdf_numet_dphi->Write();
     pdf_b1b2->Write();
 	output->Write();
 	output->Close();
