@@ -31,6 +31,7 @@ static constexpr int N_RECO_JETS = 12;
 
 int main()
 {
+    std::cout << std::setprecision(4);
     auto start = std::chrono::system_clock::now();
 
     auto file_pdf = std::make_unique<TFile>("pdf.root", "READ");
@@ -41,8 +42,6 @@ int main()
 
     TRandom3 rg;
     rg.SetSeed(42);
-
-    std::ofstream output("hme_output.txt");
 
     ULong64_t event;
     myTree->SetBranchAddress("event", &event);
@@ -213,13 +212,6 @@ int main()
     int hme_events = 0;
     int hme_worked = 0;
 
-    // int lep_reco = 0;
-    // int jet_mult = 0;
-    // int res_top = 0;
-    // int quark_accept = 0;
-    // int matching = 0;
-    // int tot = 0;
-
     int nEvents = myTree->GetEntries();
     for (int i = 0; i < nEvents; ++i)
     {
@@ -228,27 +220,24 @@ int main()
         {
             continue;
         }
-        // ++tot;
 
         if (ncentralJet < 4)
         {
             continue;
         }
-        // ++jet_mult;
 
-        // bool reco_lep1_mu = (lep1_type == 2);
-        // bool reco_lep1_ele = (lep1_type == 1);
+        bool reco_lep1_mu = (lep1_type == 2);
+        bool reco_lep1_ele = (lep1_type == 1);
 
-        // bool gen_lep1_mu = ((lep1_genLep_kind == 2) || (lep1_genLep_kind == 4));
-        // bool gen_lep1_ele = ((lep1_genLep_kind == 1) || (lep1_genLep_kind == 3));
+        bool gen_lep1_mu = ((lep1_genLep_kind == 2) || (lep1_genLep_kind == 4));
+        bool gen_lep1_ele = ((lep1_genLep_kind == 1) || (lep1_genLep_kind == 3));
 
-        // bool corr_lep_reco = ((reco_lep1_mu && gen_lep1_mu) || (reco_lep1_ele && gen_lep1_ele));
+        bool corr_lep_reco = ((reco_lep1_mu && gen_lep1_mu) || (reco_lep1_ele && gen_lep1_ele));
         
-        // if (!corr_lep_reco)
-        // {
-        //     continue;
-        // }
-        // ++lep_reco;
+        if (!corr_lep_reco)
+        {
+            continue;
+        }
 
         TLorentzVector genb1_p4, genb2_p4, genq1_p4, genq2_p4; // quarks
         genb1_p4.SetPtEtaPhiM(genb1_pt, genb1_eta, genb1_phi, genb1_mass);
@@ -260,147 +249,96 @@ int main()
         {
             continue;
         }
-        // ++res_top;
 
-        // bool bq_accept = (genb1_p4.Pt() > 20.0 && std::abs(genb1_p4.Eta()) < 2.5) && (genb2_p4.Pt() > 20.0 && std::abs(genb2_p4.Eta()) < 2.5);
-        // bool lq_accept = (genq1_p4.Pt() > 20.0 && std::abs(genq1_p4.Eta()) < 5.0) && (genq2_p4.Pt() > 20.0 && std::abs(genq2_p4.Eta()) < 5.0);
-        // bool quarks_accept = bq_accept && lq_accept;
-        // if (!quarks_accept)
-        // {
-        //     continue;
-        // }
-        // ++quark_accept;
+        bool bq_accept = (genb1_p4.Pt() > 20.0 && std::abs(genb1_p4.Eta()) < 2.5) && (genb2_p4.Pt() > 20.0 && std::abs(genb2_p4.Eta()) < 2.5);
+        bool lq_accept = (genq1_p4.Pt() > 20.0 && std::abs(genq1_p4.Eta()) < 5.0) && (genq2_p4.Pt() > 20.0 && std::abs(genq2_p4.Eta()) < 5.0);
+        bool quarks_accept = bq_accept && lq_accept;
+        if (!quarks_accept)
+        {
+            continue;
+        }
 
-        TLorentzVector gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4; // gen jets matched to quarks
-        gen_bj1_p4.SetPtEtaPhiM(genb1_vis_pt, genb1_vis_eta, genb1_vis_phi, genb1_vis_mass);
-        gen_bj2_p4.SetPtEtaPhiM(genb2_vis_pt, genb2_vis_eta, genb2_vis_phi, genb2_vis_mass);
-        gen_lj1_p4.SetPtEtaPhiM(genV2prod1_vis_pt, genV2prod1_vis_eta, genV2prod1_vis_phi, genV2prod1_vis_mass);
-        gen_lj2_p4.SetPtEtaPhiM(genV2prod2_vis_pt, genV2prod2_vis_eta, genV2prod2_vis_phi, genV2prod2_vis_mass);
-
-        // std::vector<TLorentzVector> gen_jets = {gen_bj1_p4, gen_bj2_p4, gen_lj1_p4, gen_lj2_p4};
-        // if (!std::all_of(gen_jets.begin(), gen_jets.end(), [](TLorentzVector const& p){ return p != TLorentzVector{}; }))
-        // {
-        //     continue;
-        // }
-        // ++matching;
-
-        TLorentzVector gen_lep_p4;
-        gen_lep_p4.SetPtEtaPhiM(genV1prod1_vis_pt, genV1prod1_vis_eta, genV1prod1_vis_phi, genV1prod1_vis_mass);
+        ++hme_events;
 
         TLorentzVector reco_lep_p4, reco_bj1_p4, reco_bj2_p4, reco_met_p4;
         reco_lep_p4.SetPtEtaPhiM(lep1_pt, lep1_eta, lep1_phi, lep1_mass);
         reco_met_p4.SetPtEtaPhiM(PuppiMET_pt, 0.0, PuppiMET_phi, 0.0);
 
-        // establish jet with greater pt for computing corrections
-        // jets are sorted by btag so first two are b jets
-        if (centralJet_pt[0] > centralJet_pt[1])
-        {
-            reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
-            reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
-        }
-        else 
-        {
-            reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
-            reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
-        }
-
-        std::vector<TLorentzVector> light_jets;
+        std::vector<TLorentzVector> jets;
         std::vector<double> resolutions;
-        for (int j = 2; j < ncentralJet; ++j)
+        for (int j = 0; j < ncentralJet; ++j)
         {
             TLorentzVector jet;
             jet.SetPtEtaPhiM(centralJet_pt[j], centralJet_eta[j], centralJet_phi[j], centralJet_mass[j]);
+            jets.push_back(jet);
 
-            // use PNet correction to correct p4 of light jets
             jet *= centralJet_PNetRegPtRawCorr[j];
-            light_jets.push_back(jet);
-
-            // save resolutions of pt corrections of light jets
             resolutions.push_back(centralJet_pt[j]*centralJet_PNetRegPtRawRes[j]);
         }
 
-        auto best_onshell_pair = ChooseBestPair(light_jets, [](TLorentzVector const& p1, TLorentzVector const& p2){ return std::abs(80.0 - (p1 + p2).M()); });
-        auto best_offshell_pair = ChooseBestPair(light_jets, [](TLorentzVector const& p1, TLorentzVector const& p2){ return std::abs(40.0 - (p1 + p2).M()); });
-
-        auto [i1, i2] = best_onshell_pair;
-        std::vector<TLorentzVector> input_onshell = {reco_bj1_p4, reco_bj2_p4, light_jets[i1], light_jets[i2], reco_lep_p4, reco_met_p4};
-        std::pair<double, double> res_onshell = {resolutions[i1], resolutions[i2]};
-
-        auto [j1, j2] = best_offshell_pair;
-        std::vector<TLorentzVector> input_offshell = {reco_bj1_p4, reco_bj2_p4, light_jets[j1], light_jets[j2], reco_lep_p4, reco_met_p4};
-        std::pair<double, double> res_offshell = {resolutions[j1], resolutions[j2]};
-
-        ++hme_events;
-
-        [[maybe_unused]] auto hme_onshell = EstimateMass(input_onshell, pdf, rg, i, res_onshell);
-        [[maybe_unused]] auto hme_offshell = EstimateMass(input_offshell, pdf, rg, i, res_offshell);
-
-        hme_worked += (hme_onshell || hme_offshell);
-
-        if (hme_offshell && hme_onshell)
+        bool worked = false;
+        // int n_jets = jets.size();
+        int n_jets = 3;
+        std::vector<double> estimations;
+        std::vector<double> efficiencies;
+        for (int bj1_idx = 0; bj1_idx < n_jets; ++bj1_idx)
         {
-            auto hme = rg.Uniform(0, 1) > 0.27 ? hme_onshell : hme_offshell;
-            if (hme)
+            for (int bj2_idx = bj1_idx + 1; bj2_idx < n_jets; ++bj2_idx)
             {
-                auto [mass, succ_rate] = hme.value();
-                hm.Fill(hme_mass, mass);
-                h->Fill(mass);
-                output << mass << "\n";
+                TLorentzVector bj1_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj1_idx] : jets[bj2_idx];
+                TLorentzVector bj2_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj2_idx] : jets[bj1_idx];
+
+                auto [lj1_idx, lj2_idx] = FindByAngle(jets, bj1_idx, bj2_idx);
+                TLorentzVector lj1_p4 = jets[lj1_idx];
+                TLorentzVector lj2_p4 = jets[lj2_idx];
+
+                double lj1_res = resolutions[lj1_idx];
+                double lj2_res = resolutions[lj2_idx];
+
+                std::vector<TLorentzVector> input = {bj1_p4, bj2_p4, lj1_p4, lj2_p4, reco_lep_p4, reco_met_p4};
+                std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
+
+                auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
+                if (hme)
+                {
+                    worked = true;
+                    auto [mass, succ_rate] = hme.value();
+                    estimations.push_back(mass);
+                    efficiencies.push_back(succ_rate);
+                    // hm.Fill(hme_mass, mass);
+                    // h->Fill(mass);
+                }
             }
         }
-        else if (hme_offshell)
+        
+        if (worked)
         {
-            auto [mass, succ_rate] = hme_offshell.value();
-            hm.Fill(hme_mass, mass);
-            h->Fill(mass);
-            output << mass << "\n";
-        }
-        else if (hme_onshell)
-        {
-            auto [mass, succ_rate] = hme_onshell.value();
-            hm.Fill(hme_mass, mass);
-            h->Fill(mass);
-            output << mass << "\n";
-        }
-        else 
-        {
-            output << -1.0 << "\n";
+            ++hme_worked;
+            // for (auto e: estimations)
+            // {
+            //     std::cout << e << " ";
+            // }
+            // std::cout << "\n";
+            // for (auto e: efficiencies)
+            // {
+            //     std::cout << e << " ";
+            // }
+            // std::cout << "\n\n";
+            
+            auto it = std::max_element(estimations.begin(), estimations.end());
+            hm.Fill(hme_mass, *it);
+            h->Fill(*it);
+
+            // auto it = std::max_element(efficiencies.begin(), efficiencies.end());
+            // int idx = it - efficiencies.begin();
+            // hm.Fill(hme_mass, estimations[idx]);
+            // h->Fill(estimations[idx]);
+
+            // double mass = std::accumulate(estimations.begin(), estimations.end(), 0.0)/estimations.size(); 
+            // hm.Fill(hme_mass, mass);
+            // h->Fill(mass);
         }
     }
-
-    // std::vector<char const*> labels = {"total",
-    //                                    ">= 4 jets",
-    //                                    "lep reco",
-    //                                    "resolved",
-    //                                    "acceptance",
-    //                                    "matching"};
-
-    // std::vector<double> count = {100.0*tot/tot,
-    //                              100.0*jet_mult/tot,
-    //                              100.0*lep_reco/tot,
-    //                              100.0*res_top/tot,
-    //                              100.0*quark_accept/tot,
-    //                              100.0*matching/tot};
-
-    // int nx = labels.size();
-
-    // auto cutflow = std::make_unique<TH1F>("cutflow", "HME benchmark cutflow", nx, 0, nx);
-    // cutflow->SetStats(0);
-    // cutflow->SetFillStyle(3544);
-    // cutflow->SetLineWidth(2);
-    // cutflow->SetFillColorAlpha(kBlue, 0.75);
-
-    // auto canvas = std::make_unique<TCanvas>("canvas", "canvas");
-    // canvas->SetGrid();
-
-    // for (int b = 1; b <= nx; ++b)
-    // {
-    //     cutflow->SetBinContent(b, count[b-1]);
-    //     cutflow->GetXaxis()->SetBinLabel(b, labels[b-1]);
-    // }
-
-    // cutflow->Draw();
-    // canvas->SaveAs("histograms/cutflow.png");
 
     hm.Draw();
 
@@ -410,7 +348,7 @@ int main()
     std::cout << "Finished processing, total events = " << nEvents << "\n";
     std::cout << "Events passed to HME = " << hme_events << "\n"; 
     std::cout << "HME successful = " << 100.0*hme_worked/hme_events << "%\n"; 
-    std::cout << "Combined width = " << InterquantileRange(h) << "\n";
+    std::cout << "HME width = " << InterquantileRange(h) << "\n";
     std::cout << "Processing time = " << elapsed.count() << " s\n";
 
     return 0;

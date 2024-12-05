@@ -53,4 +53,41 @@ std::pair<int, int> ChooseBestPair(std::vector<TLorentzVector> const& jets, Func
     return res;
 }
 
+std::pair<int, int> FindByAngle(std::vector<TLorentzVector> const& jets, int bj1_idx, int bj2_idx)
+{
+    TLorentzVector Hbb = jets[bj1_idx] + jets[bj2_idx];
+    int lj1_idx = -1;
+    int lj2_idx = -1;
+
+    double max_dphi = -5.0;
+
+    int sz = jets.size();
+    for (int i = 0; i < sz; ++i)
+    {
+        if (i == bj1_idx || i == bj2_idx)
+        {
+            continue;
+        }
+
+        for (int j = i + 1; j < sz; ++j)
+        {
+            if (j == bj1_idx || j == bj2_idx)
+            {
+                continue;
+            }
+
+            TLorentzVector Hww = jets[i] + jets[j];
+            double dphi = std::abs(Hww.DeltaPhi(Hbb));
+            if (dphi > max_dphi)
+            {
+                max_dphi = dphi;
+                lj1_idx = i;
+                lj2_idx = j;
+            }
+        }
+    }
+
+    return {lj1_idx, lj2_idx};
+}
+
 #endif

@@ -103,7 +103,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
     TLorentzVector met = particles[PhysObj::met];
 
     double mh = rg.Gaus(HIGGS_MASS, HIGGS_WIDTH);
-    auto [res1, res2] = lj_pt_res;
+    [[maybe_unused]] auto [res1, res2] = lj_pt_res;
     auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d", evt), N_BINS, 0.0, MAX_MASS);
     
     int failed_iter = 0;
@@ -157,6 +157,8 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
 
             double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2 + smear_dpx;
             double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2 + smear_dpy;
+            // double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() + smear_dpx;
+            // double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() + smear_dpy;
 
             TLorentzVector met_corr(met_corr_px, met_corr_py, 0.0, 0.0);
             std::optional<TLorentzVector> nu = ComputeNu(l, j1, j2, met_corr, mh, eta);
