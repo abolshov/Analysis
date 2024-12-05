@@ -90,4 +90,27 @@ std::pair<int, int> FindByAngle(std::vector<TLorentzVector> const& jets, int bj1
     return {lj1_idx, lj2_idx};
 }
 
+// make all possible combinations of light jet pairs given indices of b jets
+std::vector<std::pair<int, int>> MakePairs(int sz, int skip1, int skip2)
+{
+    std::vector<std::pair<int, int>> pairs;
+    for (int i = 0; i < sz; ++i)
+    {
+        if (i == skip1 || i == skip2)
+        {
+            continue;
+        }
+
+        for (int j = i + 1; j < sz; ++j)
+        {
+            if (j == skip1 || j == skip2)
+            {
+                continue;
+            }
+            pairs.emplace_back(i, j);
+        }
+    }
+    return pairs;
+}
+
 #endif

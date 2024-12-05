@@ -21,7 +21,7 @@ inline constexpr int N_ITER = 10000;
 inline constexpr double MAX_MASS = 2000;
 inline constexpr int N_BINS = 5000;
 
-inline constexpr double MET_SIGMA = 25.2;
+inline constexpr double MET_SIGMA = 14.8;
 
 using OptionalPair = std::optional<std::pair<double, double>>;
 
@@ -41,4 +41,15 @@ std::optional<TLorentzVector> ComputeNu(TLorentzVector const& l, TLorentzVector 
 // in case of success returns mass and fraction of iterations which computed mass
 OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::unique_ptr<TH1F>& b_resc_pdf, TRandom3& rg, int evt, std::pair<double, double> lj_pt_res);
 
+// Generate pt resolution correction from PNet via gaussian distribution centered at 0
+// keep generating until pt + correction > 0
+TLorentzVector GenerateResCorrection(TLorentzVector const& v, TRandom3& rg, double res);
+
+// estimate mass using 2d pdf for b1b2 rescaling, pdf for fraction nu/met and dphi between nu/met
+OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, 
+                          std::unique_ptr<TH2F>& pdf_b1b2, 
+                          std::unique_ptr<TH1F>& pdf_numet_pt, 
+                          std::unique_ptr<TH1F>& pdf_numet_dphi, 
+                          TRandom3& rg, int evt, 
+                          std::pair<double, double> lj_pt_res);
 #endif
