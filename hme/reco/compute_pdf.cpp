@@ -45,6 +45,27 @@ std::pair<double, double> GenMETCorrFromJet(TRandom3& rg, TLorentzVector p, doub
     return {dpx, dpy};   
 }
 
+int FindBestMatch(TLorentzVector const& quark, std::vector<TLorentzVector> const& jets)
+{
+    int res = -1;
+    int sz = jets.size();
+    double min_dr = 10.0;
+    for (int i = 0; i < sz; ++i)
+    {
+        double dr = jets[i].DeltaR(quark);
+        if (dr < min_dr)
+        {
+            min_dr = dr;
+            res = i;
+        }
+    }
+    if (min_dr < 0.4)
+    {
+        return res;
+    }
+    return -1;
+}
+
 int main()
 {
     std::vector<TString> input_files;
@@ -191,20 +212,39 @@ int main()
         {
             continue;
         }
-        
+
+        std::vector<TLorentzVector> jets;
+        for (int j = 0; j < ncentralJet; ++j)
+        {
+            TLorentzVector jet;
+            jet.SetPtEtaPhiM(centralJet_pt[j], centralJet_eta[j], centralJet_phi[j], centralJet_mass[j]);
+            jets.push_back(jet);
+        }
+
+        int b1_match = FindBestMatch(genb1_p4, jets);
+        int b2_match = FindBestMatch(genb2_p4, jets);
+        if (b1_match == -1 || b2_match == -1 || b1_match == b2_match)
+        {
+            continue;
+        }
+
+        TLorentzVector reco_bj1_p4 = jets[b1_match];
+        TLorentzVector reco_bj2_p4 = jets[b2_match];
+
+
         // establish jet with greater pt for computing corrections
         // jets are sorted by btag so first two are b jets
-        TLorentzVector reco_bj1_p4, reco_bj2_p4;
-        if (centralJet_pt[0] > centralJet_pt[1])
-        {
-            reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
-            reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
-        }
-        else 
-        {
-            reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
-            reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
-        }
+        // TLorentzVector reco_bj1_p4, reco_bj2_p4;
+        // if (centralJet_pt[0] > centralJet_pt[1])
+        // {
+        //     reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
+        //     reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
+        // }
+        // else 
+        // {
+        //     reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
+        //     reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
+        // }
 
         std::vector<TLorentzVector> light_jets;
         std::vector<double> resolutions;
@@ -227,10 +267,13 @@ int main()
         TLorentzVector nu;
         nu.SetPtEtaPhiM(genV1prod2_pt, genV1prod2_eta, genV1prod2_phi, genV1prod2_mass);
 
-        TLorentzVector lead_quark = genb1_p4.Pt() > genb2_p4.Pt() ? genb1_p4 : genb2_p4;
-        TLorentzVector subl_quark = genb1_p4.Pt() > genb2_p4.Pt() ? genb2_p4 : genb1_p4;
-        double c1 = lead_quark.Pt()/reco_bj1_p4.Pt();
-        double c2 = subl_quark.Pt()/reco_bj2_p4.Pt();
+        // TLorentzVector lead_quark = genb1_p4.Pt() > genb2_p4.Pt() ? genb1_p4 : genb2_p4;
+        // TLorentzVector subl_quark = genb1_p4.Pt() > genb2_p4.Pt() ? genb2_p4 : genb1_p4;
+        // double c1 = lead_quark.Pt()/reco_bj1_p4.Pt();
+        // double c2 = subl_quark.Pt()/reco_bj2_p4.Pt();
+
+        double c1 = genb1_p4.Pt()/reco_bj1_p4.Pt();
+        double c2 = genb2_p4.Pt()/reco_bj2_p4.Pt();
 
         double dpx = -(c1 - 1)*reco_bj1_p4.Px() - (c1 - 1)*reco_bj2_p4.Px();
         double dpy = -(c1 - 1)*reco_bj1_p4.Py() - (c1 - 1)*reco_bj2_p4.Py();
