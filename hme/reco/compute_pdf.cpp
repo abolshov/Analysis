@@ -13,8 +13,6 @@
 #include "TString.h"
 #include "TRandom3.h"
 
-#include "HistManager.hpp"
-
 inline constexpr size_t N_RECO_JETS = 20;
 inline constexpr size_t N_BINS = 100;
 
@@ -101,6 +99,42 @@ int main()
     chain->SetBranchAddress("centralJet_PNetRegPtRawCorr", centralJet_PNetRegPtRawCorr);
     chain->SetBranchAddress("centralJet_PNetRegPtRawRes", centralJet_PNetRegPtRawRes);
 
+    Float_t         lep1_pt;
+    Float_t         lep1_eta;
+    Float_t         lep1_phi;
+    Float_t         lep1_mass;
+
+    Int_t           lep1_type;
+    Int_t           lep1_genLep_kind;
+
+    chain->SetBranchAddress("lep1_pt", &lep1_pt);
+    chain->SetBranchAddress("lep1_eta", &lep1_eta);
+    chain->SetBranchAddress("lep1_phi", &lep1_phi);
+    chain->SetBranchAddress("lep1_mass", &lep1_mass);
+
+    chain->SetBranchAddress("lep1_type", &lep1_type);
+    chain->SetBranchAddress("lep1_genLep_kind", &lep1_genLep_kind);
+
+    Double_t        genHVV_pt;
+    Double_t        genHVV_eta;
+    Double_t        genHVV_phi;
+    Double_t        genHVV_mass;    
+
+    Double_t        genHbb_pt;
+    Double_t        genHbb_eta;
+    Double_t        genHbb_phi;
+    Double_t        genHbb_mass;
+
+    chain->SetBranchAddress("genHVV_pt", &genHVV_pt);
+    chain->SetBranchAddress("genHVV_eta", &genHVV_eta);
+    chain->SetBranchAddress("genHVV_phi", &genHVV_phi);
+    chain->SetBranchAddress("genHVV_mass", &genHVV_mass);
+
+    chain->SetBranchAddress("genHbb_pt", &genHbb_pt);
+    chain->SetBranchAddress("genHbb_eta", &genHbb_eta);
+    chain->SetBranchAddress("genHbb_phi", &genHbb_phi);
+    chain->SetBranchAddress("genHbb_mass", &genHbb_mass);    
+
     // V2: hadronic
     Double_t        genV2prod1_pt;
     Double_t        genV2prod1_eta;
@@ -165,29 +199,8 @@ int main()
     auto pdf_mbb = std::make_unique<TH1F>("pdf_mbb", "1d PDF of H->bb mass with true corrections applied", N_BINS, 0, 200);
     auto pdf_numet_pt = std::make_unique<TH1F>("pdf_numet_pt", "1d PDF nu to met pt ratio with true corrections applied", N_BINS, 0, 8);
     auto pdf_numet_dphi = std::make_unique<TH1F>("pdf_numet_dphi", "1d PDF of dPhi between true nu and MET with true corrections applied", N_BINS, -4, 4);
-
-    HistManager hm;
-
-    std::string nu_met_pt_b("nu_met_pt_b");
-    hm.Add(nu_met_pt_b, "nu_met_pt_b", {"ratio", "Count"}, {0, 8}, 100);
-
-    std::string nu_met_pt_b_smear("nu_met_pt_b_smear");
-    hm.Add(nu_met_pt_b_smear, "nu_met_pt_b_smear", {"ratio", "Count"}, {0, 8}, 100);
-
-    std::string nu_met_dphi_b("nu_met_dphi_b");
-    hm.Add(nu_met_dphi_b, "nu_met_dphi_b", {"dphi", "Count"}, {-4, 4}, 100);
-
-    std::string nu_met_dphi_b_smear("nu_met_dphi_b_smear");
-    hm.Add(nu_met_dphi_b_smear, "nu_met_dphi_b_smear", {"dphi", "Count"}, {-4, 4}, 100);
-
-    // std::string nu_met_b_smear_lj("nu_met_b_smear_lj");
-    // hm.Add(nu_met_b_smear_lj, "nu_met_b_smear_lj", {"ratio", "Count"}, {0, 8}, 100);
-
-    std::string nu_met_pt("nu_met_pt");
-    hm.Add(nu_met_pt, "nu_met_pt", {"ratio", "Count"}, {0, 8}, 100);
-
-    std::string nu_met_dphi("nu_met_dphi");
-    hm.Add(nu_met_dphi, "nu_met_dphi", {"dphi", "Count"}, {-4, 4}, 100);
+    auto pdf_nulep_deta = std::make_unique<TH1F>("pdf_nulep_deta", "1d PDF of dEta between true nu and reco lep", N_BINS, -8, 8);
+    auto pdf_hh_dphi = std::make_unique<TH1F>("pdf_hh_dphi", "1d PDF of dPhi between H->bb and H->WW", N_BINS, -4, 4);
 
     TRandom3 rg;
     rg.SetSeed(42);
@@ -228,23 +241,26 @@ int main()
             continue;
         }
 
+        bool reco_lep1_mu = (lep1_type == 2);
+        bool reco_lep1_ele = (lep1_type == 1);
+
+        bool gen_lep1_mu = ((lep1_genLep_kind == 2) || (lep1_genLep_kind == 4));
+        bool gen_lep1_ele = ((lep1_genLep_kind == 1) || (lep1_genLep_kind == 3));
+
+        bool corr_lep_reco = ((reco_lep1_mu && gen_lep1_mu) || (reco_lep1_ele && gen_lep1_ele));
+        
+        if (!corr_lep_reco)
+        {
+            continue;
+        }
+
         TLorentzVector reco_bj1_p4 = jets[b1_match];
         TLorentzVector reco_bj2_p4 = jets[b2_match];
 
-
-        // establish jet with greater pt for computing corrections
-        // jets are sorted by btag so first two are b jets
-        // TLorentzVector reco_bj1_p4, reco_bj2_p4;
-        // if (centralJet_pt[0] > centralJet_pt[1])
-        // {
-        //     reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
-        //     reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
-        // }
-        // else 
-        // {
-        //     reco_bj2_p4.SetPtEtaPhiM(centralJet_pt[0], centralJet_eta[0], centralJet_phi[0], centralJet_mass[0]);
-        //     reco_bj1_p4.SetPtEtaPhiM(centralJet_pt[1], centralJet_eta[1], centralJet_phi[1], centralJet_mass[1]);
-        // }
+        TLorentzVector Hbb_p4, Hww_p4;
+        Hbb_p4.SetPtEtaPhiM(genHbb_pt, genHbb_eta, genHbb_phi, genHbb_mass);
+        Hww_p4.SetPtEtaPhiM(genHVV_pt, genHVV_eta, genHVV_phi, genHVV_mass);
+        pdf_hh_dphi->Fill(Hbb_p4.DeltaPhi(Hww_p4));
 
         std::vector<TLorentzVector> light_jets;
         std::vector<double> resolutions;
@@ -267,11 +283,6 @@ int main()
         TLorentzVector nu;
         nu.SetPtEtaPhiM(genV1prod2_pt, genV1prod2_eta, genV1prod2_phi, genV1prod2_mass);
 
-        // TLorentzVector lead_quark = genb1_p4.Pt() > genb2_p4.Pt() ? genb1_p4 : genb2_p4;
-        // TLorentzVector subl_quark = genb1_p4.Pt() > genb2_p4.Pt() ? genb2_p4 : genb1_p4;
-        // double c1 = lead_quark.Pt()/reco_bj1_p4.Pt();
-        // double c2 = subl_quark.Pt()/reco_bj2_p4.Pt();
-
         double c1 = genb1_p4.Pt()/reco_bj1_p4.Pt();
         double c2 = genb2_p4.Pt()/reco_bj2_p4.Pt();
 
@@ -283,56 +294,14 @@ int main()
         auto smear_x = std::make_unique<TH1F>("smear_x", "smear_x", 100, -50.0, 50.0);
         auto smear_y = std::make_unique<TH1F>("smear_y", "smear_y", 100, -50.0, 50.0);
 
-        // double dpx_lj = 0.0;
-        // double dpy_lj = 0.0;
-        // std::vector<std::unique_ptr<TH1F>> smear_lj_px;
-        // std::vector<std::unique_ptr<TH1F>> smear_lj_py;
-        // for (size_t i = 0; i < light_jets.size(); ++i)
-        // {
-        //     TString name_x = Form("smear_lj_px_%d", static_cast<int>(i));
-        //     smear_lj_px.push_back(std::make_unique<TH1F>(name_x, name_x, 100, -50.0, 50.0));
-
-        //     TString name_y = Form("smear_lj_py_%d", static_cast<int>(i));
-        //     smear_lj_py.push_back(std::make_unique<TH1F>(name_y, name_y, 100, -50.0, 50.0));
-        // }
-
         for (int i = 0; i < 1000; ++i)
         {
             smear_x->Fill(rg.Gaus(0, 25.2));
             smear_y->Fill(rg.Gaus(0, 25.2));
-            // for (size_t i = 0; i < light_jets.size(); ++i)
-            // {
-            //     auto [dpx, pdy] = GenMETCorrFromJet(rg, light_jets[i], resolutions[i]);
-            //     smear_lj_px[i]->Fill(dpx);
-            //     smear_lj_py[i]->Fill(dpy);
-            // }
         }
 
         dpx_smear = smear_x->GetXaxis()->GetBinCenter(smear_x->GetMaximumBin());
         dpy_smear = smear_y->GetXaxis()->GetBinCenter(smear_y->GetMaximumBin());
-
-        // for (size_t i = 0; i < light_jets.size(); ++i)
-        // {
-        //     dpx_lj += smear_lj_px[i]->GetXaxis()->GetBinCenter(smear_lj_px[i]->GetMaximumBin());
-        //     dpy_lj += smear_lj_py[i]->GetXaxis()->GetBinCenter(smear_lj_py[i]->GetMaximumBin());
-        // }
-
-        {
-            TLorentzVector reco_met_corr(reco_met.Px() + dpx, reco_met.Py() + dpy, 0.0, 0.0);
-            hm.Fill(nu_met_pt_b, nu.Pt()/reco_met_corr.Pt());
-            hm.Fill(nu_met_dphi_b, nu.DeltaPhi(reco_met_corr));
-        }
-
-        {
-            TLorentzVector reco_met_corr(reco_met.Px() + dpx + dpx_smear, reco_met.Py() + dpy + dpy_smear, 0.0, 0.0);
-            hm.Fill(nu_met_pt_b_smear, nu.Pt()/reco_met_corr.Pt());
-            hm.Fill(nu_met_dphi_b_smear, nu.DeltaPhi(reco_met_corr));
-        }
-
-        // {
-        //     TLorentzVector reco_met_corr(reco_met.Px() + dpx + dpx_smear + dpx_lj, reco_met.Py() + dpy + dpy_smear + dpy_lj, 0.0, 0.0);
-        //     hm.Fill(nu_met_b_smear_lj, nu.Pt()/reco_met_corr.Pt());
-        // }
 
         TLorentzVector reco_met_corr(reco_met.Px() + dpx + dpx_smear, reco_met.Py() + dpy + dpy_smear, 0.0, 0.0);
 
@@ -343,27 +312,28 @@ int main()
         pdf_b1b2->Fill(c1, c2); 
         pdf_mbb->Fill((c1*reco_bj1_p4 + c2*reco_bj2_p4).M());
 
-        hm.Fill(nu_met_pt, nu.Pt()/reco_met.Pt());
-        hm.Fill(nu_met_dphi, nu.DeltaPhi(reco_met));
+        TLorentzVector reco_lep_p4;
+        reco_lep_p4.SetPtEtaPhiM(lep1_pt, lep1_eta, lep1_phi, lep1_mass);
+        pdf_nulep_deta->Fill(nu.Eta() - reco_lep_p4.Eta());
     }
-
-    // hm.DrawStack({nu_met_pt, nu_met_pt_b, nu_met_pt_b_smear, nu_met_b_smear_lj}, "MET PDF comparison", "met_pdf_cmp");
-    hm.DrawStack({nu_met_pt, nu_met_pt_b, nu_met_pt_b_smear}, "nu/MET pt PDF comparison", "numet_pt_pdf_cmp");
-    hm.DrawStack({nu_met_dphi, nu_met_dphi_b, nu_met_dphi_b_smear}, "nu-MET dPhi PDF comparison", "numet_dphi_pdf_cmp");
 
     pdf_b1->Scale(1.0/GetPDFScaleFactor(pdf_b1));
     pdf_b2->Scale(1.0/GetPDFScaleFactor(pdf_b2));
     pdf_mbb->Scale(1.0/GetPDFScaleFactor(pdf_mbb));
     pdf_numet_pt->Scale(1.0/GetPDFScaleFactor(pdf_numet_pt));
     pdf_numet_dphi->Scale(1.0/GetPDFScaleFactor(pdf_numet_dphi));
+    pdf_hh_dphi->Scale(1.0/GetPDFScaleFactor(pdf_hh_dphi));
+    pdf_nulep_deta->Scale(1.0/GetPDFScaleFactor(pdf_nulep_deta));
 
-    auto output = std::make_unique<TFile>("pdf.root","RECREATE");
+    auto output = std::make_unique<TFile>("pdf.root", "RECREATE");
     pdf_b1->Write();
     pdf_b2->Write();
     pdf_mbb->Write();
+    pdf_hh_dphi->Write();
     pdf_numet_pt->Write();
     pdf_numet_dphi->Write();
     pdf_b1b2->Write();
+    pdf_nulep_deta->Write();
 	output->Write();
 	output->Close();
 
