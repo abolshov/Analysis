@@ -217,7 +217,13 @@ int main()
     HistManager hm;
 
     std::string hme_mass("hme_mass");
-    hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2000}, 100);
+    hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2500}, 100);
+
+    std::string hme_integral("hme_integral");
+    hm.Add(hme_integral, "HME integral", {"Integral", "Count"}, {0, 20}, 20);
+
+    std::string mass_vs_int_2d("mass_vs_int_2d");
+    hm.Add(mass_vs_int_2d, "HME X->HH mass vs Integral", {"X->HH mass, [GeV]", "Integral"}, {0, 2500}, {0, 20}, {50, 20});
 
     auto h = std::make_unique<TH1F>("h", "h", 200, 0, 2000);
 
@@ -266,6 +272,14 @@ int main()
         bool lq_accept = (genq1_p4.Pt() > 20.0 && std::abs(genq1_p4.Eta()) < 5.0) && (genq2_p4.Pt() > 20.0 && std::abs(genq2_p4.Eta()) < 5.0);
         bool quarks_accept = bq_accept && lq_accept;
         if (!quarks_accept)
+        {
+            continue;
+        }
+
+        bool gen_b_match_exists = genb1_vis_pt > 0.0 && genb2_vis_pt > 0.0;
+        bool gen_light_match_exists = genV2prod1_vis_pt > 0.0 && genV2prod2_vis_pt > 0.0;
+        bool gen_match_exists = gen_b_match_exists && gen_light_match_exists;
+        if (!gen_match_exists)
         {
             continue;
         }
@@ -335,7 +349,8 @@ int main()
                 // std::vector<TLorentzVector> input = {bj1_p4, bj2_p4, lj1_p4, lj2_p4, reco_lep_p4, reco_met_p4};
                 // std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
 
-                // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
+                // // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
+                // auto hme = EstimateMass(input, pdf_b1b2, pdfs_1d, rg, i, lj_resolutions);
                 // if (hme)
                 // {
                 //     worked = true;
@@ -359,7 +374,10 @@ int main()
             auto it = std::max_element(efficiencies.begin(), efficiencies.end());
             int idx = it - efficiencies.begin();
             hm.Fill(hme_mass, estimations[idx]);
+            hm.Fill(hme_integral, *it);
             h->Fill(estimations[idx]);
+
+            hm.Fill(mass_vs_int_2d, estimations[idx], *it);
 
             // double mass = std::accumulate(estimations.begin(), estimations.end(), 0.0)/estimations.size(); 
             // hm.Fill(hme_mass, mass);
@@ -376,6 +394,7 @@ int main()
     std::cout << "Events passed to HME = " << hme_events << "\n"; 
     std::cout << "HME successful = " << 100.0*hme_worked/hme_events << "%\n"; 
     std::cout << "HME width = " << InterquantileRange(h) << "\n";
+    std::cout << "HME value = " << h->GetXaxis()->GetBinCenter(h->GetMaximumBin()) << "\n";
     std::cout << "Processing time = " << elapsed.count() << " s\n";
 
     return 0;
