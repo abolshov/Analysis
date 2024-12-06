@@ -311,8 +311,8 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         std::cout << "\tc1=" << c1 << ", c2=" << c2 << "\n";
         #endif
 
-        int bin = pdf_b1b2->FindBin(c1, c2);
-        double w = pdf_b1b2->GetBinContent(bin);
+        // int bin = pdf_b1b2->FindBin(c1, c2);
+        // double w = pdf_b1b2->GetBinContent(bin);
 
         #ifdef PRINT
         std::cout << "\tw=" << w << "\n";
@@ -325,9 +325,10 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         bb2 *= c2;
 
         TLorentzVector Hbb = bb1 + bb2;
-        bin = pdf_mbb->FindBin(Hbb.M());
-        double dw = pdf_mbb->GetBinContent(bin);
-        w *= dw;
+        int bin = pdf_mbb->FindBin(Hbb.M());
+        double w = pdf_mbb->GetBinContent(bin);
+        // double dw = pdf_mbb->GetBinContent(bin);
+        // w *= dw;
 
         #ifdef PRINT
         std::cout << "\tbb1=(" << bb1.Pt() << ", " << bb1.Eta() << ", " << bb1.Phi() << ", " << bb1.M() << ")\n"
@@ -347,7 +348,9 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2 + smear_dpy;
 
         TLorentzVector met_corr;
-        met_corr.SetXYZM(met_corr_px, met_corr_py, 0.0, 0.0);
+        double met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
+        double met_corr_phi = std::atan2(met_corr_py, met_corr_px);
+        met_corr.SetPtEtaPhiM(met_corr_pt, 0.0, met_corr_phi, 0.0);
         double pt = met_fraction*met_corr.Pt();
         double phi = TVector2::Phi_mpi_pi(met_corr.Phi() + dphi);
 
@@ -365,7 +368,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         Hww += j2;
 
         bin = pdf_mbb->FindBin(Hww.M());
-        dw = pdf_mbb->GetBinContent(bin);
+        double dw = pdf_mbb->GetBinContent(bin);
         w *= dw;
 
         double hh_dphi = Hww.DeltaPhi(Hbb);
