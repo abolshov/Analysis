@@ -237,12 +237,12 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
                           TRandom3& rg, int evt, 
                           std::pair<double, double> lj_pt_res)
 {
-    TLorentzVector b1 = particles[PhysObj::bj1];
-    TLorentzVector b2 = particles[PhysObj::bj2];
-    TLorentzVector lj1 = particles[PhysObj::wj1];
-    TLorentzVector lj2 = particles[PhysObj::wj2];
-    TLorentzVector l = particles[PhysObj::lep];
-    TLorentzVector met = particles[PhysObj::met];
+    TLorentzVector const& b1 = particles[PhysObj::bj1];
+    TLorentzVector const& b2 = particles[PhysObj::bj2];
+    TLorentzVector const& lj1 = particles[PhysObj::wj1];
+    TLorentzVector const& lj2 = particles[PhysObj::wj2];
+    TLorentzVector const& l = particles[PhysObj::lep];
+    TLorentzVector const& met = particles[PhysObj::met];
 
     std::unique_ptr<TH1F>& pdf_numet_pt = pdfs_1d[PDF::numet_pt];
     std::unique_ptr<TH1F>& pdf_numet_dphi = pdfs_1d[PDF::numet_dphi];
@@ -251,31 +251,72 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
     std::unique_ptr<TH1F>& pdf_mbb = pdfs_1d[PDF::mbb];
 
     double mh = rg.Gaus(HIGGS_MASS, HIGGS_WIDTH);
-    [[maybe_unused]] auto [res1, res2] = lj_pt_res;
+    auto [res1, res2] = lj_pt_res;
 
     auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d", evt), N_BINS, 0.0, MAX_MASS);
+    auto weights = std::make_unique<TH1F>("Weights", Form("Weights: event %d", evt), 50, 0.0, 1.0);
+
+    #ifdef PRINT
+    std::cout << "Event " << evt << ", raw values:\n" 
+              << "bj1=(" << b1.Pt() << ", " << b1.Eta() << ", " << b1.Phi() << ", " << b1.M() << ")\n"
+              << "bj2=(" << b2.Pt() << ", " << b2.Eta() << ", " << b2.Phi() << ", " << b2.M() << ")\n"
+              << "lj1=(" << lj1.Pt() << ", " << lj1.Eta() << ", " << lj1.Phi() << ", " << lj1.M() << "), res=" << res1 << "\n"
+              << "lj2=(" << lj2.Pt() << ", " << lj2.Eta() << ", " << lj2.Phi() << ", " << lj2.M() << "), res=" << res2 << "\n"
+              << "lep=(" << l.Pt() << ", " << l.Eta() << ", " << l.Phi() << ", " << l.M() << ")\n"
+              << "met=(" << met.Pt() << ", " << met.Eta() << ", " << met.Phi() << ", " << met.M() << ")\n\n";
+    #endif
 
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
     {
+        #ifdef PRINT
+        std::cout << "Iter " << i << ":\n";
+        #endif
         TLorentzVector j1 = GenerateResCorrection(lj1, rg, res1);
         TLorentzVector j2 = GenerateResCorrection(lj2, rg, res2);
+
+        #ifdef PRINT
+        std::cout << "\tj1=(" << j1.Pt() << ", " << j1.Eta() << ", " << j1.Phi() << ", " << j1.M() << ")\n"
+                  << "\tj2=(" << j2.Pt() << ", " << j2.Eta() << ", " << j2.Phi() << ", " << j2.M() << ")\n"
+                  << "\thadW_mass=" << (j1 + j2).M() << "\n";
+        #endif
 
         double dpx_1 = j1.Px() - lj1.Px();
         double dpx_2 = j2.Px() - lj2.Px();
         double dpy_1 = j1.Py() - lj1.Py();
         double dpy_2 = j2.Py() - lj2.Py();
 
+        #ifdef PRINT
+        std::cout << "\tdpx_1=" << dpx_1 << "\n"
+                  << "\tdpx_2=" << dpx_2 << "\n"
+                  << "\tdpy_1=" << dpy_1 << "\n"
+                  << "\tdpy_2=" << dpy_2 << "\n";
+        #endif
+
         double eta = l.Eta() + pdf_nulep_deta->GetRandom(&rg);
         double dphi = pdf_numet_dphi->GetRandom(&rg);
         double met_fraction = pdf_numet_pt->GetRandom(&rg);
+
+        #ifdef PRINT
+        std::cout << "\teta=" << eta << "\n"
+                  << "\tdphi=" << dphi << "\n"
+                  << "\tmet_fraction=" << met_fraction << "\n";
+        #endif
 
         double c1 = 1.0;
         double c2 = 1.0;
         pdf_b1b2->GetRandom2(c1, c2, &rg);
 
+        #ifdef PRINT
+        std::cout << "\tc1=" << c1 << ", c2=" << c2 << "\n";
+        #endif
+
         int bin = pdf_b1b2->FindBin(c1, c2);
         double w = pdf_b1b2->GetBinContent(bin);
+
+        #ifdef PRINT
+        std::cout << "\tw=" << w << "\n";
+        #endif
 
         TLorentzVector bb1 = b1;
         TLorentzVector bb2 = b2;
@@ -285,20 +326,38 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
 
         TLorentzVector Hbb = bb1 + bb2;
         bin = pdf_mbb->FindBin(Hbb.M());
-        w *= pdf_mbb->GetBinContent(bin);
+        double dw = pdf_mbb->GetBinContent(bin);
+        w *= dw;
+
+        #ifdef PRINT
+        std::cout << "\tbb1=(" << bb1.Pt() << ", " << bb1.Eta() << ", " << bb1.Phi() << ", " << bb1.M() << ")\n"
+                  << "\tbb2=(" << bb2.Pt() << ", " << bb2.Eta() << ", " << bb2.Phi() << ", " << bb2.M() << ")\n"
+                  << "\tHbb_mass=" << Hbb.M() << "\n"
+                  << "\tdw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hbb.M())) << ", w=" << w << "\n";
+        #endif
 
         double smear_dpx = rg.Gaus(0.0, MET_SIGMA);
         double smear_dpy = rg.Gaus(0.0, MET_SIGMA);
 
+        #ifdef PRINT
+        std::cout << "\tsmear_dpx=" << smear_dpx << ", smear_dpy=" << smear_dpy << "\n";
+        #endif
+
         double met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2 + smear_dpx;
         double met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2 + smear_dpy;
 
-        TLorentzVector met_corr(met_corr_px, met_corr_py, 0.0, 0.0);
+        TLorentzVector met_corr;
+        met_corr.SetXYZM(met_corr_px, met_corr_py, 0.0, 0.0);
         double pt = met_fraction*met_corr.Pt();
-        double phi = met_corr.Phi() + dphi;
+        double phi = TVector2::Phi_mpi_pi(met_corr.Phi() + dphi);
 
         TLorentzVector nu;
         nu.SetPtEtaPhiM(pt, eta, phi, 0.0);
+
+        #ifdef PRINT
+        std::cout << "\tmet_corr=(" << met_corr.Pt() << ", " << met_corr.Eta() << ", " << met_corr.Phi() << ", " << met_corr.M() << ")\n" 
+                  << "\tnu=(" << nu.Pt() << ", " << nu.Eta() << ", " << nu.Phi() << ", " << nu.M() << ")\n"; 
+        #endif
 
         TLorentzVector Hww(l);
         Hww += nu;
@@ -306,13 +365,25 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         Hww += j2;
 
         bin = pdf_mbb->FindBin(Hww.M());
-        w *= pdf_mbb->GetBinContent(bin);
+        dw = pdf_mbb->GetBinContent(bin);
+        w *= dw;
 
         double hh_dphi = Hww.DeltaPhi(Hbb);
         bin = pdf_hh_dphi->FindBin(hh_dphi);
-        w *= pdf_hh_dphi->GetBinContent(bin);
+        dw = pdf_hh_dphi->GetBinContent(bin);
+        w *= dw;
+
+        #ifdef PRINT
+        std::cout << "\tHww_mass=" << Hww.M() << ", dw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hww.M())) << ", w=" << w << "\n"
+                  << "\thh_dphi=" << hh_dphi << ", dw=" << pdf_hh_dphi->GetBinContent(pdf_hh_dphi->FindBin(hh_dphi)) << ", w=" << w << "\n";
+        #endif
 
         double X_mass = (Hww + Hbb).M();
+
+        #ifdef PRINT
+        std::cout << "\tX_mass=" << X_mass << "\n";
+        std::cout << "===========================================================\n";
+        #endif
 
         if (X_mass < 2*mh)
         {
@@ -320,11 +391,30 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
             continue;
         }
 
+        weights->Fill(w);
         res_mass->Fill(X_mass, w);
+
+        #ifdef PRINT
+        if (std::cin.get()) 
+        {}
+        #endif
     }
 
     if (res_mass->GetEntries() && res_mass->Integral() > 0.0)
     {
+        #ifdef PLOT_WEIGHTS
+        if (rg.Uniform(0, 1) > 0.9997)
+        {
+            auto c1 = std::make_unique<TCanvas>("c1", "c1");
+            c1->SetGrid();
+            c1->SetTickx();
+            c1->SetTicky();
+            weights->SetLineWidth(2);
+            weights->Draw();
+            c1->SaveAs(Form("weights/weights_evt_%d.png", evt));
+        }
+        #endif
+
         int binmax = res_mass->GetMaximumBin(); 
         double estimated_mass = res_mass->GetXaxis()->GetBinCenter(binmax);
         // double success_rate = 1.0 - static_cast<double>(failed_iter)/N_ITER;
