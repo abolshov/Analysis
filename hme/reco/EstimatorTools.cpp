@@ -233,8 +233,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
 
 OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, 
                           std::unique_ptr<TH2F>& pdf_b1b2, 
-                          std::unique_ptr<TH1F>& pdf_numet_pt, 
-                          std::unique_ptr<TH1F>& pdf_numet_dphi, 
+                          std::vector<std::unique_ptr<TH1F>>& pdfs_1d,
                           TRandom3& rg, int evt, 
                           std::pair<double, double> lj_pt_res)
 {
@@ -245,12 +244,18 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
     TLorentzVector l = particles[PhysObj::lep];
     TLorentzVector met = particles[PhysObj::met];
 
+    std::unique_ptr<TH1F>& pdf_numet_pt = pdfs_1d[PDF::numet_pt];
+    std::unique_ptr<TH1F>& pdf_numet_dphi = pdfs_1d[PDF::numet_dphi];
+    std::unique_ptr<TH1F>& pdf_nulep_deta = pdfs_1d[PDF::nulep_deta];
+    std::unique_ptr<TH1F>& pdf_hh_dphi = pdfs_1d[PDF::hh_dphi];
+    std::unique_ptr<TH1F>& pdf_mbb = pdfs_1d[PDF::mbb];
+
     double mh = rg.Gaus(HIGGS_MASS, HIGGS_WIDTH);
     [[maybe_unused]] auto [res1, res2] = lj_pt_res;
 
     auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d", evt), N_BINS, 0.0, MAX_MASS);
 
-    int failed_iter = 0;
+    [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
     {
         TLorentzVector j1 = GenerateResCorrection(lj1, rg, res1);
@@ -261,7 +266,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         double dpy_1 = j1.Py() - lj1.Py();
         double dpy_2 = j2.Py() - lj2.Py();
 
-        double eta = rg.Uniform(-6, 6);
+        double eta = l.Eta() + pdf_nulep_deta->GetRandom(&rg);
         double dphi = pdf_numet_dphi->GetRandom(&rg);
         double met_fraction = pdf_numet_pt->GetRandom(&rg);
 
@@ -269,18 +274,18 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         double c2 = 1.0;
         pdf_b1b2->GetRandom2(c1, c2, &rg);
 
+        int bin = pdf_b1b2->FindBin(c1, c2);
+        double w = pdf_b1b2->GetBinContent(bin);
+
         TLorentzVector bb1 = b1;
         TLorentzVector bb2 = b2;
 
         bb1 *= c1;
         bb2 *= c2;
 
-        double dm = (bb1 + bb2).M() - mh;
-        if (std::abs(dm) < HIGGS_WIDTH)
-        {
-            ++failed_iter;
-            continue;
-        }
+        TLorentzVector Hbb = bb1 + bb2;
+        bin = pdf_mbb->FindBin(Hbb.M());
+        w *= pdf_mbb->GetBinContent(bin);
 
         double smear_dpx = rg.Gaus(0.0, MET_SIGMA);
         double smear_dpy = rg.Gaus(0.0, MET_SIGMA);
@@ -295,21 +300,19 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         TLorentzVector nu;
         nu.SetPtEtaPhiM(pt, eta, phi, 0.0);
 
-        TLorentzVector tmp(l);
-        tmp += nu;
-        tmp += j1;
-        tmp += j2;
+        TLorentzVector Hww(l);
+        Hww += nu;
+        Hww += j1;
+        Hww += j2;
 
-        dm = tmp.M() - mh;
-        if (std::abs(dm) < HIGGS_WIDTH)
-        {
-            ++failed_iter;
-            continue;
-        }
+        bin = pdf_mbb->FindBin(Hww.M());
+        w *= pdf_mbb->GetBinContent(bin);
 
-        tmp += bb1;
-        tmp += bb2;
-        double X_mass = tmp.M();
+        double hh_dphi = Hww.DeltaPhi(Hbb);
+        bin = pdf_hh_dphi->FindBin(hh_dphi);
+        w *= pdf_hh_dphi->GetBinContent(bin);
+
+        double X_mass = (Hww + Hbb).M();
 
         if (X_mass < 2*mh)
         {
@@ -317,15 +320,16 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
             continue;
         }
 
-        res_mass->Fill(X_mass);
+        res_mass->Fill(X_mass, w);
     }
 
-    if (res_mass->GetEntries())
+    if (res_mass->GetEntries() && res_mass->Integral() > 0.0)
     {
         int binmax = res_mass->GetMaximumBin(); 
         double estimated_mass = res_mass->GetXaxis()->GetBinCenter(binmax);
-        double success_rate = 1.0 - static_cast<double>(failed_iter)/N_ITER;
-        return std::make_optional<std::pair<double, double>>(estimated_mass, success_rate);
+        // double success_rate = 1.0 - static_cast<double>(failed_iter)/N_ITER;
+        // return std::make_optional<std::pair<double, double>>(estimated_mass, success_rate);
+        return std::make_optional<std::pair<double, double>>(estimated_mass, res_mass->Integral());
     }
 
     return std::nullopt;

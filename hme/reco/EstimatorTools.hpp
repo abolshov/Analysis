@@ -26,6 +26,7 @@ inline constexpr double MET_SIGMA = 14.8;
 using OptionalPair = std::optional<std::pair<double, double>>;
 
 enum PhysObj { bj1, bj2, wj1, wj2, lep, met };
+enum PDF { numet_pt, numet_dphi, nulep_deta, hh_dphi, mbb };
 
 // computes rescaling factors for jets using rescale pdf and mass of particle->jj
 // has side effect: may swap j1 and j2
@@ -48,8 +49,7 @@ TLorentzVector GenerateResCorrection(TLorentzVector const& v, TRandom3& rg, doub
 // estimate mass using 2d pdf for b1b2 rescaling, pdf for fraction nu/met and dphi between nu/met
 OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, 
                           std::unique_ptr<TH2F>& pdf_b1b2, 
-                          std::unique_ptr<TH1F>& pdf_numet_pt, 
-                          std::unique_ptr<TH1F>& pdf_numet_dphi, 
+                          std::vector<std::unique_ptr<TH1F>>& pdfs_1d,
                           TRandom3& rg, int evt, 
                           std::pair<double, double> lj_pt_res);
 #endif

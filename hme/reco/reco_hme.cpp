@@ -40,6 +40,16 @@ int main()
     auto pdf_b1b2 = std::unique_ptr<TH2F>(static_cast<TH2F*>(file_pdf->Get("pdf_b1b2")));
     auto pdf_numet_pt = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_numet_pt")));
     auto pdf_numet_dphi = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_numet_dphi")));
+    auto pdf_nulep_deta = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_nulep_deta")));
+    auto pdf_hh_dphi = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_hh_dphi")));
+    auto pdf_mbb = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mbb")));
+
+    std::vector<std::unique_ptr<TH1F>> pdfs_1d;
+    pdfs_1d.push_back(std::move(pdf_numet_pt));
+    pdfs_1d.push_back(std::move(pdf_numet_dphi));
+    pdfs_1d.push_back(std::move(pdf_nulep_deta));
+    pdfs_1d.push_back(std::move(pdf_hh_dphi));
+    pdfs_1d.push_back(std::move(pdf_mbb));
 
     TFile *myFile = TFile::Open("nano_0.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -70,7 +80,6 @@ int main()
     Float_t         centralJet_btagPNetB[N_RECO_JETS]; 
     Float_t         centralJet_PNetRegPtRawCorr[N_RECO_JETS];    
     Float_t         centralJet_PNetRegPtRawRes[N_RECO_JETS]; 
-    // Float_t         centralJet_PNetRegPtRawCorrNeutrino[N_RECO_JETS];  
 
     myTree->SetBranchAddress("lep1_pt", &lep1_pt);
     myTree->SetBranchAddress("lep1_eta", &lep1_eta);
@@ -91,7 +100,6 @@ int main()
     myTree->SetBranchAddress("centralJet_btagPNetB", centralJet_btagPNetB);
     myTree->SetBranchAddress("centralJet_PNetRegPtRawCorr", centralJet_PNetRegPtRawCorr);
     myTree->SetBranchAddress("centralJet_PNetRegPtRawRes", centralJet_PNetRegPtRawRes);
-    // myTree->SetBranchAddress("centralJet_PNetRegPtRawCorrNeutrino", centralJet_PNetRegPtRawCorrNeutrino);
 
     // gen variables
     // H->VV
@@ -305,7 +313,7 @@ int main()
                     std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
 
                     // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
-                    auto hme = EstimateMass(input, pdf_b1b2, pdf_numet_pt, pdf_numet_dphi, rg, i, lj_resolutions);
+                    auto hme = EstimateMass(input, pdf_b1b2, pdfs_1d, rg, i, lj_resolutions);
                     if (hme)
                     {
                         worked = true;
