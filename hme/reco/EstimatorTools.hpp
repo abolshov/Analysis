@@ -18,10 +18,11 @@ inline constexpr int N_ATTEMPTS = 1;
 inline constexpr int N_ITER = 1000;
 
 // event mass distribution parameters
-inline constexpr double MAX_MASS = 2000;
+inline constexpr double MAX_MASS = 5000;
 inline constexpr int N_BINS = 5000;
 
-inline constexpr double MET_SIGMA = 14.8;
+// inline constexpr double MET_SIGMA = 14.8;
+inline constexpr double MET_SIGMA = 25.2;
 
 using OptionalPair = std::optional<std::pair<double, double>>;
 
@@ -50,6 +51,6 @@ TLorentzVector GenerateResCorrection(TLorentzVector const& v, TRandom3& rg, doub
 OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, 
                           std::unique_ptr<TH2F>& pdf_b1b2, 
                           std::vector<std::unique_ptr<TH1F>>& pdfs_1d,
-                          TRandom3& rg, int evt, 
+                          TRandom3& rg, int evt, int comb_id,
                           std::pair<double, double> lj_pt_res);
 #endif
