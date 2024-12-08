@@ -51,7 +51,7 @@ int main()
     pdfs_1d.push_back(std::move(pdf_hh_dphi));
     pdfs_1d.push_back(std::move(pdf_mbb));
 
-    TFile *myFile = TFile::Open("nano_0.root");
+    TFile *myFile = TFile::Open("nano_2.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
 
     TRandom3 rg;
@@ -219,12 +219,6 @@ int main()
     std::string hme_mass("hme_mass");
     hm.Add(hme_mass, "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2500}, 100);
 
-    std::string hme_integral("hme_integral");
-    hm.Add(hme_integral, "HME integral", {"Integral", "Count"}, {0, 20}, 20);
-
-    std::string mass_vs_int_2d("mass_vs_int_2d");
-    hm.Add(mass_vs_int_2d, "HME X->HH mass vs Integral", {"X->HH mass, [GeV]", "Integral"}, {0, 2500}, {0, 20}, {50, 20});
-
     auto h = std::make_unique<TH1F>("h", "h", 200, 0, 2000);
 
     int hme_events = 0;
@@ -307,6 +301,7 @@ int main()
         int n_jets = 3;
         std::vector<double> estimations;
         std::vector<double> efficiencies;
+        int comb_id = 1;
         for (int bj1_idx = 0; bj1_idx < n_jets; ++bj1_idx)
         {
             for (int bj2_idx = bj1_idx + 1; bj2_idx < n_jets; ++bj2_idx)
@@ -314,52 +309,52 @@ int main()
                 TLorentzVector bj1_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj1_idx] : jets[bj2_idx];
                 TLorentzVector bj2_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj2_idx] : jets[bj1_idx];
 
-                auto pairs = MakePairs(jets.size(), bj1_idx, bj2_idx);
-                for (auto [lj1_idx, lj2_idx]: pairs)
-                {
-                    TLorentzVector lj1_p4 = jets[lj1_idx];
-                    TLorentzVector lj2_p4 = jets[lj2_idx];
-
-                    double lj1_res = resolutions[lj1_idx];
-                    double lj2_res = resolutions[lj2_idx];
-
-                    std::vector<TLorentzVector> input = {bj1_p4, bj2_p4, lj1_p4, lj2_p4, reco_lep_p4, reco_met_p4};
-                    std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
-
-                    // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
-                    auto hme = EstimateMass(input, pdf_b1b2, pdfs_1d, rg, i, lj_resolutions);
-                    if (hme)
-                    {
-                        worked = true;
-                        auto [mass, succ_rate] = hme.value();
-                        estimations.push_back(mass);
-                        efficiencies.push_back(succ_rate);
-                        // hm.Fill(hme_mass, mass);
-                        // h->Fill(mass);
-                    }
-                }
-
-                // auto [lj1_idx, lj2_idx] = FindByAngle(jets, bj1_idx, bj2_idx);
-                // TLorentzVector lj1_p4 = jets[lj1_idx];
-                // TLorentzVector lj2_p4 = jets[lj2_idx];
-
-                // double lj1_res = resolutions[lj1_idx];
-                // double lj2_res = resolutions[lj2_idx];
-
-                // std::vector<TLorentzVector> input = {bj1_p4, bj2_p4, lj1_p4, lj2_p4, reco_lep_p4, reco_met_p4};
-                // std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
-
-                // // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
-                // auto hme = EstimateMass(input, pdf_b1b2, pdfs_1d, rg, i, lj_resolutions);
-                // if (hme)
+                // auto pairs = MakePairs(jets.size(), bj1_idx, bj2_idx);
+                // for (auto [lj1_idx, lj2_idx]: pairs)
                 // {
-                //     worked = true;
-                //     auto [mass, succ_rate] = hme.value();
-                //     estimations.push_back(mass);
-                //     efficiencies.push_back(succ_rate);
-                //     // hm.Fill(hme_mass, mass);
-                //     // h->Fill(mass);
+                //     TLorentzVector lj1_p4 = jets[lj1_idx];
+                //     TLorentzVector lj2_p4 = jets[lj2_idx];
+
+                //     double lj1_res = resolutions[lj1_idx];
+                //     double lj2_res = resolutions[lj2_idx];
+
+                //     std::vector<TLorentzVector> input = {bj1_p4, bj2_p4, lj1_p4, lj2_p4, reco_lep_p4, reco_met_p4};
+                //     std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
+
+                //     // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
+                //     auto hme = EstimateMass(input, pdf_b1b2, pdfs_1d, rg, i, comb_id++, lj_resolutions);
+                //     if (hme)
+                //     {
+                //         worked = true;
+                //         auto [mass, succ_rate] = hme.value();
+                //         estimations.push_back(mass);
+                //         efficiencies.push_back(succ_rate);
+                //         // hm.Fill(hme_mass, mass);
+                //         // h->Fill(mass);
+                //     }
                 // }
+
+                auto [lj1_idx, lj2_idx] = FindByAngle(jets, bj1_idx, bj2_idx);
+                TLorentzVector lj1_p4 = jets[lj1_idx];
+                TLorentzVector lj2_p4 = jets[lj2_idx];
+
+                double lj1_res = resolutions[lj1_idx];
+                double lj2_res = resolutions[lj2_idx];
+
+                std::vector<TLorentzVector> input = {bj1_p4, bj2_p4, lj1_p4, lj2_p4, reco_lep_p4, reco_met_p4};
+                std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
+
+                // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
+                auto hme = EstimateMass(input, pdf_b1b2, pdfs_1d, rg, i, comb_id++, lj_resolutions);
+                if (hme)
+                {
+                    worked = true;
+                    auto [mass, succ_rate] = hme.value();
+                    estimations.push_back(mass);
+                    efficiencies.push_back(succ_rate);
+                    // hm.Fill(hme_mass, mass);
+                    // h->Fill(mass);
+                }
             }
         }
         
@@ -374,15 +369,20 @@ int main()
             auto it = std::max_element(efficiencies.begin(), efficiencies.end());
             int idx = it - efficiencies.begin();
             hm.Fill(hme_mass, estimations[idx]);
-            hm.Fill(hme_integral, *it);
+            // hm.Fill(hme_integral, *it);
             h->Fill(estimations[idx]);
 
-            hm.Fill(mass_vs_int_2d, estimations[idx], *it);
+            // hm.Fill(mass_vs_int_2d, estimations[idx], *it);
 
             // double mass = std::accumulate(estimations.begin(), estimations.end(), 0.0)/estimations.size(); 
             // hm.Fill(hme_mass, mass);
             // h->Fill(mass);
         }
+
+        // if (hme_events == 4532)
+        // {
+        //     break;
+        // }
     }
 
     hm.Draw();
