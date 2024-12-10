@@ -51,7 +51,7 @@ int main()
     auto pdf_nulep_deta = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_nulep_deta")));
     auto pdf_hh_dphi = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_hh_dphi")));
     auto pdf_mbb = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mbb")));
-    auto pdf_mww = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mww")));
+    auto pdf_mww = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mww_wide")));
     auto pdf_hh_deta = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_hh_deta")));
 
     std::vector<std::unique_ptr<TH1F>> pdfs_1d;
@@ -355,7 +355,7 @@ int main()
                 // std::pair<double, double> lj_resolutions = {lj1_res, lj2_res};
 
                 // // auto hme = EstimateMass(input, pdf, rg, i, lj_resolutions);
-                // auto hme = EstimateMass(input, pdf_b1b2, pdfs_1d, rg, i, comb_id++, lj_resolutions);
+                // auto hme = EstimateMass(input, pdfs_2d, pdfs_1d, rg, i, comb_id++, lj_resolutions);
                 // if (hme)
                 // {
                 //     worked = true;

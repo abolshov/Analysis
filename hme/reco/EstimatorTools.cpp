@@ -374,11 +374,12 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         Hww += j1;
         Hww += j2;
 
-        // bin = pdf_mbb->FindBin(Hww.M());
-        // w *= pdf_mbb->GetBinContent(bin);
+        bin = pdf_mbb->FindBin(Hww.M());
+        w *= pdf_mbb->GetBinContent(bin);
 
-        bin = pdf_mww->FindBin(Hww.M());
-        w *= pdf_mww->GetBinContent(bin);
+        // pdf_mww makes things worse!
+        // bin = pdf_mww->FindBin(Hww.M());
+        // w *= pdf_mww->GetBinContent(bin);
 
         double hh_dphi = Hww.DeltaPhi(Hbb);
         // bin = pdf_hh_dphi->FindBin(hh_dphi);
