@@ -237,7 +237,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, std::uni
 }
 
 OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles, 
-                          std::unique_ptr<TH2F>& pdf_b1b2, 
+                          std::vector<std::unique_ptr<TH2F>>& pdfs_2d,
                           std::vector<std::unique_ptr<TH1F>>& pdfs_1d,
                           TRandom3& rg, int evt, int comb_id,
                           std::pair<double, double> lj_pt_res)
@@ -249,11 +249,17 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
     TLorentzVector const& l = particles[PhysObj::lep];
     TLorentzVector const& met = particles[PhysObj::met];
 
-    std::unique_ptr<TH1F>& pdf_numet_pt = pdfs_1d[PDF::numet_pt];
-    std::unique_ptr<TH1F>& pdf_numet_dphi = pdfs_1d[PDF::numet_dphi];
-    std::unique_ptr<TH1F>& pdf_nulep_deta = pdfs_1d[PDF::nulep_deta];
-    std::unique_ptr<TH1F>& pdf_hh_dphi = pdfs_1d[PDF::hh_dphi];
-    std::unique_ptr<TH1F>& pdf_mbb = pdfs_1d[PDF::mbb];
+    [[maybe_unused]] std::unique_ptr<TH2F>& pdf_b1b2 = pdfs_2d[PDF2::b1b2];
+    [[maybe_unused]] std::unique_ptr<TH2F>& pdf_hh_dEtadPhi = pdfs_2d[PDF2::hh_dEtadPhi];
+    [[maybe_unused]] std::unique_ptr<TH2F>& pdf_hh_pt_e = pdfs_2d[PDF2::hh_pt_e];
+
+    [[maybe_unused]] std::unique_ptr<TH1F>& pdf_numet_pt = pdfs_1d[PDF1::numet_pt];
+    [[maybe_unused]] std::unique_ptr<TH1F>& pdf_numet_dphi = pdfs_1d[PDF1::numet_dphi];
+    [[maybe_unused]] std::unique_ptr<TH1F>& pdf_nulep_deta = pdfs_1d[PDF1::nulep_deta];
+    [[maybe_unused]] std::unique_ptr<TH1F>& pdf_hh_dphi = pdfs_1d[PDF1::hh_dphi];
+    [[maybe_unused]] std::unique_ptr<TH1F>& pdf_mbb = pdfs_1d[PDF1::mbb];
+    [[maybe_unused]] std::unique_ptr<TH1F>& pdf_hh_deta = pdfs_1d[PDF1::hh_deta];
+    [[maybe_unused]] std::unique_ptr<TH1F>& pdf_mww = pdfs_1d[PDF1::mww];
 
     double mh = rg.Gaus(HIGGS_MASS, HIGGS_WIDTH);
     auto [res1, res2] = lj_pt_res;
@@ -326,12 +332,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         bb2 *= c2;
 
         TLorentzVector Hbb = bb1 + bb2;
-        // if (std::abs(Hbb.M() - mh) > 20.0)
-        // {
-        //     ++failed_iter;
-        //     continue;
-        // }
-
+    
         int bin = pdf_mbb->FindBin(Hbb.M());
         double w = pdf_mbb->GetBinContent(bin);
 
@@ -373,22 +374,32 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         Hww += j1;
         Hww += j2;
 
-        // if (std::abs(Hww.M() - mh) > 20.0)
-        // {
-        //     ++failed_iter;
-        //     continue;
-        // }
+        // bin = pdf_mbb->FindBin(Hww.M());
+        // w *= pdf_mbb->GetBinContent(bin);
 
-        bin = pdf_mbb->FindBin(Hww.M());
-        w *= pdf_mbb->GetBinContent(bin);
+        bin = pdf_mww->FindBin(Hww.M());
+        w *= pdf_mww->GetBinContent(bin);
 
         double hh_dphi = Hww.DeltaPhi(Hbb);
-        bin = pdf_hh_dphi->FindBin(hh_dphi);
-        w *= pdf_hh_dphi->GetBinContent(bin);
+        // bin = pdf_hh_dphi->FindBin(hh_dphi);
+        // w *= pdf_hh_dphi->GetBinContent(bin);
+
+        double hh_deta = Hbb.Eta() - Hww.Eta();
+        // bin = pdf_hh_deta->FindBin(hh_deta);
+        // w *= pdf_hh_deta->GetBinContent(bin);
+
+        bin = pdf_hh_dEtadPhi->FindBin(hh_deta, hh_dphi);
+        w *= pdf_hh_dEtadPhi->GetBinContent(bin);
+
+        double r_hbb = Hbb.Pt()/Hbb.E();
+        double r_hww = Hww.Pt()/Hww.E();
+        bin = pdf_hh_pt_e->FindBin(r_hbb, r_hww);
+        w *= pdf_hh_pt_e->GetBinContent(bin);
 
         #ifdef DEBUG
-        log << "\tHww_mass=" << Hww.M() << ", dw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hww.M())) << ", w=" << w << "\n"
-            << "\thh_dphi=" << hh_dphi << ", dw=" << pdf_hh_dphi->GetBinContent(pdf_hh_dphi->FindBin(hh_dphi)) << ", w=" << w << "\n";
+        log << "\tHww_mass=" << Hww.M() << ", dw=" << pdf_mww->GetBinContent(pdf_mww->FindBin(Hww.M())) << ", w=" << w << "\n"
+            << "\thh_dphi=" << hh_dphi << ", hh_deta=" << hh_deta << ", dw=" << pdf_hh_dEtadPhi->GetBinContent(pdf_hh_dEtadPhi->FindBin(hh_deta)) << "\n"
+            << "\tr_hbb=" << r_hbb << ", r_hww=" << r_hww << ", dw=" << pdf_hh_pt_e->GetBinContent(pdf_hh_pt_e->FindBin(hh_deta)) << ", w=" << w << "\n";
         #endif
 
         double X_mass = (Hww + Hbb).M();
@@ -419,14 +430,12 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
             c1->SetTicky();
             weights->SetLineWidth(2);
             weights->Draw();
-            c1->SaveAs(Form("weights/weights_evt_%d.png", evt));
+            c1->SaveAs(Form("weights/weights_evt_%d_comb_%d.png", evt, comb_id));
         }
         #endif
 
         int binmax = res_mass->GetMaximumBin(); 
         double estimated_mass = res_mass->GetXaxis()->GetBinCenter(binmax);
-        // double success_rate = 1.0 - static_cast<double>(failed_iter)/N_ITER;
-        // return std::make_optional<std::pair<double, double>>(estimated_mass, success_rate);
         return std::make_optional<std::pair<double, double>>(estimated_mass, res_mass->Integral());
     }
 

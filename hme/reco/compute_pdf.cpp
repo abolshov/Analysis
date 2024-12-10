@@ -196,6 +196,7 @@ int main()
 
     auto pdf_b1b2 = std::make_unique<TH2F>("pdf_b1b2", "2d PDF simultaneous b jet corrrections", N_BINS, 0, 8, N_BINS, 0, 8);
     auto pdf_hh_dEtadPhi = std::make_unique<TH2F>("pdf_hh_dEtadPhi", "2d PDF dEta vs dPhi between H->bb and H->WW", N_BINS, -8, 8, N_BINS, -8, 8);
+    auto pdf_hh_pt_e = std::make_unique<TH2F>("pdf_hh_pt_e", "2d PDF of ratio pt to E of H->bb and H->WW", N_BINS, 0, 1, N_BINS, 0, 1);
 
     auto pdf_b1 = std::make_unique<TH1F>("pdf_b1", "1d PDF for leading b jet correction", N_BINS, 0, 8);
     auto pdf_b2 = std::make_unique<TH1F>("pdf_b2", "1d PDF for subleading b jet correction", N_BINS, 0, 8);
@@ -210,6 +211,8 @@ int main()
     auto pdf_mjj_on = std::make_unique<TH1F>("pdf_mjj_on", "1d PDF of invariant mass of light jets when gen W->qq is onshell", N_BINS, 0, 200);
     // auto pdf_mw_had = std::make_unique<TH1F>("pdf_mw_had", "1d PDF of hadronic W mass with best corrections applied", N_BINS, 0, 200);
     // auto pdf_mw_lep = std::make_unique<TH1F>("pdf_mw_lep", "1d PDF of leptonic W mass with reco lep and true nu", N_BINS, 0, 200);
+    auto pdf_hbb_pt_e = std::make_unique<TH1F>("pdf_hbb_pt_e", "1d PDF of pt to E ratio for H->bb", N_BINS, 0, 1);
+    auto pdf_hww_pt_e = std::make_unique<TH1F>("pdf_hww_pt_e", "1d PDF of pt to E ratio for H->WW", N_BINS, 0, 1);
 
     TRandom3 rg;
     rg.SetSeed(42);
@@ -292,6 +295,10 @@ int main()
         pdf_hh_dEtadPhi->Fill(Hbb_p4.Eta() - Hww_p4.Eta(), Hbb_p4.DeltaPhi(Hww_p4));
         pdf_hh_deta->Fill(Hbb_p4.Eta() - Hww_p4.Eta());
 
+        pdf_hbb_pt_e->Fill(Hbb_p4.Pt()/Hbb_p4.E());
+        pdf_hww_pt_e->Fill(Hww_p4.Pt()/Hww_p4.E());
+        pdf_hh_pt_e->Fill(Hbb_p4.Pt()/Hbb_p4.E(), Hww_p4.Pt()/Hww_p4.E());
+
         TLorentzVector reco_met;
         reco_met.SetPtEtaPhiM(PuppiMET_pt, 0.0, PuppiMET_phi, 0.0);
 
@@ -314,6 +321,8 @@ int main()
         auto res_light_x = std::make_unique<TH1F>("res_light_x", "res_light_x", 100, -100.0, 100.0);
         auto res_light_y = std::make_unique<TH1F>("res_light_y", "res_light_y", 100, -100.0, 100.0);
 
+        auto hww_mass_hist = std::make_unique<TH1F>("hww_mass_hist", "hww_mass_hist", 100, 0, 300.0);
+
         double mass_diff = 10e4;
         TLorentzVector reco_Wlep_p4 = reco_lep_p4 + nu;
         TLorentzVector reco_Whad_p4;
@@ -324,6 +333,8 @@ int main()
 
             TLorentzVector lj1_corr_p4 = GenerateResCorrection(reco_lj1_p4, rg, resolutions[q1_match]);
             TLorentzVector lj2_corr_p4 = GenerateResCorrection(reco_lj2_p4, rg, resolutions[q2_match]);
+
+            hww_mass_hist->Fill((reco_Wlep_p4 + lj1_corr_p4 + lj2_corr_p4).M());
 
             double dm = std::abs((lj1_corr_p4 + lj2_corr_p4).M() - genV2_mass);
             if (dm < mass_diff)
@@ -338,6 +349,10 @@ int main()
         TLorentzVector reco_Hww_p4 = reco_Whad_p4 + reco_Wlep_p4;
         // pdf_mw_had->Fill(reco_Whad_p4.M());
         pdf_mww->Fill(reco_Hww_p4.M());
+
+        // double hww_mass = hww_mass_hist->GetXaxis()->GetBinCenter(hww_mass_hist->GetMaximumBin());
+        // double hww_mass = (reco_Wlep_p4 + reco_lj1_p4 + reco_lj2_p4).M();
+        // pdf_mww->Fill(hww_mass);
 
         if (genV1_mass > genV2_mass)
         {
@@ -384,6 +399,9 @@ int main()
     pdf_mjj_on->Scale(1.0/GetPDFScaleFactor(pdf_mjj_on));
     pdf_b1b2->Scale(1.0/GetPDFScaleFactor(pdf_b1b2));
     pdf_hh_dEtadPhi->Scale(1.0/GetPDFScaleFactor(pdf_hh_dEtadPhi));
+    pdf_hh_pt_e->Scale(1.0/GetPDFScaleFactor(pdf_hh_pt_e));
+    pdf_hbb_pt_e->Scale(1.0/GetPDFScaleFactor(pdf_hbb_pt_e));
+    pdf_hww_pt_e->Scale(1.0/GetPDFScaleFactor(pdf_hww_pt_e));
 
     auto output = std::make_unique<TFile>("pdf.root", "RECREATE");
     pdf_b1->Write();
@@ -399,6 +417,9 @@ int main()
     pdf_hh_dEtadPhi->Write();
     pdf_mjj_off->Write();
     pdf_mjj_on->Write();
+    pdf_hh_pt_e->Write();
+    pdf_hbb_pt_e->Write();
+    pdf_hww_pt_e->Write();
     // pdf_mw_had->Write();
 	output->Write();
 	output->Close();
