@@ -264,8 +264,8 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
     double mh = rg.Gaus(HIGGS_MASS, HIGGS_WIDTH);
     auto [res1, res2] = lj_pt_res;
 
-    auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d", evt), N_BINS, 0.0, MAX_MASS);
-    auto weights = std::make_unique<TH1F>("Weights", Form("Weights: event %d", evt), 50, 0.0, 1.0);
+    auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d, comb %d", evt, comb_id), N_BINS, 0.0, MAX_MASS);
+    auto weights = std::make_unique<TH1F>("Weights", Form("Weights: event %d, comb %d", evt, comb_id), 50, 0.0, 1.0);
 
     #ifdef DEBUG
     std::stringstream log;
@@ -374,12 +374,8 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         Hww += j1;
         Hww += j2;
 
-        bin = pdf_mbb->FindBin(Hww.M());
-        w *= pdf_mbb->GetBinContent(bin);
-
-        // pdf_mww makes things worse!
-        // bin = pdf_mww->FindBin(Hww.M());
-        // w *= pdf_mww->GetBinContent(bin);
+        bin = pdf_mww->FindBin(Hww.M());
+        w *= pdf_mww->GetBinContent(bin);
 
         double hh_dphi = Hww.DeltaPhi(Hbb);
         // bin = pdf_hh_dphi->FindBin(hh_dphi);

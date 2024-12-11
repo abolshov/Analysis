@@ -15,7 +15,7 @@ inline constexpr double HIGGS_MASS = 125.03;
 inline constexpr double HIGGS_WIDTH = 0.004;
 inline constexpr double TOL = 10e-7;
 inline constexpr int N_ATTEMPTS = 1;
-inline constexpr int N_ITER = 10000;
+inline constexpr int N_ITER = 1000;
 
 // event mass distribution parameters
 inline constexpr double MAX_MASS = 5000;
