@@ -14,9 +14,9 @@
 #include "EstimatorTools.hpp"
 #include "CombTools.hpp"
 
-double InterquantileRange(std::unique_ptr<TH1F> const& h)
+double InterquantileRange(std::unique_ptr<TH1F> const& h, unsigned l = 16, unsigned r = 84)
 {
-    int const nq = 50;
+    int const nq = 100;
     double xq[nq];  // position where to compute the quantiles in [0,1]
     double yq[nq];  // array to contain the quantiles
     for (int i = 0; i < nq; ++i) 
@@ -24,7 +24,7 @@ double InterquantileRange(std::unique_ptr<TH1F> const& h)
         xq[i] = static_cast<double>(i+1)/nq;
     }
     h->GetQuantiles(nq, yq, xq);
-    return yq[41] - yq[7];
+    return yq[r - 1] - yq[l - 1];
 }
 
 static constexpr int N_RECO_JETS = 12;
@@ -33,6 +33,8 @@ int main()
 {
     std::cout << std::setprecision(4);
     auto start = std::chrono::system_clock::now();
+
+    TH1::AddDirectory(false);
 
     auto file_pdf = std::make_unique<TFile>("pdf.root", "READ");
     auto pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_b1")));
@@ -51,7 +53,7 @@ int main()
     auto pdf_nulep_deta = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_nulep_deta")));
     auto pdf_hh_dphi = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_hh_dphi")));
     auto pdf_mbb = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mbb")));
-    auto pdf_mww = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mww_wide")));
+    auto pdf_mww = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mbb"))); // using anything but mbb here makes everyhting worse!
     auto pdf_hh_deta = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_hh_deta")));
 
     std::vector<std::unique_ptr<TH1F>> pdfs_1d;
@@ -62,6 +64,8 @@ int main()
     pdfs_1d.push_back(std::move(pdf_mbb));
     pdfs_1d.push_back(std::move(pdf_mww));
     pdfs_1d.push_back(std::move(pdf_hh_deta));
+
+    file_pdf->Close();
 
     TFile *myFile = TFile::Open("nano_0.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
@@ -399,6 +403,8 @@ int main()
     std::cout << "HME width = " << InterquantileRange(h) << "\n";
     std::cout << "HME value = " << h->GetXaxis()->GetBinCenter(h->GetMaximumBin()) << "\n";
     std::cout << "Processing time = " << elapsed.count() << " s\n";
+
+    myFile->Close();
 
     return 0;
 }
