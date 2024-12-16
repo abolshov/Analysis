@@ -11,11 +11,11 @@
 #include "TH1.h"
 #include "TH2.h"
 
-using UHist1d_t = std::unique_ptr<TH1F>;
-using UHist2d_t = std::unique_ptr<TH2F>;
+template <typename T> 
+using UHist_t = std::unique_ptr<T>;
 
-using HistVec1d_t = std::vector<UHist1d_t>;
-using HistVec2d_t = std::vector<UHist2d_t>;
+template <typename T> 
+using HistVec_t = std::vector<UHist_t<T>>;
 
 using LorentzVectorF_t = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<Float_t>>;
 using VecLVF_t = std::vector<LorentzVectorF_t>;

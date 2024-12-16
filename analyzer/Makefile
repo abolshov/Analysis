@@ -11,7 +11,13 @@ Analyzer.o: Analyzer.cpp
 Storage.o: Storage.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-analysis: analysis.o Analyzer.o Storage.o
+Estimator.o: Estimator.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+EstimatorUtils.o: EstimatorUtils.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+analysis: analysis.o Analyzer.o Storage.o Estimator.o EstimatorUtils.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 .PHONY: clean
