@@ -11,6 +11,12 @@
 #include <fstream>
 #endif
 
+#ifdef PLOT
+#include "TPaveStats.h"
+#include "TLatex.h"
+#include "TStyle.h"
+#endif
+
 TLorentzVector GenerateResCorrection(TLorentzVector const& v, TRandom3& rg, double res)
 {
     TLorentzVector result;
@@ -264,8 +270,7 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
     double mh = rg.Gaus(HIGGS_MASS, HIGGS_WIDTH);
     auto [res1, res2] = lj_pt_res;
 
-    auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d, comb %d", evt, comb_id), N_BINS, 0.0, MAX_MASS);
-    auto weights = std::make_unique<TH1F>("Weights", Form("Weights: event %d, comb %d", evt, comb_id), 50, 0.0, 1.0);
+    auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %d, comb %d", evt, comb_id), N_BINS, 200.0, MAX_MASS);
 
     #ifdef DEBUG
     std::stringstream log;
@@ -374,10 +379,10 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
         Hww += j1;
         Hww += j2;
 
-        bin = pdf_mww->FindBin(Hww.M());
-        w *= pdf_mww->GetBinContent(bin);
+        bin = pdf_mbb->FindBin(Hww.M());
+        w *= pdf_mbb->GetBinContent(bin);
 
-        double hh_dphi = Hww.DeltaPhi(Hbb);
+        double hh_dphi = Hbb.DeltaPhi(Hww);
         // bin = pdf_hh_dphi->FindBin(hh_dphi);
         // w *= pdf_hh_dphi->GetBinContent(bin);
 
@@ -412,32 +417,48 @@ OptionalPair EstimateMass(std::vector<TLorentzVector> const& particles,
             continue;
         }
 
-        weights->Fill(w);
+
         res_mass->Fill(X_mass, w);
     }
 
-    if (res_mass->GetEntries() && res_mass->Integral() > 0.0)
+    double integral = res_mass->Integral();
+    if (res_mass->GetEntries() && integral > 0.0)
     {
-        #ifdef PLOT_WEIGHTS
-        if (rg.Uniform(0, 1) > 0.9997)
-        {
-            auto c1 = std::make_unique<TCanvas>("c1", "c1");
-            c1->SetGrid();
-            c1->SetTickx();
-            c1->SetTicky();
-            weights->SetLineWidth(2);
-            weights->Draw();
-            c1->SaveAs(Form("weights/weights_evt_%d_comb_%d.png", evt, comb_id));
-        }
-        #endif
-
         int binmax = res_mass->GetMaximumBin(); 
         double estimated_mass = res_mass->GetXaxis()->GetBinCenter(binmax);
-        return std::make_optional<std::pair<double, double>>(estimated_mass, res_mass->Integral());
+        [[maybe_unused]] double max_content = res_mass->GetBinContent(binmax);
+        // [[maybe_unused]] double width = InterquantileRange(res_mass);
+
+        #ifdef PLOT
+        auto canv = std::make_unique<TCanvas>("canv", "canv");
+        canv->SetGrid();
+        canv->SetTickx();
+        canv->SetTicky();
+
+        gStyle->SetOptStat();
+        gStyle->SetStatH(0.25);
+
+        res_mass->SetLineWidth(2);
+        res_mass->Draw("hist");
+
+        gPad->Update();
+
+        auto stat_box = static_cast<TPaveStats*>(res_mass->GetListOfFunctions()->FindObject("stats"));   
+        stat_box->AddText(Form("Width = %.2f", width));
+        stat_box->AddText(Form("PeakX = %.2f", estimated_mass));
+        stat_box->AddText(Form("PeakY = %.2e", max_content));
+        stat_box->AddText(Form("Integral = %.2e", integral));
+        stat_box->SetTextSize(0.03);
+        stat_box->DrawClone();
+
+        canv->SaveAs(Form("event/mass/evt_%d_comb_%d.png", evt, comb_id));
+        #endif
+
+        return std::make_optional<std::pair<double, double>>(estimated_mass, integral);
     }
 
     #ifdef DEBUG
-    std::ofstream file(Form("debug/debug_evt_%d_comb_%d.txt", evt, comb_id));
+    std::ofstream file(Form("event/debug/evt_%d_comb_%d.txt", evt, comb_id));
     file << log.str();
     file.close();
     #endif

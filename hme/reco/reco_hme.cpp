@@ -14,6 +14,8 @@
 #include "EstimatorTools.hpp"
 #include "CombTools.hpp"
 
+static constexpr int N_RECO_JETS = 12;
+
 double InterquantileRange(std::unique_ptr<TH1F> const& h, unsigned l = 16, unsigned r = 84)
 {
     int const nq = 100;
@@ -27,8 +29,6 @@ double InterquantileRange(std::unique_ptr<TH1F> const& h, unsigned l = 16, unsig
     return yq[r - 1] - yq[l - 1];
 }
 
-static constexpr int N_RECO_JETS = 12;
-
 int main()
 {
     std::cout << std::setprecision(4);
@@ -40,7 +40,7 @@ int main()
     auto pdf = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_b1")));
 
     auto pdf_b1b2 = std::unique_ptr<TH2F>(static_cast<TH2F*>(file_pdf->Get("pdf_b1b2")));
-    auto pdf_hh_dEtadPhi = std::unique_ptr<TH2F>(static_cast<TH2F*>(file_pdf->Get("pdf_hh_dEtadPhi")));
+    auto pdf_hh_dEtadPhi = std::unique_ptr<TH2F>(static_cast<TH2F*>(file_pdf->Get("pdf_hh_dEtadPhi"))); // using this pdf makes things worse, use 1d hh_dphi only
     auto pdf_hh_pt_e = std::unique_ptr<TH2F>(static_cast<TH2F*>(file_pdf->Get("pdf_hh_pt_e")));
 
     std::vector<std::unique_ptr<TH2F>> pdfs_2d;
@@ -53,7 +53,7 @@ int main()
     auto pdf_nulep_deta = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_nulep_deta")));
     auto pdf_hh_dphi = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_hh_dphi")));
     auto pdf_mbb = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mbb")));
-    auto pdf_mww = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mbb"))); // using anything but mbb here makes everyhting worse!
+    auto pdf_mww = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_mww_narrow"))); // using anything but mbb here makes everyhting worse!
     auto pdf_hh_deta = std::unique_ptr<TH1F>(static_cast<TH1F*>(file_pdf->Get("pdf_hh_deta")));
 
     std::vector<std::unique_ptr<TH1F>> pdfs_1d;
@@ -65,9 +65,7 @@ int main()
     pdfs_1d.push_back(std::move(pdf_mww));
     pdfs_1d.push_back(std::move(pdf_hh_deta));
 
-    file_pdf->Close();
-
-    TFile *myFile = TFile::Open("nano_0.root");
+    TFile *myFile = TFile::Open("nano_1.root");
     TTree *myTree = static_cast<TTree*>(myFile->Get("Events"));
 
     TRandom3 rg;
@@ -322,14 +320,14 @@ int main()
         {
             for (int bj2_idx = bj1_idx + 1; bj2_idx < n_jets; ++bj2_idx)
             {
-                TLorentzVector const& bj1_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj1_idx] : jets[bj2_idx];
-                TLorentzVector const& bj2_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj2_idx] : jets[bj1_idx];
+                TLorentzVector bj1_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj1_idx] : jets[bj2_idx];
+                TLorentzVector bj2_p4 = jets[bj1_idx].Pt() > jets[bj2_idx].Pt() ? jets[bj2_idx] : jets[bj1_idx];
 
                 auto pairs = MakePairs(jets.size(), bj1_idx, bj2_idx);
                 for (auto [lj1_idx, lj2_idx]: pairs)
                 {
-                    TLorentzVector const& lj1_p4 = jets[lj1_idx];
-                    TLorentzVector const& lj2_p4 = jets[lj2_idx];
+                    TLorentzVector lj1_p4 = jets[lj1_idx];
+                    TLorentzVector lj2_p4 = jets[lj2_idx];
 
                     double lj1_res = resolutions[lj1_idx];
                     double lj2_res = resolutions[lj2_idx];
@@ -405,6 +403,7 @@ int main()
     std::cout << "Processing time = " << elapsed.count() << " s\n";
 
     myFile->Close();
+    file_pdf->Close();
 
     return 0;
 }
