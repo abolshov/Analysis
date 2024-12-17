@@ -1,13 +1,17 @@
 batch_size: 128
-learning_rate: 0.0001
-n_epochs: 50
-name: 'debug'
+learning_rate: 0.0003
+n_epochs: 20
+name: 'test_bn_dropout'
 topology:
 - 256
+- 256
+- 128
 - 128
 - 64
 - 64
 - 16
+- 16
+- 8
 - 8
 valid_split: 0.2
 verbosity: 1
@@ -24,8 +28,6 @@ jet_observables:
 n_jets: 10
 labels:
 - 'X_mass'
-# - 'genV1_mass'
-# - 'genV2_mass'
 extra_data:
 - 'event'
 modulo: 2
@@ -37,5 +39,5 @@ qq_resolved: True
 bb_boosted: False
 qq_boosted: False
 apply_fiducial_cut: True
-apply_gen_reco_match: True
+apply_gen_reco_match: False
 is_bkg: False

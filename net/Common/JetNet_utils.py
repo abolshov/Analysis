@@ -3,6 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+
+def AddLayerWithBatchNorm(model, layer_size):
+    model.add(tf.keras.layers.Dense(layer_size, activation='relu', kernel_initializer='random_normal', bias_initializer='random_normal'))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.Dropout(0.2, seed=42))
+
+
 # output: (n_events, 6) - produced by the net
 # first three: px, py, pz of H->bb
 # last three: px, py, pz of H->WW
@@ -21,39 +28,6 @@ def GetMXPred(output):
     return pred_mass
 
 
-# output: (n_events, 11) - produced by the net
-# in output:
-# first three: px, py, pz of H->bb
-# next three: px, py, pz of H->WW
-# next four: E, px, py, pz of W1
-# W1 <-> genV1, W2 <-> genV2
-@tf.function
-def GetPredMasses(output):
-    H_mass = 125.0
-
-    H_bb_p3 = output[:, 0:3]
-    H_bb_E = tf.sqrt(H_mass*H_mass + tf.reduce_sum(H_bb_p3**2, axis=1, keepdims=True))
-
-    H_WW_p3 = output[:, 3:6]
-    H_WW_E = tf.sqrt(H_mass*H_mass + tf.reduce_sum(H_WW_p3**2, axis=1, keepdims=True))
-
-    W1_E = output[:, 6]
-    W1_p3 = output[:, 7:10]
-
-    W2_E = H_WW_E - W1_E
-    W2_p3 = H_WW_p3 - W1_p3
-
-    mW1_sqr = W1_E**2 - tf.reduce_sum(W1_p3**2, axis=1, keepdims=True)
-    mW2_sqr = W2_E**2 - tf.reduce_sum(W2_p3**2, axis=1, keepdims=True)
-    mX_sqr = (H_bb_E + H_WW_E)**2 - tf.reduce_sum((H_WW_p3 + H_bb_p3)**2, axis=1, keepdims=True)
-
-    mW1 = tf.sign(mW1_sqr)*tf.sqrt(tf.abs(mW1_sqr))
-    mW2 = tf.sign(mW2_sqr)*tf.sqrt(tf.abs(mW2_sqr))
-    mX = tf.sign(mX_sqr)*tf.sqrt(tf.abs(mX_sqr))
-
-    return tf.concat([mX, mW1, mW2], axis=1)
-
-
 # target: (n_events, 1) - true mass of X
 # output: (n_events, 6) - produced by the net
 # in output:
@@ -62,32 +36,9 @@ def GetPredMasses(output):
 @tf.function
 def MXLossFunc(target, output):
     pred = GetMXPred(output)
-    # return (target - pred)**2/tf.cast(len(pred), tf.float32)
-    return ((target - pred)/target)**2
-
-
-# target: (n_events, 3) - true mass of X, W1, W2
-# output: (n_events, 11) - produced by the net
-# in output:
-# first three: px, py, pz of H->bb
-# next three: px, py, pz of H->WW
-# next four: E, px, py, pz of W1
-@tf.function
-def ThreeMassLossFunc(target, output):
-    pred = GetPredMasses(output)
-    mX_true = target[:, 0]
-    mW1_true = target[:, 1]
-    mW2_true = target[:, 2] 
-    mX_pred = pred[:, 0]
-    mW1_pred = pred[:, 1]
-    mW2_pred = pred[:, 2]
-
-    mX_loss = ((mX_true - mX_pred)/mX_true)**2
-    mW1_loss = ((mW1_true - mW1_pred)/tf.maximum(mW1_true, 20.0))**2
-    mW2_loss = ((mW2_true - mW2_pred)/tf.maximum(mW2_true, 20.0))**2
-    
-    return 100.0*mX_loss
-    # return 1000*(mX_loss + mW1_loss + mW2_loss)/tf.cast(3*len(mX_pred), tf.float32)
+    return (target - pred)**2/tf.cast(len(pred), tf.float32)
+    # return ((target - pred)/target)**2
+    # return tf.math.abs(target - pred)
 
 
 def PlotLoss(history, model):
@@ -101,6 +52,30 @@ def PlotLoss(history, model):
     plt.savefig(f"Plots/loss_{model}.pdf", bbox_inches='tight')
     plt.clf()
 
+
+def PlotAccuracy(history, model):
+    plt.plot(history.history['accuracy'], label='train_accuracy')
+    plt.plot(history.history['val_accuracy'], label='val_accuracy')
+    plt.title('Model accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend(loc='upper left')
+    plt.grid(True)
+    plt.savefig(f"Plots/accuracy_{model}.pdf", bbox_inches='tight')
+    plt.clf()
+
+
+def PlotMetric(history, model, metric):
+    plt.plot(history.history[metric], label=f'train_{metric}')
+    plt.plot(history.history[f'val_{metric}'], label=f'val_{metric}')
+    plt.title(f'Model {metric}')
+    plt.ylabel(metric)
+    plt.xlabel('Epoch')
+    plt.legend(loc='upper left')
+    plt.grid(True)
+    plt.savefig(f"Plots/{metric}_{model}.pdf", bbox_inches='tight')
+    plt.clf()
+    
 
 def PlotPrediction(label_df, predicted_df, model):
     masspoints = [int(val) for val in label_df['X_mass'].unique()]
