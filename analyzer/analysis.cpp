@@ -20,7 +20,7 @@ int main()
     Mode mode = Mode::Validation;
 
     Analyzer ana(tree_name, input_file_map, pdf_file_name, mode);
-    // ana.ProcessFile("nano_0.root", Channel::SL);
+    ana.ProcessFile("nano_0.root", Channel::SL);
 
     return 0;
 }

@@ -19,11 +19,13 @@ class Analyzer
     Storage m_storage;
     std::map<TString, Channel> m_file_map;
     TString m_tree_name;
-    EstimatorSingLep m_esl; 
+    EstimatorSingLep m_estimator; 
 
     public:
     Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, TString const& pdf_file_name, Mode mode);
+    
     void ProcessFile(TString const& name, Channel ch);
+    void ProcessEvent(ULong64_t evt, TTree* tree, Channel ch);
 };
 
 
