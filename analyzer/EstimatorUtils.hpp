@@ -2,6 +2,7 @@
 #define ESTIMATOR_UTILS_HPP
 
 #include <vector>
+#include <type_traits>
 
 #include "Definitions.hpp"
 #include "Storage.hpp"
@@ -44,6 +45,59 @@ VecLVF_t GetRecoLepP4(Storage const& s, Channel ch);
 
 std::vector<Float_t> GetPNetRes(Storage const& s);
 
-Float_t InterquantileRange(UHist_t<TH1F> const& h, unsigned l, unsigned r);
+Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r);
+
+template <typename It, std::enable_if_t<std::is_arithmetic_v<typename It::value_type>, bool> = true>
+void ZScoreTransform(It begin, It end)
+{
+    if (begin == end)
+    {
+        return;
+    }
+
+    Float_t sum = 0.0;
+    Float_t sum_sqr = 0.0;
+
+    It it = begin;
+    while (it != end)
+    {
+        Float_t val = static_cast<Float_t>(*it);
+        sum += val;
+        sum_sqr += val*val;
+        ++it;
+    }
+
+    size_t n = end - begin;
+    Float_t mean = sum/n;
+    Float_t mean_sqr = sum_sqr/n;
+    Float_t std = std::sqrt(mean_sqr - mean*mean);
+
+    it = begin;
+    while (it != end)
+    {
+        *it -= mean;
+        *it /= std;
+        ++it;
+    }
+}
+
+template <typename It, std::enable_if_t<std::is_arithmetic_v<typename It::value_type>, bool> = true>
+void MinMaxTransform(It begin, It end)
+{
+    if (begin == end)
+    {
+        return;
+    }
+
+    auto [min_it, max_it] = std::minmax_element(begin, end);
+    auto diff = *max_it - *min_it;
+
+    It it = begin;
+    while (it != end)
+    {
+        *it = (*it - *min_it)/diff;
+        ++it;
+    }
+}
 
 #endif

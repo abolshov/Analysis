@@ -55,7 +55,7 @@ void Get2dPDFs(TFile* fptr, HistVec_t<TH2F>& pdfs)
     pdfs[static_cast<size_t>(PDF2::hh_pt_e)] = ReadHist<TH2F>(fptr, "pdf_hh_pt_e");
 }
 
-Float_t InterquantileRange(UHist_t<TH1F> const& h, unsigned l, unsigned r)
+Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)
 {
     int const nq = 100;
     Double_t xq[nq];  // position where to compute the quantiles in [0,1]
