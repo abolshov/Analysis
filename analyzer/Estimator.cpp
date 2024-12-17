@@ -26,8 +26,6 @@ EstimatorSingLep::EstimatorSingLep(TString const& file_name)
 {
     TFile* pf = TFile::Open(file_name);
     Get1dPDFs(pf, pdf_1d);
-    std::cout << "mbb_width=" << InterquantileRange(pdf_1d[static_cast<size_t>(PDF1::mbb)], Q16, Q84) << "\n"
-              << "mww_width=" << InterquantileRange(pdf_1d[static_cast<size_t>(PDF1::mww)], Q16, Q84) << "\n";
     Get2dPDFs(pf, pdf_2d);
     pf->Close();
 }
@@ -59,7 +57,6 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
     Float_t mh = prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     auto [res1, res2] = lj_pt_res;
 
-    // auto res_mass = std::make_unique<TH1F>("X_mass", Form("X->HH mass: event %llu, comb %d", evt, comb_id), N_BINS, MIN_MASS, MAX_MASS);
     res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
 
     #ifdef DEBUG
@@ -82,10 +79,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         log << "Iter " << i + 1 << ":\n";
         #endif
 
-        // LorentzVectorF_t j1 = GenerateResCorrection(lj1, prg, res1);
-        // LorentzVectorF_t j2 = GenerateResCorrection(lj2, prg, res2);
-        LorentzVectorF_t j1(0, 0, 0, 0);
-        LorentzVectorF_t j2(0, 0, 0, 0);
+        LorentzVectorF_t j1 = SamplePNetResCorr(lj1, prg, res1);
+        LorentzVectorF_t j2 = SamplePNetResCorr(lj2, prg, res2);
 
         #ifdef DEBUG
         log << "\tj1=(" << j1.Pt() << ", " << j1.Eta() << ", " << j1.Phi() << ", " << j1.M() << ")\n"
@@ -131,13 +126,13 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         LorentzVectorF_t Hbb = b1 + b2;
     
         int bin = pdf_mbb->FindBin(Hbb.M());
-        Float_t w = pdf_mbb->GetBinContent(bin);
+        Float_t weight = pdf_mbb->GetBinContent(bin);
 
         #ifdef DEBUG
         log << "\tbb1=(" << bb1.Pt() << ", " << bb1.Eta() << ", " << bb1.Phi() << ", " << bb1.M() << ")\n"
             << "\tbb2=(" << bb2.Pt() << ", " << bb2.Eta() << ", " << bb2.Phi() << ", " << bb2.M() << ")\n"
             << "\tHbb_mass=" << Hbb.M() << "\n"
-            << "\tdw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hbb.M())) << ", w=" << w << "\n";
+            << "\tdw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hbb.M())) << ", weight=" << weight << "\n";
         #endif
 
         Float_t smear_dpx = prg->Gaus(0.0, MET_SIGMA);
@@ -170,23 +165,23 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         Hww += j2;
 
         bin = pdf_mww->FindBin(Hww.M());
-        w *= pdf_mww->GetBinContent(bin);
+        weight *= pdf_mww->GetBinContent(bin);
 
         Float_t hh_dphi = DeltaPhi(Hbb, Hww);
         Float_t hh_deta = Hbb.Eta() - Hww.Eta();
 
         bin = pdf_hh_dEtadPhi->FindBin(hh_deta, hh_dphi);
-        w *= pdf_hh_dEtadPhi->GetBinContent(bin);
+        weight *= pdf_hh_dEtadPhi->GetBinContent(bin);
 
         Float_t r_hbb = Hbb.Pt()/Hbb.E();
         Float_t r_hww = Hww.Pt()/Hww.E();
-        bin = pdf_hh_dEtadPhi->FindBin(r_hbb, r_hww);
-        w *= pdf_hh_dEtadPhi->GetBinContent(bin);
+        bin = pdf_hh_pt_e->FindBin(r_hbb, r_hww);
+        weight *= pdf_hh_pt_e->GetBinContent(bin);
 
         #ifdef DEBUG
-        log << "\tHww_mass=" << Hww.M() << ", dw=" << pdf_mww->GetBinContent(pdf_mww->FindBin(Hww.M())) << ", w=" << w << "\n"
+        log << "\tHww_mass=" << Hww.M() << ", dw=" << pdf_mww->GetBinContent(pdf_mww->FindBin(Hww.M())) << ", weight=" << weight << "\n"
             << "\thh_dphi=" << hh_dphi << ", hh_deta=" << hh_deta << ", dw=" << pdf_hh_dEtadPhi->GetBinContent(pdf_hh_dEtadPhi->FindBin(hh_deta)) << "\n"
-            << "\tr_hbb=" << r_hbb << ", r_hww=" << r_hww << ", dw=" << pdf_hh_pt_e->GetBinContent(pdf_hh_pt_e->FindBin(hh_deta)) << ", w=" << w << "\n";
+            << "\tr_hbb=" << r_hbb << ", r_hww=" << r_hww << ", dw=" << pdf_hh_pt_e->GetBinContent(pdf_hh_pt_e->FindBin(hh_deta)) << ", weight=" << weight << "\n";
         #endif
 
         Float_t X_mass = (Hww + Hbb).M();
@@ -196,22 +191,22 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         log << "===========================================================\n";
         #endif
 
-        if (X_mass < 2*mh)
+        if (X_mass < 2.0*mh)
         {
             ++failed_iter;
             continue;
         }
 
-        res_mass->Fill(X_mass, w);
+        res_mass->Fill(X_mass, weight);
     }
 
-    res[static_cast<size_t>(Output::integral)] = res_mass->Integral();
     if (res_mass->GetEntries() && res[static_cast<size_t>(Output::integral)] > 0.0)
     {
         int binmax = res_mass->GetMaximumBin(); 
         res[static_cast<size_t>(Output::mass)] = res_mass->GetXaxis()->GetBinCenter(binmax);
         res[static_cast<size_t>(Output::peak_val)] = res_mass->GetBinContent(binmax);
-        res[static_cast<size_t>(Output::width)] = InterquantileRange(res_mass, Q16, Q84);
+        res[static_cast<size_t>(Output::width)] = ComputeWidth(res_mass, Q16, Q84);
+        res[static_cast<size_t>(Output::integral)] = res_mass->Integral();
 
         #ifdef PLOT
         auto canv = std::make_unique<TCanvas>("canv", "canv");
@@ -303,7 +298,7 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
 
                     std::pair<Float_t, Float_t> lj_res = {jet_resolutions[lj1_idx], jet_resolutions[lj2_idx]};
 
-                    TString comb_label = Form("b1%zub2%zuq1%zuq2%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
+                    TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
                     auto comb_result = EstimateCombination(particles, lj_res, evt, comb_label);
 
                     // success: mass > 0
@@ -312,6 +307,9 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
                         estimations.push_back(comb_result[static_cast<size_t>(Output::mass)]);
                         integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
                     }
+
+                    // clear the histogram to be reused 
+                    Reset(res_mass);
 
                     // remove indices of light jets from used
                     used.erase(lj2_idx);

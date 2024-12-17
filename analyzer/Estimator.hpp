@@ -7,6 +7,7 @@
 
 #include "Definitions.hpp"
 #include "EstimatorUtils.hpp"
+#include "EstimatorTools.hpp"
 #include "Constants.hpp"
 
 class EstimatorSingLep
