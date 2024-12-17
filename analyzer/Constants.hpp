@@ -24,7 +24,7 @@ enum class Output { mass, integral, width, peak_val, count };
 inline constexpr size_t OUTPUT_SIZE = static_cast<size_t>(Output::count);
 
 // objects
-enum class ObjSL { bj1, bj2, lj1, lj2, lep, met };
+enum class ObjSL { bj1, bj2, lj1, lj2, lep, met, count };
 
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 12;
@@ -44,5 +44,10 @@ inline constexpr Float_t MIN_MASS = 200.0;
 inline constexpr int N_BINS = 10000;
 
 inline constexpr Float_t MET_SIGMA = 25.2;
+
+inline constexpr unsigned Q16 = 16;
+inline constexpr unsigned Q84 = 84;
+
+inline constexpr size_t NUM_BEST_BTAG = 3;
 
 #endif

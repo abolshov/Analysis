@@ -17,6 +17,20 @@ UHist_t<T> ReadHist(TFile* file, TString hist_name)
     return res;
 }
 
+template <typename T>
+UHist_t<T> Copy(UHist_t<T> const& hist)
+{
+    UHist_t<T> res(static_cast<T*>(hist->Clone()));
+    res->SetDirectory(nullptr);
+    return res;
+}
+
+template <typename T>
+void Reset(UHist_t<T>& hist)
+{
+    hist->Reset("ICES");
+}
+
 void Get1dPDFs(TFile* fptr, HistVec_t<TH1F>& pdfs);
 void Get2dPDFs(TFile* fptr, HistVec_t<TH2F>& pdfs);
 
@@ -25,11 +39,11 @@ inline LorentzVectorF_t GetGenMET(Storage const& s) { return LorentzVectorF_t(s.
 
 VecLVF_t GetRecoJetP4(Storage const& s);
 VecLVF_t GetRecoLepP4(Storage const& s, Channel ch);
-
-// IMPLEMENT LATER
 // VecLVF_t GetGenJetP4(Storage const& s);
 // VecLVF_t GetGenLepP4(Storage const& s);
 
 std::vector<Float_t> GetPNetRes(Storage const& s);
+
+Float_t InterquantileRange(UHist_t<TH1F> const& h, unsigned l, unsigned r);
 
 #endif
