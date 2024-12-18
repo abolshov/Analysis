@@ -26,6 +26,7 @@ struct Storage
     std::array<Float_t, MAX_RECO_LEP> reco_lep_phi = {0.0};
     std::array<Float_t, MAX_RECO_LEP> reco_lep_mass = {0.0};
 
+    #ifdef DEBUG
     // gen objects
     std::array<Float_t, MAX_GEN_JET> gen_jet_pt = {0.0};
     std::array<Float_t, MAX_GEN_JET> gen_jet_eta = {0.0};
@@ -47,14 +48,18 @@ struct Storage
     std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {0.0};
     std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {0.0};
 
+    Float_t gen_met_pt = 0.0;
+    Float_t gen_met_phi = 0.0;
+    #endif
+
     Float_t reco_met_pt = 0.0;
     Float_t reco_met_phi = 0.0;
 
-    Float_t gen_met_pt = 0.0;
-    Float_t gen_met_phi = 0.0;
-
     int n_reco_jet = 0;
+
+    #ifdef DEBUG
     int n_gen_jet = 0;
+    #endif
 }; 
 
 #endif

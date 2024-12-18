@@ -20,10 +20,10 @@ class EstimatorSingLep
     std::array<Float_t, OUTPUT_SIZE> EstimateCombination(VecLVF_t const& particles, std::pair<Float_t, Float_t> lj_pt_res, ULong64_t evt, TString const& comb_id);
 
     private:
-    HistVec_t<TH1F> pdf_1d;
-    HistVec_t<TH2F> pdf_2d;
-    std::unique_ptr<TRandom3> prg;
-    UHist_t<TH1F> res_mass;
+    HistVec_t<TH1F> m_pdf_1d;
+    HistVec_t<TH2F> m_pdf_2d;
+    std::unique_ptr<TRandom3> m_prg;
+    UHist_t<TH1F> m_res_mass;
 };
 
 #endif

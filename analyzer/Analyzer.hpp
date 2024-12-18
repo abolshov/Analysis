@@ -12,6 +12,7 @@
 #include "Definitions.hpp"
 #include "Storage.hpp"
 #include "Estimator.hpp"
+#include "HistManager.hpp"
 
 class Analyzer
 {
@@ -20,6 +21,7 @@ class Analyzer
     std::map<TString, Channel> m_file_map;
     TString m_tree_name;
     EstimatorSingLep m_estimator; 
+    HistManager m_hm;
 
     public:
     Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, TString const& pdf_file_name, Mode mode);

@@ -10,8 +10,6 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("centralJet_mass", reco_jet_mass.data());
     tree->SetBranchAddress("centralJet_PNetRegPtRawCorr", reco_jet_corr.data());
     tree->SetBranchAddress("centralJet_PNetRegPtRawRes", reco_jet_res.data());
-    // tree->SetBranchAddress("centralJet_btagPNetB", reco_jet.btagPNetB.get());
-    // tree->SetBranchAddress("centralJet_PNetRegPtRawCorrNeutrino", reco_jet.PNetRegPtRawCorrNu.get());
 
     tree->SetBranchAddress("lep1_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep1));
@@ -23,6 +21,7 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("lep2_phi", reco_lep_phi.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep2));
 
+    #ifdef DEBUG
     // genjet data
     tree->SetBranchAddress("ncentralGenJet", &n_gen_jet);
     tree->SetBranchAddress("centralGenJet_pt", gen_jet_pt.data());
@@ -66,9 +65,10 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
         tree->SetBranchAddress("genV2prod2_mass", gen_quark_mass.data() + static_cast<size_t>(Quark::q2));
     }
 
-    tree->SetBranchAddress("PuppiMET_pt", &reco_met_pt);
-    tree->SetBranchAddress("PuppiMET_phi", &reco_met_phi);
-
     tree->SetBranchAddress("GenMET_pt", &gen_met_pt);
     tree->SetBranchAddress("GenMET_phi", &gen_met_phi);
+    #endif
+
+    tree->SetBranchAddress("PuppiMET_pt", &reco_met_pt);
+    tree->SetBranchAddress("PuppiMET_phi", &reco_met_phi);
 }
