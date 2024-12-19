@@ -80,8 +80,10 @@ class HistManager
 
     std::unordered_map<std::string, Item1D> m_hists_1d;
     std::unordered_map<std::string, Item2D> m_hists_2d;
+    std::string m_path;
 
     public:
+    HistManager(std::string path = "histograms");
     void Add(std::string hist_name, std::string const& title, Labels const& labels, Range const& range, int n_bins);
     void Add(std::string hist_name, std::string const& title, Labels const& labels, Range const& xrange, Range const& yrange, Bins const& bins);
     void Fill(std::string const& hist_name, double value);

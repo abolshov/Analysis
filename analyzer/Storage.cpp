@@ -21,6 +21,8 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("lep2_phi", reco_lep_phi.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep2));
 
+    tree->SetBranchAddress("event", &eventId);
+
     #ifdef DEBUG
     // genjet data
     tree->SetBranchAddress("ncentralGenJet", &n_gen_jet);
@@ -29,17 +31,17 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("centralGenJet_phi", gen_jet_phi.data());
     tree->SetBranchAddress("centralGenJet_mass", gen_jet_mass.data());
 
-    tree->SetBranchAddress("genV1prod1_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep1));
-    tree->SetBranchAddress("genV1prod1_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep1));
-    tree->SetBranchAddress("genV1prod1_phi", reco_lep_phi.data() + static_cast<size_t>(Lep::lep1));
-    tree->SetBranchAddress("genV1prod1_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep1));
+    tree->SetBranchAddress("genV1prod1_pt", gen_lep_pt.data() + static_cast<size_t>(Lep::lep1));
+    tree->SetBranchAddress("genV1prod1_eta", gen_lep_eta.data() + static_cast<size_t>(Lep::lep1));
+    tree->SetBranchAddress("genV1prod1_phi", gen_lep_phi.data() + static_cast<size_t>(Lep::lep1));
+    tree->SetBranchAddress("genV1prod1_mass", gen_lep_mass.data() + static_cast<size_t>(Lep::lep1));
 
     if (ch == Channel::DL)
     {
-        tree->SetBranchAddress("genV2prod1_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep2));
-        tree->SetBranchAddress("genV2prod1_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep2));
-        tree->SetBranchAddress("genV2prod1_phi", reco_lep_phi.data() + static_cast<size_t>(Lep::lep2));
-        tree->SetBranchAddress("genV2prod1_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep2));
+        tree->SetBranchAddress("genV2prod1_pt", gen_lep_pt.data() + static_cast<size_t>(Lep::lep2));
+        tree->SetBranchAddress("genV2prod1_eta", gen_lep_eta.data() + static_cast<size_t>(Lep::lep2));
+        tree->SetBranchAddress("genV2prod1_phi", gen_lep_phi.data() + static_cast<size_t>(Lep::lep2));
+        tree->SetBranchAddress("genV2prod1_mass", gen_lep_mass.data() + static_cast<size_t>(Lep::lep2));
     }
 
     tree->SetBranchAddress("genb1_pt", gen_quark_pt.data() + static_cast<size_t>(Quark::b1));

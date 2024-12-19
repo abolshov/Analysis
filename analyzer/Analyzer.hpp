@@ -4,6 +4,9 @@
 #include <vector>
 #include <memory>
 #include <map>
+#ifdef DEBUG
+#include <sstream>
+#endif
 
 #include "TFile.h"
 #include "TString.h"
@@ -28,6 +31,10 @@ class Analyzer
     
     void ProcessFile(TString const& name, Channel ch);
     void ProcessEvent(ULong64_t evt, TTree* tree, Channel ch);
+
+    #ifdef DEBUG
+    inline static std::stringstream gen_truth_buf = std::stringstream("");
+    #endif
 };
 
 

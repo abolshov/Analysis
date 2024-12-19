@@ -10,6 +10,7 @@ using ROOT::Math::VectorUtil::DeltaPhi;
 #ifdef DEBUG 
 #include <sstream>
 #include <fstream>
+#include "Analyzer.hpp"
 #endif
 
 #ifdef PLOT 
@@ -62,15 +63,16 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
 
     #ifdef DEBUG
     std::stringstream log;
-    log << "Event " << evt << ", raw values:\n" 
-        << "bj1=(" << bj1.Pt() << ", " << bj1.Eta() << ", " << bj1.Phi() << ", " << bj1.M() << ")\n"
-        << "bj2=(" << bj2.Pt() << ", " << bj2.Eta() << ", " << bj2.Phi() << ", " << bj2.M() << ")\n"
-        << "lj1=(" << lj1.Pt() << ", " << lj1.Eta() << ", " << lj1.Phi() << ", " << lj1.M() << "), res=" << res1 << "\n"
-        << "lj2=(" << lj2.Pt() << ", " << lj2.Eta() << ", " << lj2.Phi() << ", " << lj2.M() << "), res=" << res2 << "\n"
-        << "lep=(" << lep.Pt() << ", " << lep.Eta() << ", " << lep.Phi() << ", " << lep.M() << ")\n"
-        << "met=(" << met.Pt() << ", " << met.Eta() << ", " << met.Phi() << ", " << met.M() << ")\n"
-        << "mbb=" << (bj1 + bj2).M() << "\n"
-        << "mWhad=" << (lj1 + lj2).M() << "\n\n";
+    log << Analyzer::gen_truth_buf.str() << "\n";
+    log << "reco values:\n" 
+        << "\tbj1=(" << bj1.Pt() << ", " << bj1.Eta() << ", " << bj1.Phi() << ", " << bj1.M() << ")\n"
+        << "\tbj2=(" << bj2.Pt() << ", " << bj2.Eta() << ", " << bj2.Phi() << ", " << bj2.M() << ")\n"
+        << "\tlj1=(" << lj1.Pt() << ", " << lj1.Eta() << ", " << lj1.Phi() << ", " << lj1.M() << "), res=" << res1 << "\n"
+        << "\tlj2=(" << lj2.Pt() << ", " << lj2.Eta() << ", " << lj2.Phi() << ", " << lj2.M() << "), res=" << res2 << "\n"
+        << "\tlep=(" << lep.Pt() << ", " << lep.Eta() << ", " << lep.Phi() << ", " << lep.M() << ")\n"
+        << "\tmet=(" << met.Pt() << ", " << met.Eta() << ", " << met.Phi() << ", " << met.M() << ")\n"
+        << "\tmbb=" << (bj1 + bj2).M() << "\n"
+        << "\tmWhad=" << (lj1 + lj2).M() << "\n\n";
     #endif
 
     [[maybe_unused]] int failed_iter = 0;

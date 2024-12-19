@@ -52,6 +52,8 @@ struct Storage
     Float_t gen_met_phi = 0.0;
     #endif
 
+    ULong64_t eventId = 0;
+
     Float_t reco_met_pt = 0.0;
     Float_t reco_met_phi = 0.0;
 

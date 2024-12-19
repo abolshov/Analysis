@@ -6,6 +6,10 @@
 #include "TLegend.h"
 #include "TString.h"
 
+HistManager::HistManager(std::string path) 
+:   m_path(path)
+{}
+
 void HistManager::Add(std::string hist_name, std::string const& title, Labels const& labels, Range const& range, int n_bins)
 {
     m_hists_1d.insert({std::move(hist_name), MakeItem1D(hist_name, title, labels, range, n_bins)});
@@ -57,8 +61,8 @@ void HistManager::Draw() const
         ptr_hist->SetLineWidth(3);
         ptr_hist->SetStats(1);
         ptr_hist->Draw();
-        c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
-        // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
+        // c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
+        c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
     }
 
     for (auto const& [hist_name, hhi_pair]: m_hists_2d)
@@ -78,8 +82,8 @@ void HistManager::Draw() const
         ptr_hist->GetYaxis()->SetTitle(ylabel.c_str());
         ptr_hist->SetStats(0);
         ptr_hist->Draw("colz");
-        c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
-        // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
+        // c1->SaveAs(Form("histograms/%s.png", hist_name.c_str()));
+        c1->SaveAs(Form("%s/%s.png", m_path.c_str(), hist_name.c_str()));
     }
 }
 
@@ -123,8 +127,8 @@ void HistManager::DrawStack(std::vector<std::string> const& names, std::string c
     stack->GetXaxis()->SetTitle(stack_xlabel.c_str());
     stack->GetYaxis()->SetTitle(stack_ylabel.c_str());
     leg->Draw();
-    c1->SaveAs(Form("histograms/%s.png", name.c_str()));
-    // c1->SaveAs(Form("%s/%s.png", m_path.c_str(), name.c_str()));
+    // c1->SaveAs(Form("histograms/%s.png", name.c_str()));
+    c1->SaveAs(Form("%s/%s.png", m_path.c_str(), name.c_str()));
 }
 
 void HistManager::Reset()
