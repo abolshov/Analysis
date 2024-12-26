@@ -137,4 +137,9 @@ VecLVF_t GetGenNuP4(Storage const& s, Channel ch)
     }
     return res;
 }
+
+void LogP4(std::stringstream& ss, LorentzVectorF_t const& p4, std::string const& name)
+{
+    ss << "\t" << name << "=(" << p4.Pt() << ", " << p4.Eta() << ", " << p4.Phi() << ", " << p4.M() << ")\n";
+}
 #endif

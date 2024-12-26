@@ -212,6 +212,12 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         res[static_cast<size_t>(Output::width)] = ComputeWidth(m_res_mass, Q16, Q84);
         res[static_cast<size_t>(Output::integral)] = integral;
 
+        #ifdef DEBUG
+        std::ofstream file(Form("event/debug/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
+        file << log.str();
+        file.close();
+        #endif
+
         #ifdef PLOT
         auto canv = std::make_unique<TCanvas>("canv", "canv");
         canv->SetGrid();
@@ -239,12 +245,6 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
 
         return res;
     }
-
-    #ifdef DEBUG
-    std::ofstream file(Form("event/debug/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
-    file << log.str();
-    file.close();
-    #endif
 
     return res;
 }

@@ -103,4 +103,5 @@ void MinMaxTransform(It begin, It end)
     }
 }
 
+void LogP4(std::stringstream& ss, LorentzVectorF_t const& p4, std::string const& name);
 #endif
