@@ -1,6 +1,7 @@
 #include "Analyzer.hpp"
 #include "Definitions.hpp"
 #include "EstimatorUtils.hpp"
+#include "MatchingTools.hpp"
 
 #include <iostream>
 
@@ -23,7 +24,7 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
 
     m_storage.ConnectTree(tree, ch);
     ULong64_t n_events = tree->GetEntries();
-    for (ULong64_t evt = 0; evt < n_events; ++evt)
+    for (ULong64_t evt = 0; evt < 100; ++evt)
     {
         ProcessEvent(evt, tree, ch);
     }
@@ -51,47 +52,72 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
     std::vector<Float_t> jet_resolutions = GetPNetRes(m_storage);
 
     #ifdef DEBUG 
-    VecLVF_t gen_leptons = GetGenLepP4(m_storage, ch);
-    VecLVF_t gen_quarks = GetGenQuarksP4(m_storage, ch);
-    VecLVF_t gen_nu = GetGenQuarksP4(m_storage, ch);
-    LorentzVectorF_t gen_met = GetGenMET(m_storage);
+        VecLVF_t gen_leptons = GetGenLepP4(m_storage, ch);
+        VecLVF_t gen_quarks = GetGenQuarksP4(m_storage, ch);
+        VecLVF_t gen_nu = GetGenQuarksP4(m_storage, ch);
+        LorentzVectorF_t gen_met = GetGenMET(m_storage);
 
-    gen_truth_buf << "Event " << evt << "\nMC truth values:\n";
-    LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::b1)], "bq1");
-    LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::b2)], "bq2");
+        gen_truth_buf << "Event " << evt << "\nMC truth values:\n";
+        LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::b1)], "bq1");
+        LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::b2)], "bq2");
 
-    if (ch == Channel::SL)
-    {
-        LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::q1)], "lq1");
-        LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::q2)], "lq2");
-        LogP4(gen_truth_buf, gen_leptons[static_cast<size_t>(Lep::lep1)], "lep");
-        LogP4(gen_truth_buf, gen_nu[static_cast<size_t>(Nu::nu1)], "nu");
-    }
-    else if (ch == Channel::DL)
-    {
-        LogP4(gen_truth_buf, gen_leptons[static_cast<size_t>(Lep::lep1)], "lep1");
-        LogP4(gen_truth_buf, gen_nu[static_cast<size_t>(Nu::nu1)], "nu1");
-        LogP4(gen_truth_buf, gen_leptons[static_cast<size_t>(Lep::lep2)], "lep2");
-        LogP4(gen_truth_buf, gen_nu[static_cast<size_t>(Nu::nu2)], "nu2");
-    }
-    else
-    {
-        assert(false);
-    }
+        if (ch == Channel::SL)
+        {
+            LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::q1)], "lq1");
+            LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::q2)], "lq2");
+            LogP4(gen_truth_buf, gen_leptons[static_cast<size_t>(Lep::lep1)], "lep");
+            LogP4(gen_truth_buf, gen_nu[static_cast<size_t>(Nu::nu1)], "nu");
+        }
+        else if (ch == Channel::DL)
+        {
+            LogP4(gen_truth_buf, gen_leptons[static_cast<size_t>(Lep::lep1)], "lep1");
+            LogP4(gen_truth_buf, gen_nu[static_cast<size_t>(Nu::nu1)], "nu1");
+            LogP4(gen_truth_buf, gen_leptons[static_cast<size_t>(Lep::lep2)], "lep2");
+            LogP4(gen_truth_buf, gen_nu[static_cast<size_t>(Nu::nu2)], "nu2");
+        }
+        else
+        {
+            assert(false);
+        }
 
-    LogP4(gen_truth_buf, gen_met, "met");
+        LogP4(gen_truth_buf, gen_met, "met");
 
-    gen_truth_buf << "\tmbb=" << (gen_quarks[static_cast<size_t>(Quark::b1)] + gen_quarks[static_cast<size_t>(Quark::b2)]).M() << "\n"
-                  << "\tmWhad=" << (gen_quarks[static_cast<size_t>(Quark::q1)] + gen_quarks[static_cast<size_t>(Quark::q2)]).M() << "\n";
+        gen_truth_buf << "\tmbb=" << (gen_quarks[static_cast<size_t>(Quark::b1)] + gen_quarks[static_cast<size_t>(Quark::b2)]).M() << "\n"
+                    << "\tmWhad=" << (gen_quarks[static_cast<size_t>(Quark::q1)] + gen_quarks[static_cast<size_t>(Quark::q2)]).M() << "\n";
     #endif
 
-    auto hme = m_estimator.EstimateMass(jets, leptons, jet_resolutions, met, evt);
+    TString chosen_comb = "";
+    auto hme = m_estimator.EstimateMass(jets, leptons, jet_resolutions, met, evt, chosen_comb);
     if (hme)
     {
         m_hm.Fill("hme_mass", hme.value());
+
+        #ifdef DEBUG
+            std::cout << "Event " << evt << ": ";
+            TString true_comb = MakeTrueLabel(gen_quarks, jets);
+            if (true_comb != "")
+            {
+                std::cout << "true combination exists\n";
+                if (IsTrue(true_comb, chosen_comb))
+                {
+                    std::cout << "\tSUCCESS! picked true combination\n";
+                }
+                else 
+                {
+                    std::cout << "\tFAIL! picked wrong combination\n";
+                }
+                std::cout << "\ttrue=" << true_comb << "\n";
+                std::cout << "\tchosen=" << chosen_comb << "\n";
+            }
+            else 
+            {
+                std::cout << "true combination doesn't exist\n";
+            }
+            std::cout << "============================================\n";
+        #endif
     }
 
     #ifdef DEBUG
-    gen_truth_buf.str("");
+        gen_truth_buf.str("");
     #endif
 }

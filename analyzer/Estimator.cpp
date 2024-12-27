@@ -253,7 +253,8 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
                                                       VecLVF_t const& leptons, 
                                                       std::vector<Float_t> jet_resolutions, 
                                                       LorentzVectorF_t const& met, 
-                                                      ULong64_t evt)
+                                                      ULong64_t evt,
+                                                      TString& chosen_comb)
 {
     VecLVF_t particles(static_cast<size_t>(ObjSL::count));
     particles[static_cast<size_t>(ObjSL::lep)] = leptons[static_cast<size_t>(Lep::lep1)];
@@ -261,6 +262,11 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
 
     std::vector<Float_t> estimations;
     std::vector<Float_t> integrals;
+
+    #ifdef DEBUG
+    std::vector<TString> labels;
+    #endif
+
     std::unordered_set<size_t> used;
     for (size_t bj1_idx = 0; bj1_idx < NUM_BEST_BTAG; ++bj1_idx)
     {
@@ -310,6 +316,10 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
                     {
                         estimations.push_back(comb_result[static_cast<size_t>(Output::mass)]);
                         integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
+                        
+                        #ifdef DEBUG
+                        labels.push_back(comb_label);
+                        #endif
                     }
 
                     // clear the histogram to be reused 
@@ -330,6 +340,10 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
     {
         auto it = std::max_element(integrals.begin(), integrals.end());
         int idx = it - integrals.begin();
+
+        #ifdef DEBUG
+        chosen_comb = labels[idx];
+        #endif
 
         return std::make_optional<Float_t>(estimations[idx]);
     }

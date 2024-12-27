@@ -9,9 +9,12 @@ enum class Channel { SL, DL };
 enum class Topology { Resolved, Boosted };
 enum class Mode { Validation, Estimation };
 
-enum class Lep { lep1, lep2 };
-enum class Nu { nu1, nu2 };
-enum class Quark { b1, b2, q1, q2 };
+enum class Lep { lep1, lep2, count };
+enum class Nu { nu1, nu2, count };
+enum class Quark { b1, b2, q1, q2, count };
+inline constexpr size_t MAX_GEN_LEP = static_cast<size_t>(Lep::count);
+inline constexpr size_t MAX_GEN_QUARK = static_cast<size_t>(Quark::count);
+inline constexpr size_t MAX_GEN_NU = static_cast<size_t>(Nu::count);
 
 // PDFs in SL channel resolved topology
 enum class PDF1 { numet_pt, numet_dphi, nulep_deta, hh_dphi, mbb, mww, hh_deta, count };
@@ -29,9 +32,8 @@ enum class ObjSL { bj1, bj2, lj1, lj2, lep, met, count };
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 12;
 inline constexpr size_t MAX_RECO_LEP = 2;
-inline constexpr size_t MAX_GEN_LEP = 2;
-inline constexpr size_t MAX_GEN_QUARK = 4;
-inline constexpr size_t MAX_GEN_NU = 2;
+inline constexpr size_t NUM_BQ = 2;
+inline constexpr size_t NUM_LQ = 2;
 
 inline constexpr Float_t HIGGS_MASS = 125.03;
 inline constexpr Float_t HIGGS_WIDTH = 0.004;

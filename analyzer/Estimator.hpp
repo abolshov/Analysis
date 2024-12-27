@@ -33,7 +33,7 @@ class EstimatorSingLep
     EstimatorSingLep() = default;
     explicit EstimatorSingLep(TString const& file_name);
 
-    std::optional<Float_t> EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, std::vector<Float_t> jet_resolutions, LorentzVectorF_t const& met, ULong64_t evt);
+    std::optional<Float_t> EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, std::vector<Float_t> jet_resolutions, LorentzVectorF_t const& met, ULong64_t evt, TString& chosen_comb);
     std::array<Float_t, OUTPUT_SIZE> EstimateCombination(VecLVF_t const& particles, std::pair<Float_t, Float_t> lj_pt_res, ULong64_t evt, TString const& comb_id);
 
     private:
