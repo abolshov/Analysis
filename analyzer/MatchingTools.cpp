@@ -31,18 +31,13 @@ TString MakeTrueLabel(VecLVF_t const& gen, VecLVF_t const& reco)
     matches.insert(b1_match);
     matches.insert(b2_match);
 
-    if (reco[b1_match].Pt() < reco[b2_match].Pt())
-    {
-        std::swap(b1_match, b2_match);
-    }
-
     if (gen.size() == NUM_BQ)
     {
         if (matches.size() != NUM_BQ || matches.count(-1))
         {
             return {};
         }
-        return Form("b%db%d", b1_match, b2_match);
+        return Form("b%db%d", std::min(b1_match, b2_match), std::max(b1_match, b2_match));
     }
 
     int q1_match = MatchIdx(gen[static_cast<size_t>(Quark::q1)], reco);
@@ -56,7 +51,7 @@ TString MakeTrueLabel(VecLVF_t const& gen, VecLVF_t const& reco)
         {
             return {};
         }
-        return Form("b%db%dq%dq%d", b1_match, b2_match, q1_match, q2_match);
+        return Form("b%db%dq%dq%d", std::min(b1_match, b2_match), std::max(b1_match, b2_match), std::min(q1_match, q2_match), std::max(q1_match, q2_match));
     }
 
     return {};

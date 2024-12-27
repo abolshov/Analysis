@@ -24,7 +24,7 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
 
     m_storage.ConnectTree(tree, ch);
     ULong64_t n_events = tree->GetEntries();
-    for (ULong64_t evt = 0; evt < 100; ++evt)
+    for (ULong64_t evt = 0; evt < n_events; ++evt)
     {
         ProcessEvent(evt, tree, ch);
     }

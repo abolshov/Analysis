@@ -62,33 +62,33 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
 
     #ifdef DEBUG
-    std::stringstream log;
-    log << Analyzer::gen_truth_buf.str() << "\n";
-    log << "reco values:\n" 
-        << "\tbj1=(" << bj1.Pt() << ", " << bj1.Eta() << ", " << bj1.Phi() << ", " << bj1.M() << ")\n"
-        << "\tbj2=(" << bj2.Pt() << ", " << bj2.Eta() << ", " << bj2.Phi() << ", " << bj2.M() << ")\n"
-        << "\tlj1=(" << lj1.Pt() << ", " << lj1.Eta() << ", " << lj1.Phi() << ", " << lj1.M() << "), res=" << res1 << "\n"
-        << "\tlj2=(" << lj2.Pt() << ", " << lj2.Eta() << ", " << lj2.Phi() << ", " << lj2.M() << "), res=" << res2 << "\n"
-        << "\tlep=(" << lep.Pt() << ", " << lep.Eta() << ", " << lep.Phi() << ", " << lep.M() << ")\n"
-        << "\tmet=(" << met.Pt() << ", " << met.Eta() << ", " << met.Phi() << ", " << met.M() << ")\n"
-        << "\tmbb=" << (bj1 + bj2).M() << "\n"
-        << "\tmWhad=" << (lj1 + lj2).M() << "\n\n";
+        std::stringstream log;
+        log << Analyzer::gen_truth_buf.str() << "\n";
+        log << "reco values:\n" 
+            << "\tbj1=(" << bj1.Pt() << ", " << bj1.Eta() << ", " << bj1.Phi() << ", " << bj1.M() << ")\n"
+            << "\tbj2=(" << bj2.Pt() << ", " << bj2.Eta() << ", " << bj2.Phi() << ", " << bj2.M() << ")\n"
+            << "\tlj1=(" << lj1.Pt() << ", " << lj1.Eta() << ", " << lj1.Phi() << ", " << lj1.M() << "), res=" << res1 << "\n"
+            << "\tlj2=(" << lj2.Pt() << ", " << lj2.Eta() << ", " << lj2.Phi() << ", " << lj2.M() << "), res=" << res2 << "\n"
+            << "\tlep=(" << lep.Pt() << ", " << lep.Eta() << ", " << lep.Phi() << ", " << lep.M() << ")\n"
+            << "\tmet=(" << met.Pt() << ", " << met.Eta() << ", " << met.Phi() << ", " << met.M() << ")\n"
+            << "\tmbb=" << (bj1 + bj2).M() << "\n"
+            << "\tmWhad=" << (lj1 + lj2).M() << "\n\n";
     #endif
 
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
     {
         #ifdef DEBUG
-        log << "Iter " << i + 1 << ":\n";
+            log << "Iter " << i + 1 << ":\n";
         #endif
 
         LorentzVectorF_t j1 = SamplePNetResCorr(lj1, m_prg, res1);
         LorentzVectorF_t j2 = SamplePNetResCorr(lj2, m_prg, res2);
 
         #ifdef DEBUG
-        log << "\tj1=(" << j1.Pt() << ", " << j1.Eta() << ", " << j1.Phi() << ", " << j1.M() << ")\n"
-            << "\tj2=(" << j2.Pt() << ", " << j2.Eta() << ", " << j2.Phi() << ", " << j2.M() << ")\n"
-            << "\thadW_mass=" << (j1 + j2).M() << "\n";
+            log << "\tj1=(" << j1.Pt() << ", " << j1.Eta() << ", " << j1.Phi() << ", " << j1.M() << ")\n"
+                << "\tj2=(" << j2.Pt() << ", " << j2.Eta() << ", " << j2.Phi() << ", " << j2.M() << ")\n"
+                << "\thadW_mass=" << (j1 + j2).M() << "\n";
         #endif
 
         Float_t dpx_1 = j1.Px() - lj1.Px();
@@ -97,10 +97,10 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         Float_t dpy_2 = j2.Py() - lj2.Py();
 
         #ifdef DEBUG
-        log << "\tdpx_1=" << dpx_1 << "\n"
-            << "\tdpx_2=" << dpx_2 << "\n"
-            << "\tdpy_1=" << dpy_1 << "\n"
-            << "\tdpy_2=" << dpy_2 << "\n";
+            log << "\tdpx_1=" << dpx_1 << "\n"
+                << "\tdpx_2=" << dpx_2 << "\n"
+                << "\tdpy_1=" << dpy_1 << "\n"
+                << "\tdpy_2=" << dpy_2 << "\n";
         #endif
 
         Float_t eta = lep.Eta() + pdf_nulep_deta->GetRandom(m_prg.get());
@@ -108,9 +108,9 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         Float_t met_fraction = pdf_numet_pt->GetRandom(m_prg.get());
 
         #ifdef DEBUG
-        log << "\teta=" << eta << "\n"
-            << "\tdphi=" << dphi << "\n"
-            << "\tmet_fraction=" << met_fraction << "\n";
+            log << "\teta=" << eta << "\n"
+                << "\tdphi=" << dphi << "\n"
+                << "\tmet_fraction=" << met_fraction << "\n";
         #endif
 
         LorentzVectorF_t b1 = bj1;
@@ -120,7 +120,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         pdf_b1b2->GetRandom2(c1, c2, m_prg.get());
 
         #ifdef DEBUG
-        log << "\tc1=" << c1 << ", c2=" << c2 << "\n";
+            log << "\tc1=" << c1 << ", c2=" << c2 << "\n";
         #endif
 
         b1 *= c1;
@@ -132,17 +132,17 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         Float_t weight = pdf_mbb->GetBinContent(bin);
 
         #ifdef DEBUG
-        log << "\tbb1=(" << b1.Pt() << ", " << b1.Eta() << ", " << b1.Phi() << ", " << b1.M() << ")\n"
-            << "\tbb2=(" << b2.Pt() << ", " << b2.Eta() << ", " << b2.Phi() << ", " << b2.M() << ")\n"
-            << "\tHbb_mass=" << Hbb.M() << "\n"
-            << "\tdw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hbb.M())) << ", weight=" << weight << "\n";
+            log << "\tbb1=(" << b1.Pt() << ", " << b1.Eta() << ", " << b1.Phi() << ", " << b1.M() << ")\n"
+                << "\tbb2=(" << b2.Pt() << ", " << b2.Eta() << ", " << b2.Phi() << ", " << b2.M() << ")\n"
+                << "\tHbb_mass=" << Hbb.M() << "\n"
+                << "\tdw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hbb.M())) << ", weight=" << weight << "\n";
         #endif
 
         Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
         Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
 
         #ifdef DEBUG
-        log << "\tsmear_dpx=" << smear_dpx << ", smear_dpy=" << smear_dpy << "\n";
+            log << "\tsmear_dpx=" << smear_dpx << ", smear_dpy=" << smear_dpy << "\n";
         #endif
 
         Float_t met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2 + smear_dpx;
@@ -158,8 +158,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         LorentzVectorF_t nu(pt, eta, phi, 0.0);
 
         #ifdef DEBUG
-        log << "\tmet_corr=(" << met_corr.Pt() << ", " << met_corr.Eta() << ", " << met_corr.Phi() << ", " << met_corr.M() << ")\n" 
-            << "\tnu=(" << nu.Pt() << ", " << nu.Eta() << ", " << nu.Phi() << ", " << nu.M() << ")\n"; 
+            log << "\tmet_corr=(" << met_corr.Pt() << ", " << met_corr.Eta() << ", " << met_corr.Phi() << ", " << met_corr.M() << ")\n" 
+                << "\tnu=(" << nu.Pt() << ", " << nu.Eta() << ", " << nu.Phi() << ", " << nu.M() << ")\n"; 
         #endif
 
         LorentzVectorF_t Hww = lep;
@@ -182,16 +182,16 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         weight *= pdf_hh_pt_e->GetBinContent(bin);
 
         #ifdef DEBUG
-        log << "\tHww_mass=" << Hww.M() << ", dw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hww.M())) << ", weight=" << weight << "\n"
-            << "\thh_dphi=" << hh_dphi << ", hh_deta=" << hh_deta << ", dw=" << pdf_hh_dEtadPhi->GetBinContent(pdf_hh_dEtadPhi->FindBin(hh_deta)) << "\n"
-            << "\tr_hbb=" << r_hbb << ", r_hww=" << r_hww << ", dw=" << pdf_hh_pt_e->GetBinContent(pdf_hh_pt_e->FindBin(hh_deta)) << ", weight=" << weight << "\n";
+            log << "\tHww_mass=" << Hww.M() << ", dw=" << pdf_mbb->GetBinContent(pdf_mbb->FindBin(Hww.M())) << ", weight=" << weight << "\n"
+                << "\thh_dphi=" << hh_dphi << ", hh_deta=" << hh_deta << ", dw=" << pdf_hh_dEtadPhi->GetBinContent(pdf_hh_dEtadPhi->FindBin(hh_deta)) << "\n"
+                << "\tr_hbb=" << r_hbb << ", r_hww=" << r_hww << ", dw=" << pdf_hh_pt_e->GetBinContent(pdf_hh_pt_e->FindBin(hh_deta)) << ", weight=" << weight << "\n";
         #endif
 
         Float_t X_mass = (Hww + Hbb).M();
 
         #ifdef DEBUG
-        log << "\tX_mass=" << X_mass << "\n";
-        log << "===========================================================\n";
+            log << "\tX_mass=" << X_mass << "\n";
+            log << "===========================================================\n";
         #endif
 
         if (X_mass < 2.0*mh)
@@ -213,34 +213,34 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
         res[static_cast<size_t>(Output::integral)] = integral;
 
         #ifdef DEBUG
-        std::ofstream file(Form("event/debug/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
-        file << log.str();
-        file.close();
+            std::ofstream file(Form("event/debug/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
+            file << log.str();
+            file.close();
         #endif
 
         #ifdef PLOT
-        auto canv = std::make_unique<TCanvas>("canv", "canv");
-        canv->SetGrid();
-        canv->SetTickx();
-        canv->SetTicky();
+            auto canv = std::make_unique<TCanvas>("canv", "canv");
+            canv->SetGrid();
+            canv->SetTickx();
+            canv->SetTicky();
 
-        gStyle->SetOptStat();
-        gStyle->SetStatH(0.25);
+            gStyle->SetOptStat();
+            gStyle->SetStatH(0.25);
 
-        m_res_mass->SetLineWidth(2);
-        m_res_mass->Draw("hist");
+            m_res_mass->SetLineWidth(2);
+            m_res_mass->Draw("hist");
 
-        gPad->Update();
+            gPad->Update();
 
-        auto stat_box = std::unique_ptr<TPaveStats>(static_cast<TPaveStats*>(m_res_mass->GetListOfFunctions()->FindObject("stats")));   
-        stat_box->AddText(Form("Width = %.2f", res[static_cast<size_t>(Output::width)]));
-        stat_box->AddText(Form("PeakX = %.2f", res[static_cast<size_t>(Output::mass)]));
-        stat_box->AddText(Form("PeakY = %.2e", res[static_cast<size_t>(Output::peak_val)]));
-        stat_box->AddText(Form("Integral = %.2e", res[static_cast<size_t>(Output::integral)]));
-        stat_box->SetTextSize(0.03);
-        stat_box->DrawClone();
+            auto stat_box = std::unique_ptr<TPaveStats>(static_cast<TPaveStats*>(m_res_mass->GetListOfFunctions()->FindObject("stats")));   
+            stat_box->AddText(Form("Width = %.2f", res[static_cast<size_t>(Output::width)]));
+            stat_box->AddText(Form("PeakX = %.2f", res[static_cast<size_t>(Output::mass)]));
+            stat_box->AddText(Form("PeakY = %.2e", res[static_cast<size_t>(Output::peak_val)]));
+            stat_box->AddText(Form("Integral = %.2e", res[static_cast<size_t>(Output::integral)]));
+            stat_box->SetTextSize(0.03);
+            stat_box->DrawClone();
 
-        canv->SaveAs(Form("event/mass/evt_%llu_comb_%s.png", evt, comb_id.Data()));
+            canv->SaveAs(Form("event/mass/evt_%llu_comb_%s.png", evt, comb_id.Data()));
         #endif
 
         return res;
@@ -264,7 +264,7 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
     std::vector<Float_t> integrals;
 
     #ifdef DEBUG
-    std::vector<TString> labels;
+        std::vector<TString> labels;
     #endif
 
     std::unordered_set<size_t> used;
@@ -318,7 +318,7 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
                         integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
                         
                         #ifdef DEBUG
-                        labels.push_back(comb_label);
+                            labels.push_back(comb_label);
                         #endif
                     }
 
@@ -342,7 +342,7 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
         int idx = it - integrals.begin();
 
         #ifdef DEBUG
-        chosen_comb = labels[idx];
+            chosen_comb = labels[idx];
         #endif
 
         return std::make_optional<Float_t>(estimations[idx]);
