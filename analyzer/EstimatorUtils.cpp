@@ -31,8 +31,9 @@ std::vector<Float_t> GetPNetRes(Storage const& s)
 {
     std::vector<Float_t> res;
     for (int i = 0; i < s.n_reco_jet; ++i)
-    {
-        res.push_back(s.reco_jet_pt[i]*s.reco_jet_corr[i]*s.reco_jet_res[i]);
+    {   
+        Float_t mult = s.reco_jet_corr[i]*s.reco_jet_res[i] == 0 ? DEFAULT_JET_RES : s.reco_jet_corr[i]*s.reco_jet_res[i];
+        res.push_back(s.reco_jet_pt[i]*mult);
     }
     return res;
 }
