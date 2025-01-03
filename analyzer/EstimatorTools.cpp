@@ -11,7 +11,7 @@ LorentzVectorF_t SamplePNetResCorr(LorentzVectorF_t const& jet, std::unique_ptr<
     return LorentzVectorF_t(pt + dpt, jet.Eta(), jet.Phi(), jet.M());
 }
 
-std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& b1, LorentzVectorF_t const& b2, UHist_t& pdf, Float_t mass)
+std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& b1, LorentzVectorF_t const& b2, UHist_t<TH1F>& pdf, Float_t mass)
 {
     Float_t c1 = pdf->GetRandom();
     Float_t x1 = b2.M2();
