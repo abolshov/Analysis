@@ -164,8 +164,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecL
             log << "\tsmear_dpx=" << smear_dpx << ", smear_dpy=" << smear_dpy << "\n";
         #endif
 
-        Float_t met_corr_px = met.Px() - (c1 - 1)*b1.Px() - (c2 - 1)*b2.Px() - dpx_1 - dpx_2 + smear_dpx;
-        Float_t met_corr_py = met.Py() - (c1 - 1)*b1.Py() - (c2 - 1)*b2.Py() - dpy_1 - dpy_2 + smear_dpy;
+        Float_t met_corr_px = met.Px() - (c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px() - dpx_1 - dpx_2 + smear_dpx;
+        Float_t met_corr_py = met.Py() - (c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py() - dpy_1 - dpy_2 + smear_dpy;
 
         Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
         Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
@@ -382,7 +382,9 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
     LorentzVectorF_t const& lep2 = particles[static_cast<size_t>(ObjDL::lep2)];
     LorentzVectorF_t const& met = particles[static_cast<size_t>(ObjDL::met)];
 
-    Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
+    UHist_t<TH1F>& pdf_b1 = m_pdf_1d[static_cast<size_t>(PDF1_dl::b1)];
+    UHist_t<TH1F>& pdf_mw_onshell = m_pdf_1d[static_cast<size_t>(PDF1_dl::mw_onshell)];
+
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
 
     #ifdef DEBUG
@@ -403,7 +405,96 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
             log << "Iter " << i + 1 << ":\n";
         #endif
 
+        Float_t eta_gen = m_prg->Uniform(-6, 6);
+        Float_t phi_gen = m_prg->Uniform(-3.1415926, 3.1415926);
+        Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
+        Float_t mw = pdf_mw_onshell->GetRandom(m_prg.get());
+        Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
 
+        #ifdef DEBUG
+            log << "\teta_gen=" << eta_gen << ", phi_gen=" << phi_gen << "\n"
+                << "\tmh=" << mh << "mw=" << mw << "\n"
+                << "\tsmear_dpx=" << smear_dpx << ", smear_dpy=" << smear_dpy << "\n";
+        #endif
+
+        auto [c1, c2] = ComputeJetResc(bj1, bj2, pdf_b1, mh);
+        #ifdef DEBUG
+            log << "\tc1=" << c1 << ", c2=" << c2 << "\n";
+        #endif
+
+        LorentzVectorF_t b1 = bj1;
+        LorentzVectorF_t b2 = bj2;
+        b1 *= c1;
+        b2 *= c2;
+
+        Float_t jet_resc_dpx = -(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
+        Float_t jet_resc_dpy = -(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+
+        #ifdef DEBUG
+            log << "\tjet_resc_dpx=" << jet_resc_dpx << ", jet_resc_dpy=" << jet_resc_dpy << "\n";
+        #endif
+
+        Float_t met_corr_px = met.Px() + jet_resc_dpx + smear_dpx;
+        Float_t met_corr_py = met.Py() + jet_resc_dpy + smear_dpy;
+
+        Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
+        Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
+        LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+
+        #ifdef DEBUG
+            log << "\tmet_corr=(" << met_corr.Pt() << ", " << met_corr.Eta() << ", " << met_corr.Phi() << ", " << met_corr.M() << ")\n";
+        #endif
+
+        std::vector<Float_t> hmes;
+        int n_solutions = 0;
+
+        // two options: 
+        // lep1 comes from onshell W and lep2 comes from offshell W
+        // lep1 comes from offshell W and lep2 comes from onshell W
+        // when neutrino is computed in each case again two options are possible: delta_eta is added or subtracted to nu
+        // in total: 4 combinations; they are encoded in this for loop
+        for (int j = 0; j < 4; ++j)
+        {
+            #ifdef DEBUG
+                log << "\tsolution " << j + 1 << "/4\n";
+            #endif
+
+            LorentzVectorF_t l_offshell;
+            LorentzVectorF_t l_onshell;
+            
+            int is_onshell = j/2;
+            if (is_onshell == 0) 
+            {
+                l_onshell = lep1;
+                l_offshell = lep2;
+            } 
+            else 
+            {
+                l_onshell = lep2;
+                l_offshell = lep1;
+            }
+
+            auto nu_onshell = NuFromOnshellW(eta_gen, phi_gen, mw, l_onshell);  
+
+            #ifdef DEBUG
+                if (nu_onshell)
+                {
+                    LogP4(log, nu_onshell.value(), "nu_onshell");
+                }
+                else 
+                {
+                    log << "\tnu from onshell W not possible";
+                }
+            #endif
+
+            if (!nu_onshell)
+            {
+                continue;
+            }
+
+            int is_offshell = j%2;
+        }
     }
 }
 
