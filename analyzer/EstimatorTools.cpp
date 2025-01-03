@@ -16,7 +16,7 @@ std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& b1, LorentzVe
     Float_t c1 = pdf->GetRandom();
     Float_t x1 = b2.M2();
     Float_t x2 = 2.0*c1*(b1.Dot(b2));
-    Float_t x3 = c1*c1*b1.M2() - mh*mh;
+    Float_t x3 = c1*c1*b1.M2() - mass*mass;
     Float_t discrim = x2*x2 - 4.0*x1*x3;
     Float_t c2 = 1.0;
     if (x2 >= 0.0 && x1 != 0.0 && discrim >= 0.0)
