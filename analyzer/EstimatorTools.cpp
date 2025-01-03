@@ -29,3 +29,16 @@ std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& b1, LorentzVe
     }
     return {1.0, 1.0};
 }
+
+std::optional<LorentzVectorF_t> NuFromOnshellW(Float_t eta, Float_t phi, Float_t mw, LorentzVectorF_t const& lep_onshell)
+{
+    Float_t deta = eta - lep_onshell.Eta();
+    Float_t dphi = phi - lep_onshell.Phi();
+    Float_t pt = mw*mw/(2.0*lep_onshell.Pt()*(std::cosh(deta) - std::cos(dphi)));
+
+    if (std::isinf(pt) || std::isnan(pt))
+    {
+        return std::nullopt;
+    }
+    return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
+}
