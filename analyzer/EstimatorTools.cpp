@@ -42,3 +42,13 @@ std::optional<LorentzVectorF_t> NuFromOnshellW(Float_t eta, Float_t phi, Float_t
     }
     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 }
+
+std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1, 
+                                                LorentzVectorF_t const& lep2, 
+                                                LorentzVectorF_t const& nu1,
+                                                LorentzVectorF_t const& met,
+                                                int control, 
+                                                Float_t mh)
+{
+    LorentzVectorF_t tmp = lep1 + lep2 + nu1;
+}
