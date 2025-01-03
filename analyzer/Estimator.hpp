@@ -15,8 +15,7 @@
 class Estimator
 {
     public:
-    Estimator() = default;
-    explicit Estimator(TString const& file_name);
+    Estimator();
     virtual ~Estimator() = default;
 
     virtual std::optional<Float_t> EstimateMass(VecLVF_t const& jets, 
@@ -64,8 +63,7 @@ class EstimatorSingLep_Run3
 class EstimatorDoubleLep_Run2 final : public Estimator
 {
     public:
-    // EstimatorDoubleLep_Run2() = default;
-    using Estimator::Estimator;
+    EstimatorDoubleLep_Run2(TString const& pdf_file_name);
 
     std::array<Float_t, OUTPUT_SIZE> EstimateCombination(VecLVF_t const& particles, 
                                                          ULong64_t evt, 

@@ -20,15 +20,34 @@ using ROOT::Math::VectorUtil::DeltaPhi;
 #include "TStyle.h"
 #endif
 
+Estimator::Estimator()
+:   m_pdf_1d()
+,   m_pdf_2d()
+,   m_prg(std::make_unique<TRandom3>(SEED))
+,   m_res_mass(std::make_unique<TH1F>("none", "none", N_BINS, MIN_MASS, MAX_MASS))
+{}
+
 EstimatorSingLep_Run3::EstimatorSingLep_Run3(TString const& file_name)
-:   m_pdf_1d(NUM_PDF_1D)
-,   m_pdf_2d(NUM_PDF_2D)
+:   m_pdf_1d(pdf1d_sl_names.size())
+,   m_pdf_2d(pdf2d_sl_names.size())
 ,   m_prg(std::make_unique<TRandom3>(SEED))
 ,   m_res_mass(std::make_unique<TH1F>("none", "none", N_BINS, MIN_MASS, MAX_MASS))
 {
     TFile* pf = TFile::Open(file_name);
-    Get1dPDFs(pf, m_pdf_1d);
-    Get2dPDFs(pf, m_pdf_2d);
+    Get1dPDFs(pf, m_pdf_1d, Channel::SL);
+    Get2dPDFs(pf, m_pdf_2d, Channel::SL);
+    pf->Close();
+}
+
+EstimatorDoubleLep_Run2::EstimatorDoubleLep_Run2(TString const& pdf_file_name)
+:   Estimator()
+{
+    m_pdf_1d.reserve(pdf1d_dl_names.size());
+    m_pdf_2d.reserve(pdf2d_dl_names.size());
+
+    TFile* pf = TFile::Open(pdf_file_name);
+    Get1dPDFs(pf, m_pdf_1d, Channel::DL);
+    Get2dPDFs(pf, m_pdf_2d, Channel::DL);
     pf->Close();
 }
 
@@ -45,16 +64,16 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecL
     LorentzVectorF_t const& lep = particles[static_cast<size_t>(ObjSL::lep)];
     LorentzVectorF_t const& met = particles[static_cast<size_t>(ObjSL::met)];
 
-    UHist_t<TH1F>& pdf_mbb = m_pdf_1d[static_cast<size_t>(PDF1::mbb)];
-    UHist_t<TH1F>& pdf_numet_pt = m_pdf_1d[static_cast<size_t>(PDF1::numet_pt)];
-    UHist_t<TH1F>& pdf_numet_dphi = m_pdf_1d[static_cast<size_t>(PDF1::numet_dphi)];
-    UHist_t<TH1F>& pdf_nulep_deta = m_pdf_1d[static_cast<size_t>(PDF1::nulep_deta)];
-    UHist_t<TH1F>& pdf_hh_dphi = m_pdf_1d[static_cast<size_t>(PDF1::hh_dphi)];
-    UHist_t<TH1F>& pdf_mww = m_pdf_1d[static_cast<size_t>(PDF1::mww)];
+    UHist_t<TH1F>& pdf_mbb = m_pdf_1d[static_cast<size_t>(PDF1_sl::mbb)];
+    UHist_t<TH1F>& pdf_numet_pt = m_pdf_1d[static_cast<size_t>(PDF1_sl::numet_pt)];
+    UHist_t<TH1F>& pdf_numet_dphi = m_pdf_1d[static_cast<size_t>(PDF1_sl::numet_dphi)];
+    UHist_t<TH1F>& pdf_nulep_deta = m_pdf_1d[static_cast<size_t>(PDF1_sl::nulep_deta)];
+    UHist_t<TH1F>& pdf_hh_dphi = m_pdf_1d[static_cast<size_t>(PDF1_sl::hh_dphi)];
+    UHist_t<TH1F>& pdf_mww = m_pdf_1d[static_cast<size_t>(PDF1_sl::mww)];
 
-    UHist_t<TH2F>& pdf_b1b2 = m_pdf_2d[static_cast<size_t>(PDF2::b1b2)];
-    UHist_t<TH2F>& pdf_hh_dEtadPhi = m_pdf_2d[static_cast<size_t>(PDF2::hh_dEtadPhi)];
-    UHist_t<TH2F>& pdf_hh_pt_e = m_pdf_2d[static_cast<size_t>(PDF2::hh_pt_e)];
+    UHist_t<TH2F>& pdf_b1b2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::b1b2)];
+    UHist_t<TH2F>& pdf_hh_dEtadPhi = m_pdf_2d[static_cast<size_t>(PDF2_sl::hh_dEtadPhi)];
+    UHist_t<TH2F>& pdf_hh_pt_e = m_pdf_2d[static_cast<size_t>(PDF2_sl::hh_pt_e)];
 
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     auto [res1, res2] = lj_pt_res;
@@ -366,14 +385,33 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
 
-    
+    #ifdef DEBUG
+        std::stringstream log;
+        log << Analyzer::gen_truth_buf.str() << "\n";
+        log << "reco values:\n" 
+            << "\tbj1=(" << bj1.Pt() << ", " << bj1.Eta() << ", " << bj1.Phi() << ", " << bj1.M() << ")\n"
+            << "\tbj2=(" << bj2.Pt() << ", " << bj2.Eta() << ", " << bj2.Phi() << ", " << bj2.M() << ")\n"
+            << "\tlep1=(" << lep1.Pt() << ", " << lep1.Eta() << ", " << lep1.Phi() << ", " << lep1.M() << ")\n"
+            << "\tlep2=(" << lep2.Pt() << ", " << lep2.Eta() << ", " << lep2.Phi() << ", " << lep2.M() << ")\n"
+            << "\tmet=(" << met.Pt() << ", " << met.Eta() << ", " << met.Phi() << ", " << met.M() << ")\n"
+            << "\tmbb=" << (bj1 + bj2).M() << "\n\n";
+    #endif
+
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        #ifdef DEBUG
+            log << "Iter " << i + 1 << ":\n";
+        #endif
+
+
+    }
 }
 
 std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jets, 
                                                              VecLVF_t const& leptons, 
                                                              LorentzVectorF_t const& met, 
                                                              ULong64_t evt,
-                                                             TString& chosen_comb) override
+                                                             TString& chosen_comb)
 {
     VecLVF_t particles(static_cast<size_t>(ObjDL::count));
     particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
