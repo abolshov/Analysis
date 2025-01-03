@@ -38,22 +38,48 @@ std::vector<Float_t> GetPNetRes(Storage const& s)
     return res;
 }
 
-void Get1dPDFs(TFile* fptr, HistVec_t<TH1F>& pdfs)
+void Get1dPDFs(TFile* fptr, HistVec_t<TH1F>& pdfs, Channel ch)
 {
-    pdfs[static_cast<size_t>(PDF1::numet_pt)] = ReadHist<TH1F>(fptr, "pdf_numet_pt");
-    pdfs[static_cast<size_t>(PDF1::numet_dphi)] = ReadHist<TH1F>(fptr, "pdf_numet_dphi");
-    pdfs[static_cast<size_t>(PDF1::nulep_deta)] = ReadHist<TH1F>(fptr, "pdf_nulep_deta");
-    pdfs[static_cast<size_t>(PDF1::hh_dphi)] = ReadHist<TH1F>(fptr, "pdf_hh_dphi");
-    pdfs[static_cast<size_t>(PDF1::mbb)] = ReadHist<TH1F>(fptr, "pdf_mbb");
-    pdfs[static_cast<size_t>(PDF1::mww)] = ReadHist<TH1F>(fptr, "pdf_mww_narrow");
-    pdfs[static_cast<size_t>(PDF1::hh_deta)] = ReadHist<TH1F>(fptr, "pdf_hh_deta");
+    if (ch == Channel::SL)
+    {
+        for (auto const& [pdf, name]: pdf1d_sl_names)
+        {
+            pdfs[static_cast<size_t>(pdf)] = ReadHist<TH1F>(fptr, name);
+        }
+    }
+    else if (ch == Channel::DL)
+    {
+        for (auto const& [pdf, name]: pdf1d_dl_names)
+        {
+            pdfs[static_cast<size_t>(pdf)] = ReadHist<TH1F>(fptr, name);
+        }
+    }
+    else 
+    {
+        throw std::runtime_error("Get1dPDFs: attempting to read PDFs for unnkown channel");
+    }
 }
 
-void Get2dPDFs(TFile* fptr, HistVec_t<TH2F>& pdfs)
+void Get2dPDFs(TFile* fptr, HistVec_t<TH2F>& pdfs, Channel ch)
 {
-    pdfs[static_cast<size_t>(PDF2::b1b2)] = ReadHist<TH2F>(fptr, "pdf_b1b2");
-    pdfs[static_cast<size_t>(PDF2::hh_dEtadPhi)] = ReadHist<TH2F>(fptr, "pdf_hh_dEtadPhi");
-    pdfs[static_cast<size_t>(PDF2::hh_pt_e)] = ReadHist<TH2F>(fptr, "pdf_hh_pt_e");
+    if (ch == Channel::SL)
+    {
+        for (auto const& [pdf, name]: pdf2d_sl_names)
+        {
+            pdfs[static_cast<size_t>(pdf)] = ReadHist<TH2F>(fptr, name);
+        }
+    }
+    else if (ch == Channel::DL)
+    {
+        for (auto const& [pdf, name]: pdf2d_dl_names)
+        {
+            pdfs[static_cast<size_t>(pdf)] = ReadHist<TH2F>(fptr, name);
+        }
+    }
+    else 
+    {
+        throw std::runtime_error("Get2dPDFs: attempting to read PDFs for unnkown channel");
+    }
 }
 
 Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)

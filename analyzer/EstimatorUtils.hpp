@@ -6,6 +6,7 @@
 
 #include "Definitions.hpp"
 #include "Storage.hpp"
+#include "Constants.hpp"
 
 #include "TFile.h"
 #include "TH1.h"
@@ -32,8 +33,8 @@ void Reset(UHist_t<T>& hist)
     hist->Reset("ICES");
 }
 
-void Get1dPDFs(TFile* fptr, HistVec_t<TH1F>& pdfs);
-void Get2dPDFs(TFile* fptr, HistVec_t<TH2F>& pdfs);
+void Get1dPDFs(TFile* fptr, HistVec_t<TH1F>& pdfs, Channel ch);
+void Get2dPDFs(TFile* fptr, HistVec_t<TH2F>& pdfs, Channel ch);
 
 inline LorentzVectorF_t GetRecoMET(Storage const& s) { return LorentzVectorF_t(s.reco_met_pt, 0.0, s.reco_met_phi, 0.0); }
 VecLVF_t GetRecoJetP4(Storage const& s);
