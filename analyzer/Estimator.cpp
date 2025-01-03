@@ -20,7 +20,7 @@ using ROOT::Math::VectorUtil::DeltaPhi;
 #include "TStyle.h"
 #endif
 
-EstimatorSingLep::EstimatorSingLep(TString const& file_name)
+EstimatorSingLep_Run3::EstimatorSingLep_Run3(TString const& file_name)
 :   m_pdf_1d(NUM_PDF_1D)
 ,   m_pdf_2d(NUM_PDF_2D)
 ,   m_prg(std::make_unique<TRandom3>(SEED))
@@ -32,9 +32,9 @@ EstimatorSingLep::EstimatorSingLep(TString const& file_name)
     pf->Close();
 }
 
-std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t const& particles, 
-                                                                       std::pair<Float_t, Float_t> lj_pt_res,
-                                                                       ULong64_t evt, TString const& comb_id)
+std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecLVF_t const& particles, 
+                                                                            std::pair<Float_t, Float_t> lj_pt_res,
+                                                                            ULong64_t evt, TString const& comb_id)
 {
     std::array<Float_t, OUTPUT_SIZE> res = {-1.0};
 
@@ -249,12 +249,12 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep::EstimateCombination(VecLVF_t 
     return res;
 }
 
-std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets, 
-                                                      VecLVF_t const& leptons, 
-                                                      std::vector<Float_t> jet_resolutions, 
-                                                      LorentzVectorF_t const& met, 
-                                                      ULong64_t evt,
-                                                      TString& chosen_comb)
+std::optional<Float_t> EstimatorSingLep_Run3::EstimateMass(VecLVF_t const& jets, 
+                                                           VecLVF_t const& leptons, 
+                                                           std::vector<Float_t> jet_resolutions, 
+                                                           LorentzVectorF_t const& met, 
+                                                           ULong64_t evt,
+                                                           TString& chosen_comb)
 {
     VecLVF_t particles(static_cast<size_t>(ObjSL::count));
     particles[static_cast<size_t>(ObjSL::lep)] = leptons[static_cast<size_t>(Lep::lep1)];
@@ -333,6 +333,93 @@ std::optional<Float_t> EstimatorSingLep::EstimateMass(VecLVF_t const& jets,
             used.erase(bj2_idx);
         }
         used.erase(bj1_idx);
+    }
+
+    // success: at least one combination produced an estimate of X->HH mass
+    if (!estimations.empty())
+    {
+        auto it = std::max_element(integrals.begin(), integrals.end());
+        int idx = it - integrals.begin();
+
+        #ifdef DEBUG
+            chosen_comb = labels[idx];
+        #endif
+
+        return std::make_optional<Float_t>(estimations[idx]);
+    }
+
+    return std::nullopt;
+}
+
+std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(VecLVF_t const& particles, 
+                                                                              ULong64_t evt, 
+                                                                              TString const& comb_id)
+{
+    std::array<Float_t, OUTPUT_SIZE> res = {-1.0};
+
+    LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjDL::bj1)];
+    LorentzVectorF_t const& bj2 = particles[static_cast<size_t>(ObjDL::bj2)];
+    LorentzVectorF_t const& lep1 = particles[static_cast<size_t>(ObjDL::lep1)];
+    LorentzVectorF_t const& lep2 = particles[static_cast<size_t>(ObjDL::lep2)];
+    LorentzVectorF_t const& met = particles[static_cast<size_t>(ObjDL::met)];
+
+    Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
+    m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
+
+    
+}
+
+std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jets, 
+                                                             VecLVF_t const& leptons, 
+                                                             LorentzVectorF_t const& met, 
+                                                             ULong64_t evt,
+                                                             TString& chosen_comb) override
+{
+    VecLVF_t particles(static_cast<size_t>(ObjDL::count));
+    particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
+    particles[static_cast<size_t>(ObjDL::lep2)] = leptons[static_cast<size_t>(Lep::lep2)];
+    particles[static_cast<size_t>(ObjDL::met)] = met;
+
+    std::vector<Float_t> estimations;
+    std::vector<Float_t> integrals;
+
+    #ifdef DEBUG
+        std::vector<TString> labels;
+    #endif
+
+    for (size_t bj1_idx = 0; bj1_idx < NUM_BEST_BTAG; ++bj1_idx)
+    {
+        for (size_t bj2_idx = bj1_idx + 1; bj2_idx < NUM_BEST_BTAG; ++bj2_idx)
+        {
+            // order jets such that first b jet has bigger pt and save their p4
+            if (jets[bj1_idx].Pt() > jets[bj2_idx].Pt())
+            {
+                particles[static_cast<size_t>(ObjDL::bj1)] = jets[bj1_idx];
+                particles[static_cast<size_t>(ObjDL::bj2)] = jets[bj2_idx];
+            }
+            else 
+            {
+                particles[static_cast<size_t>(ObjDL::bj1)] = jets[bj2_idx];
+                particles[static_cast<size_t>(ObjDL::bj2)] = jets[bj1_idx];
+            }
+
+            TString comb_label = Form("b%zub%zu", bj1_idx, bj2_idx);
+            auto comb_result = EstimateCombination(particles, evt, comb_label);
+
+            // success: mass > 0
+            if (comb_result[static_cast<size_t>(Output::mass)] > 0.0)
+            {
+                estimations.push_back(comb_result[static_cast<size_t>(Output::mass)]);
+                integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
+                
+                #ifdef DEBUG
+                    labels.push_back(comb_label);
+                #endif
+            }
+
+            // clear the histogram to be reused 
+            Reset(m_res_mass);
+        }
     }
 
     // success: at least one combination produced an estimate of X->HH mass

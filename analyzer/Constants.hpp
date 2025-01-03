@@ -28,6 +28,7 @@ inline constexpr size_t OUTPUT_SIZE = static_cast<size_t>(Output::count);
 
 // objects
 enum class ObjSL { bj1, bj2, lj1, lj2, lep, met, count };
+enum class ObjDL { bj1, bj2, lep1, lep2, met, count };
 
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 20;
