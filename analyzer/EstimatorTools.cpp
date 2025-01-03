@@ -51,4 +51,38 @@ std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1,
                                                 Float_t mh)
 {
     LorentzVectorF_t tmp = lep1 + lep2 + nu1;
+
+    // how much is contribution of nu2 in met
+    // assumption: met = nu1 + nu2
+    Float_t nu_tmp_px = met.Px() - nu1.Px();
+    Float_t nu_tmp_py = met.Py() - nu1.Py();
+
+    // weird stuff 
+    Float_t px = std::sqrt(tmp.Pt()*tmp.Pt() + tmp.M2());
+    Float_t py = 0.0;
+    Float_t pz = tmp.Pz();
+    Float_t en = tmp.E();
+
+    LorentzVectorF_t tmp2;
+    tmp2.SetPxPyPzE(px, py, pz, en);
+
+    // pt and phi of nu2 are determined by difference of met and transverse component of nu1
+    Float_t pt = std::sqrt(nu_tmp_px*nu_tmp_px + nu_tmp_py*nu_tmp_py);
+    Float_t phi = std::atan2(nu_tmp_px, nu_tmp_py);
+
+    Float_t cosh_deta = (mh*mh + nu_tmp_px*tmp.Px() + nu_tmp_py*tmp.Py() - tmp.M2())/(2.0*tmp2.Pt()*pt);
+    if (cosh_deta < 1.0)
+    {
+        return std::nullopt;
+    }
+
+    Float_t delta_eta = std::acosh(cosh_deta);
+    Float_t eta = control == 1 ? tmp2.Eta() - delta_eta : tmp2.Eta() + delta_eta;
+
+    if (std::abs(eta) > 7.0)
+    {
+        return std::nullopt;
+    }
+
+    return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 }
