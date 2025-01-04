@@ -390,13 +390,13 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
     #ifdef DEBUG
         std::stringstream log;
         log << Analyzer::gen_truth_buf.str() << "\n";
-        log << "reco values:\n" 
-            << "\tbj1=(" << bj1.Pt() << ", " << bj1.Eta() << ", " << bj1.Phi() << ", " << bj1.M() << ")\n"
-            << "\tbj2=(" << bj2.Pt() << ", " << bj2.Eta() << ", " << bj2.Phi() << ", " << bj2.M() << ")\n"
-            << "\tlep1=(" << lep1.Pt() << ", " << lep1.Eta() << ", " << lep1.Phi() << ", " << lep1.M() << ")\n"
-            << "\tlep2=(" << lep2.Pt() << ", " << lep2.Eta() << ", " << lep2.Phi() << ", " << lep2.M() << ")\n"
-            << "\tmet=(" << met.Pt() << ", " << met.Eta() << ", " << met.Phi() << ", " << met.M() << ")\n"
-            << "\tmbb=" << (bj1 + bj2).M() << "\n\n";
+        log << "reco values:\n";
+        LogP4(log, bj1, "bj1");
+        LogP4(log, bj2, "bj2");
+        LogP4(log, lep1, "lep1");
+        LogP4(log, lep2, "lep1");
+        LogP4(log, met, "met");
+        log << "\tmbb=" << (bj1 + bj2).M() << "\n\n";
     #endif
 
     for (int i = 0; i < N_ITER; ++i)
@@ -444,7 +444,6 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
 
         #ifdef DEBUG
             LogP4(log, met_corr, "met_corr");
-            // log << "\tmet_corr=(" << met_corr.Pt() << ", " << met_corr.Eta() << ", " << met_corr.Phi() << ", " << met_corr.M() << ")\n";
         #endif
 
         LorentzVectorF_t Hbb = b1;
@@ -455,8 +454,12 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
             log << "\tHbb_mass=" << Hbb.M() << "\n";
         #endif
 
-        std::vector<Float_t> estimates;
+        if (std::abs(Hbb.M() - mh) > 1.0)
+        {
+            continue;
+        }
 
+        std::vector<Float_t> estimates;
         // two options: 
         // lep1 comes from onshell W and lep2 comes from offshell W
         // lep1 comes from offshell W and lep2 comes from onshell W
@@ -520,10 +523,9 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
                 continue;
             }
 
-            LorentzVectorF_t Hww = l_offshell;
-            Hww += l_onshell;
-            Hww += nu_onshell.value();
-            Hww += nu_offshell.value(); 
+            LorentzVectorF_t onshellW = l_onshell + nu_onshell.value();
+            LorentzVectorF_t offshellW = l_offshell + nu_offshell.value();
+            LorentzVectorF_t Hww = onshellW + offshellW;
 
             #ifdef DEBUG
                 Float_t hh_dphi = DeltaPhi(Hww, Hbb);
@@ -531,6 +533,11 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
                 log << "\tHww_mass=" << Hww.M() << "\n"
                     << "\thh_dphi=" << hh_dphi << "\n";
             #endif
+
+            if (offshellW.M() > mh/2)
+            {
+                continue;
+            }
 
             if (std::abs(Hww.M() - mh) > 1.0)
             {
