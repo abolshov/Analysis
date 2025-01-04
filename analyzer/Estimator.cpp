@@ -232,7 +232,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecL
         res[static_cast<size_t>(Output::integral)] = integral;
 
         #ifdef DEBUG
-            std::ofstream file(Form("event/debug/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
+            std::ofstream file(Form("event/debug/sl/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
             file << log.str();
             file.close();
         #endif
@@ -259,7 +259,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecL
             stat_box->SetTextSize(0.03);
             stat_box->DrawClone();
 
-            canv->SaveAs(Form("event/mass/evt_%llu_comb_%s.png", evt, comb_id.Data()));
+            canv->SaveAs(Form("event/mass/sl/evt_%llu_comb_%s.png", evt, comb_id.Data()));
         #endif
 
         return res;
@@ -443,11 +443,19 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
         LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
 
         #ifdef DEBUG
-            log << "\tmet_corr=(" << met_corr.Pt() << ", " << met_corr.Eta() << ", " << met_corr.Phi() << ", " << met_corr.M() << ")\n";
+            LogP4(log, met_corr, "met_corr");
+            // log << "\tmet_corr=(" << met_corr.Pt() << ", " << met_corr.Eta() << ", " << met_corr.Phi() << ", " << met_corr.M() << ")\n";
         #endif
 
-        std::vector<Float_t> hmes;
-        int n_solutions = 0;
+        LorentzVectorF_t Hbb = b1;
+        Hbb += b2;
+
+        #ifdef DEBUG
+            LogP4(log, Hbb, "Hbb");
+            log << "\tHbb_mass=" << Hbb.M() << "\n";
+        #endif
+
+        std::vector<Float_t> estimates;
 
         // two options: 
         // lep1 comes from onshell W and lep2 comes from offshell W
@@ -494,8 +502,104 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
             }
 
             int is_offshell = j%2;
+            auto nu_offshell = NuFromOffshellW(lep1, lep2, nu_onshell.value(), met_corr, is_offshell, mh);
+
+            #ifdef DEBUG
+                if (nu_offshell)
+                {
+                    LogP4(log, nu_offshell.value(), "nu_offshell");
+                }
+                else 
+                {
+                    log << "\tnu from offshell W not possible";
+                }
+            #endif
+
+            if (!nu_offshell)
+            {
+                continue;
+            }
+
+            LorentzVectorF_t Hww = l_offshell;
+            Hww += l_onshell;
+            Hww += nu_onshell.value();
+            Hww += nu_offshell.value(); 
+
+            #ifdef DEBUG
+                Float_t hh_dphi = DeltaPhi(Hww, Hbb);
+                LogP4(log, Hww, "Hww");
+                log << "\tHww_mass=" << Hww.M() << "\n"
+                    << "\thh_dphi=" << hh_dphi << "\n";
+            #endif
+
+            if (std::abs(Hww.M() - mh) > 1.0)
+            {
+                continue;
+            }
+
+            Float_t mX = (Hbb + Hww).M();
+            if (mX > 0.0)
+            {
+                estimates.push_back(mX);
+            }
         }
+
+        Float_t weight = estimates.empty() ? 0.0 : 1.0/estimates.size();
+        for (auto est: estimates)
+        {
+            m_res_mass->Fill(est, weight);
+        }
+
+        #ifdef DEBUG
+            log << "\n_solutions=" << estimates.size() << "\n"
+                << "\tweight=" << weight << "\n";
+        #endif
     }
+
+    Float_t integral = m_res_mass->Integral();
+    if (m_res_mass->GetEntries() && integral > 0.0)
+    {
+        int binmax = m_res_mass->GetMaximumBin(); 
+        res[static_cast<size_t>(Output::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+        res[static_cast<size_t>(Output::peak_val)] = m_res_mass->GetBinContent(binmax);
+        res[static_cast<size_t>(Output::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+        res[static_cast<size_t>(Output::integral)] = integral;
+
+        #ifdef DEBUG
+            std::ofstream file(Form("event/debug/dl/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
+            file << log.str();
+            file.close();
+        #endif
+
+        #ifdef PLOT
+            auto canv = std::make_unique<TCanvas>("canv", "canv");
+            canv->SetGrid();
+            canv->SetTickx();
+            canv->SetTicky();
+
+            gStyle->SetOptStat();
+            gStyle->SetStatH(0.25);
+
+            m_res_mass->SetLineWidth(2);
+            m_res_mass->Draw("hist");
+
+            gPad->Update();
+
+            auto stat_box = std::unique_ptr<TPaveStats>(static_cast<TPaveStats*>(m_res_mass->GetListOfFunctions()->FindObject("stats")));   
+            stat_box->AddText(Form("Width = %.2f", res[static_cast<size_t>(Output::width)]));
+            stat_box->AddText(Form("PeakX = %.2f", res[static_cast<size_t>(Output::mass)]));
+            stat_box->AddText(Form("PeakY = %.2e", res[static_cast<size_t>(Output::peak_val)]));
+            stat_box->AddText(Form("Integral = %.2e", res[static_cast<size_t>(Output::integral)]));
+            stat_box->SetTextSize(0.03);
+            stat_box->DrawClone();
+
+            canv->SaveAs(Form("event/mass/dl/evt_%llu_comb_%s.png", evt, comb_id.Data()));
+        #endif
+
+        return res;
+    }
+
+    return res;
 }
 
 std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jets, 
