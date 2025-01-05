@@ -23,7 +23,8 @@ class Analyzer
     Storage m_storage;
     std::map<TString, Channel> m_file_map;
     TString m_tree_name;
-    EstimatorSingLep_Run3 m_estimator; 
+    // EstimatorSingLep_Run3 m_estimator;
+    EstimatorDoubleLep_Run2 m_estimator; 
     HistManager m_hm;
 
     public:

@@ -11,17 +11,16 @@ LorentzVectorF_t SamplePNetResCorr(LorentzVectorF_t const& jet, std::unique_ptr<
     return LorentzVectorF_t(pt + dpt, jet.Eta(), jet.Phi(), jet.M());
 }
 
-std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& b1, LorentzVectorF_t const& b2, UHist_t<TH1F>& pdf, Float_t mass)
+std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& p1, LorentzVectorF_t const& p2, UHist_t<TH1F>& pdf, Float_t mass)
 {
     Float_t c1 = pdf->GetRandom();
-    Float_t x1 = b2.M2();
-    Float_t x2 = 2.0*c1*(b1.Dot(b2));
-    Float_t x3 = c1*c1*b1.M2() - mass*mass;
+    Float_t x1 = p2.M2();
+    Float_t x2 = 2.0*c1*(p1.Dot(p2));
+    Float_t x3 = c1*c1*p1.M2() - mass*mass;
     Float_t discrim = x2*x2 - 4.0*x1*x3;
-    Float_t c2 = 1.0;
     if (x2 >= 0.0 && x1 != 0.0 && discrim >= 0.0)
     {
-        c2 = (-x2 + std::sqrt(x2*x2 - 4.0*x1*x3))/(2.0*x1);
+        Float_t c2 = (-x2 + std::sqrt(discrim))/(2.0*x1);
         if (c2 >= 0.0)
         {
             return std::make_pair(c1, c2); 
@@ -56,6 +55,7 @@ std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1,
     // assumption: met = nu1 + nu2
     Float_t nu_tmp_px = met.Px() - nu1.Px();
     Float_t nu_tmp_py = met.Py() - nu1.Py();
+    TVector2 nu_pxpy(nu_tmp_px, nu_tmp_py);
 
     // weird stuff 
     Float_t px = std::sqrt(tmp.Pt()*tmp.Pt() + tmp.M2());
@@ -68,9 +68,9 @@ std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1,
 
     // pt and phi of nu2 are determined by difference of met and transverse component of nu1
     Float_t pt = std::sqrt(nu_tmp_px*nu_tmp_px + nu_tmp_py*nu_tmp_py);
-    Float_t phi = std::atan2(nu_tmp_px, nu_tmp_py);
+    Float_t phi = std::atan2(nu_tmp_py, nu_tmp_px);
 
-    Float_t cosh_deta = (mh*mh + nu_tmp_px*tmp.Px() + nu_tmp_py*tmp.Py() - tmp.M2())/(2.0*tmp2.Pt()*pt);
+    Float_t cosh_deta = (mh*mh + 2.0*(nu_tmp_px*tmp.Px() + nu_tmp_py*tmp.Py()) - tmp.M2())/(2.0*tmp2.Pt()*pt);
     if (cosh_deta < 1.0)
     {
         return std::nullopt;

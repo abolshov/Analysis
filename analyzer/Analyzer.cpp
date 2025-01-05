@@ -36,12 +36,17 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
 {
     tree->GetEntry(evt);
 
-    if (m_storage.eventId % 2 != 0)
+    if (m_storage.eventId % 2 != 1)
     {
         return;
     }
 
-    if (m_storage.n_reco_jet < 4)
+    if (m_storage.n_reco_jet < 2)
+    {
+        return;
+    }
+
+    if (m_storage.reco_lep_pt[0] == 0.0 || m_storage.reco_lep_pt[1] == 0.0)
     {
         return;
     }
@@ -57,7 +62,7 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
         VecLVF_t gen_nu = GetGenQuarksP4(m_storage, ch);
         LorentzVectorF_t gen_met = GetGenMET(m_storage);
 
-        gen_truth_buf << "Event " << evt << "\nMC truth values:\n";
+        gen_truth_buf << "Event " << evt << ", eventId=" << m_storage.eventId << "\nMC truth values:\n";
         LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::b1)], "bq1");
         LogP4(gen_truth_buf, gen_quarks[static_cast<size_t>(Quark::b2)], "bq2");
 
@@ -82,12 +87,16 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
 
         LogP4(gen_truth_buf, gen_met, "met");
 
-        gen_truth_buf << "\tmbb=" << (gen_quarks[static_cast<size_t>(Quark::b1)] + gen_quarks[static_cast<size_t>(Quark::b2)]).M() << "\n"
-                    << "\tmWhad=" << (gen_quarks[static_cast<size_t>(Quark::q1)] + gen_quarks[static_cast<size_t>(Quark::q2)]).M() << "\n";
+        if (ch == Channel::SL)
+        {
+            gen_truth_buf << "\tmbb=" << (gen_quarks[static_cast<size_t>(Quark::b1)] + gen_quarks[static_cast<size_t>(Quark::b2)]).M() << "\n"
+                          << "\tmWhad=" << (gen_quarks[static_cast<size_t>(Quark::q1)] + gen_quarks[static_cast<size_t>(Quark::q2)]).M() << "\n";
+        }
     #endif
 
     TString chosen_comb = "";
-    auto hme = m_estimator.EstimateMass(jets, leptons, jet_resolutions, met, evt, chosen_comb);
+    // auto hme = m_estimator.EstimateMass(jets, leptons, jet_resolutions, met, evt, chosen_comb); // sl
+    auto hme = m_estimator.EstimateMass(jets, leptons, met, evt, chosen_comb); // dl
     if (hme)
     {
         m_hm.Fill("hme_mass", hme.value());
@@ -108,6 +117,7 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
                 }
                 std::cout << "\ttrue=" << true_comb << "\n";
                 std::cout << "\tchosen=" << chosen_comb << "\n";
+                std::cout << "\testimated=" << hme.value() << "\n";
             }
             else 
             {

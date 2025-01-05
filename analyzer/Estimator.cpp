@@ -414,7 +414,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
 
         #ifdef DEBUG
             log << "\teta_gen=" << eta_gen << ", phi_gen=" << phi_gen << "\n"
-                << "\tmh=" << mh << "mw=" << mw << "\n"
+                << "\tmh=" << mh << ", mw=" << mw << "\n"
                 << "\tsmear_dpx=" << smear_dpx << ", smear_dpy=" << smear_dpy << "\n";
         #endif
 
@@ -428,8 +428,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
         b1 *= c1;
         b2 *= c2;
 
-        Float_t jet_resc_dpx = -(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
-        Float_t jet_resc_dpy = -(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+        Float_t jet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
+        Float_t jet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
 
         #ifdef DEBUG
             log << "\tjet_resc_dpx=" << jet_resc_dpx << ", jet_resc_dpy=" << jet_resc_dpy << "\n";
@@ -454,10 +454,10 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
             log << "\tHbb_mass=" << Hbb.M() << "\n";
         #endif
 
-        if (std::abs(Hbb.M() - mh) > 1.0)
-        {
-            continue;
-        }
+        // if (std::abs(Hbb.M() - mh) > 1.0)
+        // {
+        //     continue;
+        // }
 
         std::vector<Float_t> estimates;
         // two options: 
@@ -495,7 +495,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
                 }
                 else 
                 {
-                    log << "\tnu from onshell W not possible";
+                    log << "\tnu from onshell W not possible\n";
                 }
             #endif
 
@@ -514,7 +514,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
                 }
                 else 
                 {
-                    log << "\tnu from offshell W not possible";
+                    log << "\tnu from offshell W not possible\n";
                 }
             #endif
 
@@ -558,10 +558,16 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
         }
 
         #ifdef DEBUG
-            log << "\n_solutions=" << estimates.size() << "\n"
+            log << "\tn_solutions=" << estimates.size() << "\n"
                 << "\tweight=" << weight << "\n";
         #endif
     }
+
+    #ifdef DEBUG
+        std::ofstream file(Form("event/debug/dl/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
+        file << log.str();
+        file.close();
+    #endif
 
     Float_t integral = m_res_mass->Integral();
     if (m_res_mass->GetEntries() && integral > 0.0)
@@ -571,12 +577,6 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
         res[static_cast<size_t>(Output::peak_val)] = m_res_mass->GetBinContent(binmax);
         res[static_cast<size_t>(Output::width)] = ComputeWidth(m_res_mass, Q16, Q84);
         res[static_cast<size_t>(Output::integral)] = integral;
-
-        #ifdef DEBUG
-            std::ofstream file(Form("event/debug/dl/evt_%llu_comb_%s.txt", evt, comb_id.Data()));
-            file << log.str();
-            file.close();
-        #endif
 
         #ifdef PLOT
             auto canv = std::make_unique<TCanvas>("canv", "canv");

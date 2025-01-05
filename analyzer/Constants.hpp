@@ -49,7 +49,7 @@ inline constexpr Float_t HIGGS_MASS = 125.03;
 inline constexpr Float_t HIGGS_WIDTH = 0.004;
 inline constexpr Float_t TOL = 10e-7;
 inline constexpr int N_ATTEMPTS = 1;
-inline constexpr int N_ITER = 100;
+inline constexpr int N_ITER = 1000;
 
 inline constexpr Float_t MAX_MASS = 5000.0;
 inline constexpr Float_t MIN_MASS = 200.0;
@@ -61,7 +61,7 @@ inline constexpr Float_t DEFAULT_JET_RES = 0.1;
 inline constexpr unsigned Q16 = 16;
 inline constexpr unsigned Q84 = 84;
 
-inline constexpr size_t NUM_BEST_BTAG = 3;
+inline constexpr size_t NUM_BEST_BTAG = 2;
 
 inline static const std::unordered_map<PDF1_sl, TString> pdf1d_sl_names = { { PDF1_sl::numet_pt, "pdf_numet_pt" },
                                                                             { PDF1_sl::numet_dphi, "pdf_numet_dphi" },
@@ -75,7 +75,7 @@ inline static const std::unordered_map<PDF2_sl, TString> pdf2d_sl_names = { { PD
                                                                             { PDF2_sl::hh_dEtadPhi, "pdf_hh_dEtadPhi" },
                                                                             { PDF2_sl::hh_pt_e, "pdf_hh_pt_e" } };
 
-inline static const std::unordered_map<PDF1_dl, TString> pdf1d_dl_names = { { PDF1_dl::b1, "pdf_b1" }, 
+inline static const std::unordered_map<PDF1_dl, TString> pdf1d_dl_names = { { PDF1_dl::b1, "pdf_b1_run2" }, 
                                                                             { PDF1_dl::mw_onshell, "pdf_mw_onshell" }};
                                                                         
 inline static const std::unordered_map<PDF2_dl, TString> pdf2d_dl_names = {};
