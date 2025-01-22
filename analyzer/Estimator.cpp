@@ -8,16 +8,16 @@
 using ROOT::Math::VectorUtil::DeltaPhi;
 
 #ifdef DEBUG 
-#include <sstream>
-#include <fstream>
-#include "Analyzer.hpp"
+    #include <sstream>
+    #include <fstream>
+    #include "Analyzer.hpp"
 #endif
 
 #ifdef PLOT 
-#include "TCanvas.h"
-#include "TPaveStats.h"
-#include "TLatex.h"
-#include "TStyle.h"
+    #include "TCanvas.h"
+    #include "TPaveStats.h"
+    #include "TLatex.h"
+    #include "TStyle.h"
 #endif
 
 
@@ -28,25 +28,106 @@ EstimatorBase::EstimatorBase()
 
 
 EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name)
-:   m_pdf_1d(pdf1d_sl_names.size())
-,   m_pdf_2d(pdf2d_sl_names.size())
 {
+    m_pdf_1d.resize(pdf1d_sl_names.size());
+    m_pdf_2d.resize(pdf2d_sl_names.size());
+
     TFile* pf = TFile::Open(pdf_file_name);
     Get1dPDFs(pf, m_pdf_1d, Channel::SL);
     Get2dPDFs(pf, m_pdf_2d, Channel::SL);
     pf->Close();
-} 
+}
+
+
+std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaWeights(VecLVF_t const& particles, 
+                                                                            std::pair<Float_t, Float_t> lj_pt_res, 
+                                                                            ULong64_t evt, 
+                                                                            TString const& comb_id)
+{
+    // TODO
+    return {};
+}
+
+std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_t const& particles, 
+                                                                         ULong64_t evt, 
+                                                                         TString const& comb_id)
+{
+    // TODO
+    return {};
+}
+
+std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, 
+                                                        VecLVF_t const& leptons, 
+                                                        std::vector<Float_t> const& jet_resolutions, 
+                                                        LorentzVectorF_t const& met, 
+                                                        ULong64_t evt, 
+                                                        TString& chosen_comb)
+{
+    // TODO
+    return std::nullopt;
+}
+
+std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, 
+                                                        VecLVF_t const& leptons, 
+                                                        LorentzVectorF_t const& met, 
+                                                        ULong64_t evt, 
+                                                        TString& chosen_comb)
+{
+    // TODO
+    return std::nullopt;
+}
 
 
 EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name)
-:   m_pdf_1d(pdf1d_dl_names.size())
-,   m_pdf_2d(pdf2d_dl_names.size())
 {
+    m_pdf_1d.resize(pdf1d_dl_names.size());
+    m_pdf_2d.resize(pdf2d_dl_names.size());
+    
     TFile* pf = TFile::Open(pdf_file_name);
     Get1dPDFs(pf, m_pdf_1d, Channel::DL);
     Get2dPDFs(pf, m_pdf_2d, Channel::DL);
     pf->Close();
-} 
+}
+
+
+std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep::EstimateCombViaWeights(VecLVF_t const& particles, 
+                                                                            std::pair<Float_t, Float_t> lj_pt_res, 
+                                                                            ULong64_t evt, 
+                                                                            TString const& comb_id)
+{
+    // TODO
+    return {};
+}
+
+std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep::EstimateCombViaEqns(VecLVF_t const& particles, 
+                                                                         ULong64_t evt, 
+                                                                         TString const& comb_id)
+{
+    // TODO
+    return {};
+}
+
+std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, 
+                                                        VecLVF_t const& leptons, 
+                                                        std::vector<Float_t> const& jet_resolutions, 
+                                                        LorentzVectorF_t const& met, 
+                                                        ULong64_t evt, 
+                                                        TString& chosen_comb)
+{
+    // TODO
+    return std::nullopt;
+}
+
+std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, 
+                                                        VecLVF_t const& leptons, 
+                                                        LorentzVectorF_t const& met, 
+                                                        ULong64_t evt, 
+                                                        TString& chosen_comb)
+{
+    // TODO
+    return std::nullopt;
+}
+
 
 Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl)
 :   m_estimator_sl(pdf_file_name_sl)
@@ -66,6 +147,7 @@ EstimatorSingLep_Run3::EstimatorSingLep_Run3(TString const& file_name)
     pf->Close();
 }
 
+
 EstimatorDoubleLep_Run2::EstimatorDoubleLep_Run2(TString const& pdf_file_name)
 :   m_pdf_1d(pdf1d_dl_names.size())
 ,   m_pdf_2d(pdf2d_dl_names.size())
@@ -80,6 +162,7 @@ EstimatorDoubleLep_Run2::EstimatorDoubleLep_Run2(TString const& pdf_file_name)
     Get2dPDFs(pf, m_pdf_2d, Channel::DL);
     pf->Close();
 }
+
 
 std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecLVF_t const& particles, 
                                                                             std::pair<Float_t, Float_t> lj_pt_res,
@@ -298,6 +381,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecL
     return res;
 }
 
+
 std::optional<Float_t> EstimatorSingLep_Run3::EstimateMass(VecLVF_t const& jets, 
                                                            VecLVF_t const& leptons, 
                                                            std::vector<Float_t> const& jet_resolutions, 
@@ -399,6 +483,7 @@ std::optional<Float_t> EstimatorSingLep_Run3::EstimateMass(VecLVF_t const& jets,
 
     return std::nullopt;
 }
+
 
 std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(VecLVF_t const& particles, 
                                                                               ULong64_t evt, 
@@ -638,6 +723,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
 
     return res;
 }
+
 
 std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jets, 
                                                              VecLVF_t const& leptons, 
