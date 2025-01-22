@@ -55,7 +55,6 @@ std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1,
     // assumption: met = nu1 + nu2
     Float_t nu_tmp_px = met.Px() - nu1.Px();
     Float_t nu_tmp_py = met.Py() - nu1.Py();
-    TVector2 nu_pxpy(nu_tmp_px, nu_tmp_py);
 
     // weird stuff 
     Float_t px = std::sqrt(tmp.Pt()*tmp.Pt() + tmp.M2());

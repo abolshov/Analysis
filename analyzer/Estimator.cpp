@@ -20,12 +20,39 @@ using ROOT::Math::VectorUtil::DeltaPhi;
 #include "TStyle.h"
 #endif
 
-Estimator::Estimator()
-:   m_pdf_1d()
-,   m_pdf_2d()
-,   m_prg(std::make_unique<TRandom3>(SEED))
+
+EstimatorBase::EstimatorBase() 
+:   m_prg(std::make_unique<TRandom3>(SEED))
 ,   m_res_mass(std::make_unique<TH1F>("none", "none", N_BINS, MIN_MASS, MAX_MASS))
 {}
+
+
+EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name)
+:   m_pdf_1d(pdf1d_sl_names.size())
+,   m_pdf_2d(pdf2d_sl_names.size())
+{
+    TFile* pf = TFile::Open(pdf_file_name);
+    Get1dPDFs(pf, m_pdf_1d, Channel::SL);
+    Get2dPDFs(pf, m_pdf_2d, Channel::SL);
+    pf->Close();
+} 
+
+
+EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name)
+:   m_pdf_1d(pdf1d_dl_names.size())
+,   m_pdf_2d(pdf2d_dl_names.size())
+{
+    TFile* pf = TFile::Open(pdf_file_name);
+    Get1dPDFs(pf, m_pdf_1d, Channel::DL);
+    Get2dPDFs(pf, m_pdf_2d, Channel::DL);
+    pf->Close();
+} 
+
+Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl)
+:   m_estimator_sl(pdf_file_name_sl)
+,   m_estimator_dl(pdf_file_name_dl)
+{}
+
 
 EstimatorSingLep_Run3::EstimatorSingLep_Run3(TString const& file_name)
 :   m_pdf_1d(pdf1d_sl_names.size())
@@ -40,7 +67,10 @@ EstimatorSingLep_Run3::EstimatorSingLep_Run3(TString const& file_name)
 }
 
 EstimatorDoubleLep_Run2::EstimatorDoubleLep_Run2(TString const& pdf_file_name)
-:   Estimator()
+:   m_pdf_1d(pdf1d_dl_names.size())
+,   m_pdf_2d(pdf2d_dl_names.size())
+,   m_prg(std::make_unique<TRandom3>(SEED))
+,   m_res_mass(std::make_unique<TH1F>("none", "none", N_BINS, MIN_MASS, MAX_MASS))
 {
     m_pdf_1d.reserve(pdf1d_dl_names.size());
     m_pdf_2d.reserve(pdf2d_dl_names.size());
@@ -270,7 +300,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecL
 
 std::optional<Float_t> EstimatorSingLep_Run3::EstimateMass(VecLVF_t const& jets, 
                                                            VecLVF_t const& leptons, 
-                                                           std::vector<Float_t> jet_resolutions, 
+                                                           std::vector<Float_t> const& jet_resolutions, 
                                                            LorentzVectorF_t const& met, 
                                                            ULong64_t evt,
                                                            TString& chosen_comb)
@@ -665,14 +695,15 @@ std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jet
     // success: at least one combination produced an estimate of X->HH mass
     if (!estimations.empty())
     {
-        auto it = std::max_element(integrals.begin(), integrals.end());
-        int idx = it - integrals.begin();
+        // auto it = std::max_element(integrals.begin(), integrals.end());
+        // int idx = it - integrals.begin();
 
-        #ifdef DEBUG
-            chosen_comb = labels[idx];
-        #endif
+        // #ifdef DEBUG
+        //     chosen_comb = labels[idx];
+        // #endif
 
-        return std::make_optional<Float_t>(estimations[idx]);
+        // return std::make_optional<Float_t>(estimations[idx]);
+        return std::make_optional<Float_t>(estimations[0]);
     }
 
     return std::nullopt;
