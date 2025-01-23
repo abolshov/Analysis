@@ -52,8 +52,71 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
                                                                          ULong64_t evt, 
                                                                          TString const& comb_id)
 {
-    // TODO
-    return {};
+    std::array<Float_t, OUTPUT_SIZE> res = {-1.0};
+
+    LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjSL::bj1)];
+    LorentzVectorF_t const& bj2 = particles[static_cast<size_t>(ObjSL::bj2)];
+    LorentzVectorF_t const& lj1 = particles[static_cast<size_t>(ObjSL::lj1)];
+    LorentzVectorF_t const& lj2 = particles[static_cast<size_t>(ObjSL::lj2)];
+    LorentzVectorF_t const& lep = particles[static_cast<size_t>(ObjSL::lep)];
+    LorentzVectorF_t const& met = particles[static_cast<size_t>(ObjSL::met)];
+
+    UHist_t<TH1F>& pdf_b1 = m_pdf_1d[static_cast<size_t>(PDF1_sl::b1)];
+    // UHist_t<TH1F>& pdf_q1 = m_pdf_1d[static_cast<size_t>(PDF1_sl::q1)];
+    // UHist_t<TH2F>& pdf_b1b2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::b1b2)];
+    UHist_t<TH2F>& pdf_q1q2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::q1q2)];
+
+    Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
+    m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
+
+    [[maybe_unused]] int failed_iter = 0;
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
+
+        auto [c1, c2] = ComputeJetResc(bj1, bj2, pdf_b1, mh);
+
+        LorentzVectorF_t b1 = bj1;
+        LorentzVectorF_t b2 = bj2;
+        b1 *= c1;
+        b2 *= c2;
+
+        LorentzVectorF_t j1 = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
+        LorentzVectorF_t j2 = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
+        Double_t c3 = 1.0;
+        Double_t c4 = 1.0;
+        pdf_q1q2->GetRandom2(c3, c4, m_prg.get());
+
+        j1 *= c3;
+        j2 *= c4;
+
+        Float_t bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
+        Float_t bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+
+        Float_t ljet_resc_dpx = -1.0*(c3 - 1)*lj1.Px() - (c4 - 1)*lj2.Px();
+        Float_t ljet_resc_dpy = -1.0*(c3 - 1)*lj1.Py() - (c4 - 1)*lj2.Py();
+
+        Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx + smear_dpx;
+        Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy + smear_dpy;
+
+        Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
+        Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
+        LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+    }
+
+    Float_t integral = m_res_mass->Integral();
+    if (m_res_mass->GetEntries() && integral > 0.0)
+    {
+        int binmax = m_res_mass->GetMaximumBin(); 
+        res[static_cast<size_t>(Output::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+        res[static_cast<size_t>(Output::peak_val)] = m_res_mass->GetBinContent(binmax);
+        res[static_cast<size_t>(Output::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+        res[static_cast<size_t>(Output::integral)] = integral;
+        return res;
+    }
+
+    return res;
 }
 
 std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, 

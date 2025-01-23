@@ -20,8 +20,8 @@ inline constexpr size_t MAX_GEN_QUARK = static_cast<size_t>(Quark::count);
 inline constexpr size_t MAX_GEN_NU = static_cast<size_t>(Nu::count);
 
 // PDFs in SL channel resolved topology
-enum class PDF1_sl { numet_pt, numet_dphi, nulep_deta, hh_dphi, mbb, mww, hh_deta, count };
-enum class PDF2_sl { b1b2, hh_dEtadPhi, hh_pt_e, count };
+enum class PDF1_sl { b1, q1, numet_pt, numet_dphi, nulep_deta, hh_dphi, mbb, mww, hh_deta, count };
+enum class PDF2_sl { b1b2, q1q2, mw1mw2, hh_dEtadPhi, hh_pt_e, count };
 inline constexpr size_t NUM_PDF_1D_SL = static_cast<size_t>(PDF1_sl::count);
 inline constexpr size_t NUM_PDF_2D_SL = static_cast<size_t>(PDF2_sl::count);
 
@@ -69,9 +69,13 @@ inline static const std::unordered_map<PDF1_sl, TString> pdf1d_sl_names = { { PD
                                                                             { PDF1_sl::hh_dphi, "pdf_hh_dphi" },
                                                                             { PDF1_sl::mbb, "pdf_mbb" },
                                                                             { PDF1_sl::mww, "pdf_mww_narrow" },
-                                                                            { PDF1_sl::hh_deta, "pdf_hh_deta" } };
+                                                                            { PDF1_sl::hh_deta, "pdf_hh_deta" },
+                                                                            { PDF1_sl::q1, "pdf_q1" },
+                                                                            { PDF1_sl::b1, "pdf_b1" } };
 
 inline static const std::unordered_map<PDF2_sl, TString> pdf2d_sl_names = { { PDF2_sl::b1b2, "pdf_b1b2" },
+                                                                            { PDF2_sl::q1q2, "pdf_q1q2" },
+                                                                            { PDF2_sl::mw1mw2, "pdf_mw1mw2" },
                                                                             { PDF2_sl::hh_dEtadPhi, "pdf_hh_dEtadPhi" },
                                                                             { PDF2_sl::hh_pt_e, "pdf_hh_pt_e" } };
 
