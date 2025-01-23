@@ -198,9 +198,12 @@ int main()
     auto pdf_q1q2 = std::make_unique<TH2F>("pdf_q1q2", "2d PDF simultaneous light jet corrrections", N_BINS, 0, 8, N_BINS, 0, 8);
     auto pdf_hh_dEtadPhi = std::make_unique<TH2F>("pdf_hh_dEtadPhi", "2d PDF dEta vs dPhi between H->bb and H->WW", N_BINS, -8, 8, N_BINS, -8, 8);
     auto pdf_hh_pt_e = std::make_unique<TH2F>("pdf_hh_pt_e", "2d PDF of ratio pt to E of H->bb and H->WW", N_BINS, 0, 1, N_BINS, 0, 1);
+    auto pdf_mw1mw2 = std::make_unique<TH2F>("pdf_mw1mw2", "2d PDF of onshell mw vs offshell mw", N_BINS, 0, 125, N_BINS, 0, 125);
 
     auto pdf_b1 = std::make_unique<TH1F>("pdf_b1", "1d PDF for leading b jet correction", N_BINS, 0, 8);
     auto pdf_b2 = std::make_unique<TH1F>("pdf_b2", "1d PDF for subleading b jet correction", N_BINS, 0, 8);
+    auto pdf_q1 = std::make_unique<TH1F>("pdf_q1", "1d PDF for leading light jet correction", N_BINS, 0, 8);
+    auto pdf_q2 = std::make_unique<TH1F>("pdf_q2", "1d PDF for subleading light jet correction", N_BINS, 0, 8);
     auto pdf_mbb = std::make_unique<TH1F>("pdf_mbb", "1d PDF of H->bb mass with true corrections applied", N_BINS, 0, 200);
     auto pdf_numet_pt = std::make_unique<TH1F>("pdf_numet_pt", "1d PDF nu to met pt ratio with true corrections applied to b jets", N_BINS, 0, 8);
     auto pdf_numet_dphi = std::make_unique<TH1F>("pdf_numet_dphi", "1d PDF of dPhi between true nu and MET with true corrections applied to b jets", N_BINS, -4, 4);
@@ -399,14 +402,19 @@ int main()
         pdf_numet_dphi_ext->Fill(nu.DeltaPhi(reco_met_corr_ext));
         pdf_b1->Fill(c1);
         pdf_b2->Fill(c2);
+        pdf_q1->Fill(c3);
+        pdf_q2->Fill(c4);
         pdf_b1b2->Fill(c1, c2); 
         pdf_q1q2->Fill(c3, c4); 
         pdf_mbb->Fill((c1*reco_bj1_p4 + c2*reco_bj2_p4).M());
         pdf_nulep_deta->Fill(nu.Eta() - reco_lep_p4.Eta());
+        pdf_mw1mw2->Fill(std::max(genV1_mass, genV2_mass), std::min(genV1_mass, genV2_mass));
     }
 
     pdf_b1->Scale(1.0/GetPDFScaleFactor(pdf_b1));
     pdf_b2->Scale(1.0/GetPDFScaleFactor(pdf_b2));
+    pdf_q1->Scale(1.0/GetPDFScaleFactor(pdf_q1));
+    pdf_q2->Scale(1.0/GetPDFScaleFactor(pdf_q2));
     pdf_mbb->Scale(1.0/GetPDFScaleFactor(pdf_mbb));
     pdf_numet_pt->Scale(1.0/GetPDFScaleFactor(pdf_numet_pt));
     pdf_numet_dphi->Scale(1.0/GetPDFScaleFactor(pdf_numet_dphi));
@@ -430,6 +438,8 @@ int main()
     auto output = std::make_unique<TFile>("pdf_sl.root", "RECREATE");
     pdf_b1->Write();
     pdf_b2->Write();
+    pdf_q1->Write();
+    pdf_q2->Write();
     pdf_mbb->Write();
     pdf_hh_dphi->Write();
     pdf_numet_pt->Write();
@@ -448,6 +458,7 @@ int main()
     pdf_hh_pt_e->Write();
     pdf_hbb_pt_e->Write();
     pdf_hww_pt_e->Write();
+    pdf_mw1mw2->Write();
     // pdf_mw_had->Write();
 	output->Write();
 	output->Close();
