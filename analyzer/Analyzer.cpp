@@ -41,12 +41,16 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
         return;
     }
 
-    if (m_storage.n_reco_jet < 2)
+    if (m_storage.n_reco_jet < 4)
     {
         return;
     }
 
-    if (m_storage.reco_lep_pt[0] == 0.0 || m_storage.reco_lep_pt[1] == 0.0)
+    // if (m_storage.reco_lep_pt[0] == 0.0 || m_storage.reco_lep_pt[1] == 0.0)
+    // {
+    //     return;
+    // }
+    if (m_storage.reco_lep_pt[0] == 0.0)
     {
         return;
     }
@@ -96,7 +100,8 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
 
     TString chosen_comb = "";
     // auto hme = m_estimator.EstimateMass(jets, leptons, jet_resolutions, met, evt, chosen_comb); // sl
-    auto hme = m_estimator.EstimateMass(jets, leptons, met, evt, chosen_comb); // dl
+    auto hme = m_estimator.EstimateMass(jets, leptons, met, evt, chosen_comb);
+    // auto hme = m_estimator.EstimateMass(jets, leptons, met, evt, chosen_comb); // dl
     if (hme)
     {
         m_hm.Fill("hme_mass", hme.value());

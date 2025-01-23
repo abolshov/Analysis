@@ -103,6 +103,32 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
         Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
         LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+
+        auto nu1 = NuFromHiggsConstr(j1, j2, lep, met, 0, mh);
+        auto nu2 = NuFromHiggsConstr(j1, j2, lep, met, 1, mh);
+
+        int num_sol = nu1.has_value() + nu2.has_value();
+        if (num_sol == 0)
+        {
+            ++failed_iter;
+            continue;
+        }
+        Float_t weight = 1.0/num_sol;
+
+        LorentzVectorF_t tmp = b1;
+        tmp += b2; 
+        tmp += j1;
+        tmp += j2;
+        tmp += lep;
+        
+        if (nu1)
+        {
+            m_res_mass->Fill((tmp + nu1.value()).M(), weight);
+        }
+        if (nu2)
+        {
+            m_res_mass->Fill((tmp + nu2.value()).M(), weight);
+        }
     }
 
     Float_t integral = m_res_mass->Integral();
@@ -136,7 +162,75 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
                                                         ULong64_t evt, 
                                                         TString& chosen_comb)
 {
-    // TODO
+    VecLVF_t particles(static_cast<size_t>(ObjSL::count));
+    particles[static_cast<size_t>(ObjSL::lep)] = leptons[static_cast<size_t>(Lep::lep1)];
+    particles[static_cast<size_t>(ObjSL::met)] = met;
+
+    std::vector<Float_t> estimations;
+    std::vector<Float_t> integrals;
+
+    std::unordered_set<size_t> used;
+    for (size_t bj1_idx = 0; bj1_idx < NUM_BEST_BTAG; ++bj1_idx)
+    {
+        used.insert(bj1_idx);
+        for (size_t bj2_idx = bj1_idx + 1; bj2_idx < NUM_BEST_BTAG; ++bj2_idx)
+        {
+            used.insert(bj2_idx);
+            if (jets[bj1_idx].Pt() > jets[bj2_idx].Pt())
+            {
+                particles[static_cast<size_t>(ObjSL::bj1)] = jets[bj1_idx];
+                particles[static_cast<size_t>(ObjSL::bj2)] = jets[bj2_idx];
+            }
+            else 
+            {
+                particles[static_cast<size_t>(ObjSL::bj1)] = jets[bj2_idx];
+                particles[static_cast<size_t>(ObjSL::bj2)] = jets[bj1_idx];
+            }
+
+            for (size_t lj1_idx = 0; lj1_idx < jets.size(); ++lj1_idx)
+            {
+                if (used.count(lj1_idx))
+                {
+                    continue;
+                }
+                used.insert(lj1_idx);
+
+                for (size_t lj2_idx = lj1_idx + 1; lj2_idx < jets.size(); ++lj2_idx)
+                {
+                    if (used.count(lj2_idx))
+                    {
+                        continue;
+                    }
+                    used.insert(lj2_idx);
+
+                    particles[static_cast<size_t>(ObjSL::lj1)] = jets[lj1_idx];
+                    particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj2_idx];
+
+                    TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
+                    auto comb_result = EstimateCombViaEqns(particles, evt, comb_label);
+
+                    if (comb_result[static_cast<size_t>(Output::mass)] > 0.0)
+                    {
+                        estimations.push_back(comb_result[static_cast<size_t>(Output::mass)]);
+                        integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
+                    }
+                    Reset(m_res_mass);
+                    used.erase(lj2_idx);
+                }
+                used.erase(lj1_idx);
+            }
+            used.erase(bj2_idx);
+        }
+        used.erase(bj1_idx);
+    }
+
+    if (!estimations.empty())
+    {
+        auto it = std::max_element(integrals.begin(), integrals.end());
+        int idx = it - integrals.begin();
+        return std::make_optional<Float_t>(estimations[idx]);
+    }
+
     return std::nullopt;
 }
 
