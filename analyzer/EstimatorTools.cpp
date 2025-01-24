@@ -113,6 +113,46 @@ std::optional<LorentzVectorF_t> NuFromHiggsConstr(LorentzVectorF_t const& jet1,
     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 }
 
+// std::optional<LorentzVectorF_t> NuFromHiggsConstr(LorentzVectorF_t const& jet1, 
+//                                                   LorentzVectorF_t const& jet2, 
+//                                                   LorentzVectorF_t const& lep, 
+//                                                   LorentzVectorF_t const& met, 
+//                                                   int control, 
+//                                                   Float_t mh)
+// {
+//     LorentzVectorF_t tmp = jet1 + jet2 + lep;
+//     Float_t nu_tmp_px = met.Px();
+//     Float_t nu_tmp_py = met.Py();
+
+//     // weird stuff 
+//     Float_t px = std::sqrt(tmp.Pt()*tmp.Pt() + tmp.M2());
+//     Float_t py = 0.0;
+//     Float_t pz = tmp.Pz();
+//     Float_t en = tmp.E();
+
+//     LorentzVectorF_t tmp2;
+//     tmp2.SetPxPyPzE(px, py, pz, en);
+
+//     Float_t pt = std::sqrt(nu_tmp_px*nu_tmp_px + nu_tmp_py*nu_tmp_py);
+//     Float_t phi = std::atan2(nu_tmp_py, nu_tmp_px);
+
+//     Float_t cosh_deta = (mh*mh + 2.0*(nu_tmp_px*tmp.Px() + nu_tmp_py*tmp.Py()) - tmp.M2())/(2.0*tmp2.Pt()*pt);
+//     if (cosh_deta < 1.0)
+//     {
+//         return std::nullopt;
+//     }
+
+//     Float_t delta_eta = std::acosh(cosh_deta);
+//     Float_t eta = control == 1 ? tmp2.Eta() - delta_eta : tmp2.Eta() + delta_eta;
+
+//     if (std::abs(eta) > 7.0)
+//     {
+//         return std::nullopt;
+//     }
+
+//     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
+// }
+
 std::optional<LorentzVectorF_t> NuFromWConstr(LorentzVectorF_t const& lep, LorentzVectorF_t const& met, int control, Float_t mw)
 {
     Float_t pt = met.Pt();

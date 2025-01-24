@@ -2,6 +2,7 @@
 #include "Definitions.hpp"
 #include "EstimatorUtils.hpp"
 #include "MatchingTools.hpp"
+#include "SelectionUtils.hpp"
 
 #include <iostream>
 
@@ -28,6 +29,7 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
     {
         ProcessEvent(evt, tree, ch);
     }
+    std::cout << "counter=" << counter << "\n";
     m_hm.Draw();
     file->Close();
 }
@@ -41,24 +43,22 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
         return;
     }
 
-    if (m_storage.n_reco_jet < 4)
-    {
-        return;
-    }
-
-    // if (m_storage.reco_lep_pt[0] == 0.0 || m_storage.reco_lep_pt[1] == 0.0)
-    // {
-    //     return;
-    // }
-    if (m_storage.reco_lep_pt[0] == 0.0)
-    {
-        return;
-    }
-
     VecLVF_t jets = GetRecoJetP4(m_storage);
     VecLVF_t leptons = GetRecoLepP4(m_storage, ch);
     LorentzVectorF_t met = GetRecoMET(m_storage);
     std::vector<Float_t> jet_resolutions = GetPNetRes(m_storage);
+
+    if (!IsRecoverable(m_storage, ch))
+    {
+        return;
+    }
+
+    if (!IsFiducial(m_storage, jets, ch))
+    {
+        return;
+    }
+
+    ++counter;
 
     #ifdef DEBUG 
         VecLVF_t gen_leptons = GetGenLepP4(m_storage, ch);
@@ -105,31 +105,6 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
     if (hme)
     {
         m_hm.Fill("hme_mass", hme.value());
-
-        #ifdef DEBUG
-            std::cout << "Event " << evt << ": ";
-            TString true_comb = MakeTrueLabel(gen_quarks, jets);
-            if (true_comb != "")
-            {
-                std::cout << "true combination exists\n";
-                if (IsTrue(true_comb, chosen_comb))
-                {
-                    std::cout << "\tSUCCESS! picked true combination\n";
-                }
-                else 
-                {
-                    std::cout << "\tFAIL! picked wrong combination\n";
-                }
-                std::cout << "\ttrue=" << true_comb << "\n";
-                std::cout << "\tchosen=" << chosen_comb << "\n";
-                std::cout << "\testimated=" << hme.value() << "\n";
-            }
-            else 
-            {
-                std::cout << "true combination doesn't exist\n";
-            }
-            std::cout << "============================================\n";
-        #endif
     }
 
     #ifdef DEBUG

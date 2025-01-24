@@ -28,6 +28,8 @@ class Analyzer
     EstimatorSingleLep m_estimator;
     HistManager m_hm;
 
+    inline static int counter = 0;
+
     public:
     Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, TString const& pdf_file_name, Mode mode);
     

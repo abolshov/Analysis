@@ -203,8 +203,19 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
                     }
                     used.insert(lj2_idx);
 
-                    particles[static_cast<size_t>(ObjSL::lj1)] = jets[lj1_idx];
-                    particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj2_idx];
+                    if (jets[lj1_idx].Pt() > jets[lj2_idx].Pt())
+                    {
+                        particles[static_cast<size_t>(ObjSL::lj1)] = jets[lj1_idx];
+                        particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj2_idx];
+                    }
+                    else 
+                    {
+                        particles[static_cast<size_t>(ObjSL::lj1)] = jets[lj2_idx];
+                        particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj1_idx];
+                    }
+
+                    // particles[static_cast<size_t>(ObjSL::lj1)] = jets[lj1_idx];
+                    // particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj2_idx];
 
                     TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
                     auto comb_result = EstimateCombViaEqns(particles, evt, comb_label);

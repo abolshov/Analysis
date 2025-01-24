@@ -15,15 +15,18 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("lep1_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_phi", reco_lep_phi.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep1));
+    tree->SetBranchAddress("lep1_type", reco_lep_type.data() + static_cast<size_t>(Lep::lep1));
+    tree->SetBranchAddress("lep1_genLep_kind", reco_lep_gen_kind.data() + static_cast<size_t>(Lep::lep1));
 
     tree->SetBranchAddress("lep2_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_phi", reco_lep_phi.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep2));
+    tree->SetBranchAddress("lep2_type", reco_lep_type.data() + static_cast<size_t>(Lep::lep2));
+    tree->SetBranchAddress("lep2_genLep_kind", reco_lep_gen_kind.data() + static_cast<size_t>(Lep::lep2));
 
     tree->SetBranchAddress("event", &eventId);
 
-    #ifdef DEBUG
     // genjet data
     tree->SetBranchAddress("ncentralGenJet", &n_gen_jet);
     tree->SetBranchAddress("centralGenJet_pt", gen_jet_pt.data());
@@ -69,7 +72,6 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
 
     tree->SetBranchAddress("GenMET_pt", &gen_met_pt);
     tree->SetBranchAddress("GenMET_phi", &gen_met_phi);
-    #endif
 
     tree->SetBranchAddress("PuppiMET_pt", &reco_met_pt);
     tree->SetBranchAddress("PuppiMET_phi", &reco_met_phi);
