@@ -62,9 +62,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
     LorentzVectorF_t const& met = particles[static_cast<size_t>(ObjSL::met)];
 
     UHist_t<TH1F>& pdf_b1 = m_pdf_1d[static_cast<size_t>(PDF1_sl::b1)];
-    // UHist_t<TH1F>& pdf_q1 = m_pdf_1d[static_cast<size_t>(PDF1_sl::q1)];
-    // UHist_t<TH2F>& pdf_b1b2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::b1b2)];
-    UHist_t<TH2F>& pdf_q1q2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::q1q2)];
+    UHist_t<TH1F>& pdf_q1 = m_pdf_1d[static_cast<size_t>(PDF1_sl::q1)];
+    UHist_t<TH2F>& pdf_mw1mw2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::mw1mw2)];
 
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
@@ -82,52 +81,67 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         b1 *= c1;
         b2 *= c2;
 
-        LorentzVectorF_t j1 = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
-        LorentzVectorF_t j2 = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
-        Double_t c3 = 1.0;
-        Double_t c4 = 1.0;
-        pdf_q1q2->GetRandom2(c3, c4, m_prg.get());
+        Double_t mw1 = 1.0;
+        Double_t mw2 = 1.0;
+        pdf_mw1mw2->GetRandom2(mw1, mw2, m_prg.get());
 
-        j1 *= c3;
-        j2 *= c4;
+        std::vector<Float_t> masses;
+        for (int control = 0; control < 4; ++control)
+        {
+            bool lepW_onshell = control / 2;
+            int add_deta = control % 2;
 
-        Float_t bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
-        Float_t bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+            Float_t mWlep = lepW_onshell ? mw1 : mw2;
+            Float_t mWhad = lepW_onshell ? mw2 : mw1;
 
-        Float_t ljet_resc_dpx = -1.0*(c3 - 1)*lj1.Px() - (c4 - 1)*lj2.Px();
-        Float_t ljet_resc_dpy = -1.0*(c3 - 1)*lj1.Py() - (c4 - 1)*lj2.Py();
+            LorentzVectorF_t j1 = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
+            LorentzVectorF_t j2 = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
+            auto [c3, c4] = ComputeJetResc(lj1, lj2, pdf_q1, mWhad);
 
-        Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx + smear_dpx;
-        Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy + smear_dpy;
+            j1 *= c3;
+            j2 *= c4;
 
-        Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
-        Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
-        LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+            Float_t bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
+            Float_t bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
 
-        auto nu1 = NuFromHiggsConstr(j1, j2, lep, met, 0, mh);
-        auto nu2 = NuFromHiggsConstr(j1, j2, lep, met, 1, mh);
+            Float_t ljet_resc_dpx = -1.0*(c3 - 1)*lj1.Px() - (c4 - 1)*lj2.Px();
+            Float_t ljet_resc_dpy = -1.0*(c3 - 1)*lj1.Py() - (c4 - 1)*lj2.Py();
 
-        int num_sol = nu1.has_value() + nu2.has_value();
-        if (num_sol == 0)
+            Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx + smear_dpx;
+            Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy + smear_dpy;
+
+            Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
+            Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
+            LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+
+            auto nu = NuFromWConstr(lep, met_corr, add_deta, mWlep);
+            if (nu)
+            {
+                LorentzVectorF_t tmp = b1;
+                tmp += b2; 
+                tmp += j1;
+                tmp += j2;
+                tmp += lep;
+                tmp += nu.value();
+
+                masses.push_back(tmp.M());
+            } 
+            else 
+            {
+                continue;
+            }
+        }
+
+        if (masses.empty())
         {
             ++failed_iter;
             continue;
         }
-        Float_t weight = 1.0/num_sol;
 
-        LorentzVectorF_t tmp = b1;
-        tmp += b2; 
-        tmp += j1;
-        tmp += j2;
-        tmp += lep;
-        
-        if (nu1)
+        Float_t weight = 1.0/masses.size();
+        for (auto mass: masses)
         {
-            m_res_mass->Fill((tmp + nu1.value()).M(), weight);
-        }
-        if (nu2)
-        {
-            m_res_mass->Fill((tmp + nu2.value()).M(), weight);
+            m_res_mass->Fill(mass, weight);
         }
     }
 
