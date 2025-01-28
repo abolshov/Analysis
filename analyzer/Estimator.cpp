@@ -89,7 +89,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         for (int control = 0; control < 4; ++control)
         {
             bool lepW_onshell = control / 2;
-            int add_deta = control % 2;
+            bool add_deta = control % 2;
 
             Float_t mWlep = lepW_onshell ? mw1 : mw2;
             Float_t mWhad = lepW_onshell ? mw2 : mw1;
@@ -114,7 +114,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
             LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
 
-            auto nu = NuFromWConstr(lep, met_corr, add_deta, mWlep);
+            auto nu = NuFromW(lep, met_corr, add_deta, mWlep);
             if (nu)
             {
                 LorentzVectorF_t tmp = b1;
@@ -143,6 +143,9 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         {
             m_res_mass->Fill(mass, weight);
         }
+
+        // auto it = std::min_element(masses.begin(), masses.end(), [](Float_t m1, Float_t m2){ return std::abs(m1 - 800.0) < std::abs(m2 - 800.0); });
+        // m_res_mass->Fill(*it);
     }
 
     Float_t integral = m_res_mass->Integral();

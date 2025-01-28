@@ -86,12 +86,12 @@ std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1,
     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 }
 
-std::optional<LorentzVectorF_t> NuFromHiggsConstr(LorentzVectorF_t const& jet1, 
-                                                  LorentzVectorF_t const& jet2, 
-                                                  LorentzVectorF_t const& lep, 
-                                                  LorentzVectorF_t const& met, 
-                                                  int control, 
-                                                  Float_t mh)
+std::optional<LorentzVectorF_t> NuFromH(LorentzVectorF_t const& jet1, 
+                                        LorentzVectorF_t const& jet2, 
+                                        LorentzVectorF_t const& lep, 
+                                        LorentzVectorF_t const& met, 
+                                        bool add_deta,
+                                        Float_t mh)
 {
     LorentzVectorF_t vis = jet1 + jet2 + lep;
     Float_t cos_dphi = std::cos(vis.Phi() - met.Phi()); 
@@ -105,7 +105,7 @@ std::optional<LorentzVectorF_t> NuFromHiggsConstr(LorentzVectorF_t const& jet1,
         return std::nullopt;
     }
     Float_t delta_eta = std::acosh(cosh_deta);
-    Float_t eta = control == 1 ? vis.Eta() - delta_eta : vis.Eta() + delta_eta;
+    Float_t eta = add_deta ? vis.Eta() + delta_eta : vis.Eta() - delta_eta;
     if (std::abs(eta) > 7.0)
     {
         return std::nullopt;
@@ -153,7 +153,7 @@ std::optional<LorentzVectorF_t> NuFromHiggsConstr(LorentzVectorF_t const& jet1,
 //     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 // }
 
-std::optional<LorentzVectorF_t> NuFromWConstr(LorentzVectorF_t const& lep, LorentzVectorF_t const& met, int control, Float_t mw)
+std::optional<LorentzVectorF_t> NuFromW(LorentzVectorF_t const& lep, LorentzVectorF_t const& met, bool add_deta, Float_t mw)
 {
     Float_t pt = met.Pt();
     Float_t phi = met.Phi();
@@ -164,7 +164,7 @@ std::optional<LorentzVectorF_t> NuFromWConstr(LorentzVectorF_t const& lep, Loren
         return std::nullopt;
     }
     Float_t delta_eta = std::acosh(cosh_deta);
-    Float_t eta = control == 1 ? lep.Eta() - delta_eta : lep.Eta() + delta_eta;
+    Float_t eta = add_deta ? lep.Eta() + delta_eta : lep.Eta() - delta_eta;
     if (std::abs(eta) > 7.0)
     {
         return std::nullopt;
