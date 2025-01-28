@@ -11,7 +11,7 @@ LorentzVectorF_t SamplePNetResCorr(LorentzVectorF_t const& jet, std::unique_ptr<
     return LorentzVectorF_t(pt + dpt, jet.Eta(), jet.Phi(), jet.M());
 }
 
-std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& p1, LorentzVectorF_t const& p2, UHist_t<TH1F>& pdf, Float_t mass)
+std::optional<std::pair<Float_t, Float_t>> ComputeJetResc(LorentzVectorF_t const& p1, LorentzVectorF_t const& p2, UHist_t<TH1F>& pdf, Float_t mass)
 {
     Float_t c1 = pdf->GetRandom();
     Float_t x1 = p2.M2();
@@ -23,10 +23,11 @@ std::pair<Float_t, Float_t> ComputeJetResc(LorentzVectorF_t const& p1, LorentzVe
         Float_t c2 = (-x2 + std::sqrt(discrim))/(2.0*x1);
         if (c2 >= 0.0)
         {
-            return std::make_pair(c1, c2); 
+            return std::make_optional<std::pair<Float_t, Float_t>>(c1, c2); 
         }
     }
-    return {1.0, 1.0};
+    // return {1.0, 1.0};
+    return std::nullopt;
 }
 
 std::optional<LorentzVectorF_t> NuFromOnshellW(Float_t eta, Float_t phi, Float_t mw, LorentzVectorF_t const& lep_onshell)

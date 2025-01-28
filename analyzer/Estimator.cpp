@@ -1,6 +1,7 @@
 #include "Estimator.hpp"
 
 #include <algorithm>
+#include <numeric>
 #include <unordered_set>
 
 #include "TVector2.h"
@@ -19,11 +20,6 @@ using ROOT::Math::VectorUtil::DeltaPhi;
     #include "TLatex.h"
     #include "TStyle.h"
 #endif
-
-#include "TCanvas.h"
-#include "TPaveStats.h"
-#include "TLatex.h"
-#include "TStyle.h"
 
 EstimatorBase::EstimatorBase() 
 :   m_prg(std::make_unique<TRandom3>(SEED))
@@ -78,7 +74,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
     {   
         TString hist_title = Form("m(X->HH|W->qq %s)", i/2 ? "onshell" : "offshell");
         hist_names[i] = Form("lepW_%s_%s", i/2 ? "onshell" : "offshell", i%2 ? "plus" : "minus");
-        hists[i] = std::make_unique<TH1F>(hist_names[i], hist_title, 200, MIN_MASS, MAX_MASS);
+        hists[i] = std::make_unique<TH1F>(hist_names[i], hist_title, 100, MIN_MASS, MAX_MASS);
     }
 
     [[maybe_unused]] int failed_iter = 0;
@@ -87,7 +83,13 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
         Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
 
-        auto [c1, c2] = ComputeJetResc(bj1, bj2, pdf_b1, mh);
+        auto bresc = ComputeJetResc(bj1, bj2, pdf_b1, mh);
+        if (!bresc.has_value())
+        {
+            ++failed_iter;
+            continue;
+        }
+        auto [c1, c2] = bresc.value();
 
         LorentzVectorF_t b1 = bj1;
         LorentzVectorF_t b2 = bj2;
@@ -109,7 +111,13 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
 
             LorentzVectorF_t j1 = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
             LorentzVectorF_t j2 = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
-            auto [c3, c4] = ComputeJetResc(lj1, lj2, pdf_q1, mWhad);
+            auto lresc = ComputeJetResc(lj1, lj2, pdf_q1, mWhad);
+            if (!lresc.has_value())
+            {
+                ++failed_iter;
+                continue;
+            }
+            auto [c3, c4] = lresc.value();
 
             j1 *= c3;
             j2 *= c4;
@@ -159,34 +167,36 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         }
     }
 
-    for (int i = 0; i < 4; ++i)
-    {
-        auto const& h = hists[i];
+    #ifdef PLOT
+        for (int i = 0; i < 4; ++i)
+        {
+            auto const& h = hists[i];
 
-        auto canv = std::make_unique<TCanvas>("canv", "canv");
-        canv->SetGrid();
-        canv->SetTickx();
-        canv->SetTicky();
+            auto canv = std::make_unique<TCanvas>("canv", "canv");
+            canv->SetGrid();
+            canv->SetTickx();
+            canv->SetTicky();
 
-        gStyle->SetOptStat();
-        gStyle->SetStatH(0.25);
+            gStyle->SetOptStat();
+            gStyle->SetStatH(0.25);
 
-        h->SetLineWidth(2);
-        h->Draw("hist");
+            h->SetLineWidth(2);
+            h->Draw("hist");
 
-        gPad->Update();
+            gPad->Update();
 
-        Float_t width = ComputeWidth(h, Q16, Q84);
-        Float_t mass = h->GetXaxis()->GetBinCenter(h->GetMaximumBin());
+            Float_t width = ComputeWidth(h, Q16, Q84);
+            Float_t mass = h->GetXaxis()->GetBinCenter(h->GetMaximumBin());
 
-        auto stat_box = std::unique_ptr<TPaveStats>(static_cast<TPaveStats*>(h->GetListOfFunctions()->FindObject("stats")));   
-        stat_box->AddText(Form("Width = %.2f", width));
-        stat_box->AddText(Form("Mass = %.2f", mass));
-        stat_box->SetTextSize(0.03);
-        stat_box->DrawClone();
+            auto stat_box = std::unique_ptr<TPaveStats>(static_cast<TPaveStats*>(h->GetListOfFunctions()->FindObject("stats")));   
+            stat_box->AddText(Form("Width = %.2f", width));
+            stat_box->AddText(Form("Mass = %.2f", mass));
+            stat_box->SetTextSize(0.03);
+            stat_box->DrawClone();
 
-        canv->SaveAs(Form("event/mass/sl/evt_%llu_comb_%s_h%d.png", evt, comb_id.Data(), i));
-    }
+            canv->SaveAs(Form("event/mass/sl/evt_%llu_comb_%s_h%d.png", evt, comb_id.Data(), i));
+        }
+    #endif
 
     Float_t integral = m_res_mass->Integral();
     if (m_res_mass->GetEntries() && integral > 0.0)
@@ -758,7 +768,12 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
                 << "\tsmear_dpx=" << smear_dpx << ", smear_dpy=" << smear_dpy << "\n";
         #endif
 
-        auto [c1, c2] = ComputeJetResc(bj1, bj2, pdf_b1, mh);
+        auto bresc = ComputeJetResc(bj1, bj2, pdf_b1, mh);
+        if (!bresc.has_value())
+        {
+            continue;
+        }
+        auto [c1, c2] = bresc.value();
         #ifdef DEBUG
             log << "\tc1=" << c1 << ", c2=" << c2 << "\n";
         #endif
