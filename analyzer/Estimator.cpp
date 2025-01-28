@@ -20,6 +20,10 @@ using ROOT::Math::VectorUtil::DeltaPhi;
     #include "TStyle.h"
 #endif
 
+#include "TCanvas.h"
+#include "TPaveStats.h"
+#include "TLatex.h"
+#include "TStyle.h"
 
 EstimatorBase::EstimatorBase() 
 :   m_prg(std::make_unique<TRandom3>(SEED))
@@ -67,6 +71,15 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
 
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
+
+    std::array<UHist_t<TH1F>, 4> hists;
+    std::array<TString, 4> hist_names;
+    for (int i = 0; i < 4; ++i)
+    {   
+        TString hist_title = Form("m(X->HH|W->qq %s)", i/2 ? "onshell" : "offshell");
+        hist_names[i] = Form("lepW_%s_%s", i/2 ? "onshell" : "offshell", i%2 ? "plus" : "minus");
+        hists[i] = std::make_unique<TH1F>(hist_names[i], hist_title, 200, MIN_MASS, MAX_MASS);
+    }
 
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
@@ -125,6 +138,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
                 tmp += nu.value();
 
                 masses.push_back(tmp.M());
+                hists[control]->Fill(tmp.M());
             } 
             else 
             {
@@ -143,9 +157,35 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         {
             m_res_mass->Fill(mass, weight);
         }
+    }
 
-        // auto it = std::min_element(masses.begin(), masses.end(), [](Float_t m1, Float_t m2){ return std::abs(m1 - 800.0) < std::abs(m2 - 800.0); });
-        // m_res_mass->Fill(*it);
+    for (int i = 0; i < 4; ++i)
+    {
+        auto const& h = hists[i];
+
+        auto canv = std::make_unique<TCanvas>("canv", "canv");
+        canv->SetGrid();
+        canv->SetTickx();
+        canv->SetTicky();
+
+        gStyle->SetOptStat();
+        gStyle->SetStatH(0.25);
+
+        h->SetLineWidth(2);
+        h->Draw("hist");
+
+        gPad->Update();
+
+        Float_t width = ComputeWidth(h, Q16, Q84);
+        Float_t mass = h->GetXaxis()->GetBinCenter(h->GetMaximumBin());
+
+        auto stat_box = std::unique_ptr<TPaveStats>(static_cast<TPaveStats*>(h->GetListOfFunctions()->FindObject("stats")));   
+        stat_box->AddText(Form("Width = %.2f", width));
+        stat_box->AddText(Form("Mass = %.2f", mass));
+        stat_box->SetTextSize(0.03);
+        stat_box->DrawClone();
+
+        canv->SaveAs(Form("event/mass/sl/evt_%llu_comb_%s_h%d.png", evt, comb_id.Data(), i));
     }
 
     Float_t integral = m_res_mass->Integral();
