@@ -102,18 +102,30 @@ std::optional<LorentzVectorF_t> NuFromH(LorentzVectorF_t const& jet1,
     Float_t mv2 = vis.M2();
     Float_t pt = met.Pt(); 
     Float_t phi = met.Phi();   
-    Float_t cosh_deta = (mh*mh - mv2)/(2.0*pt*mt) + (vis.Pt()/mt)*cos_dphi;
-    if (cosh_deta < 1.0)
+    // Float_t cosh_deta = (mh*mh - mv2)/(2.0*pt*mt) + (vis.Pt()/mt)*cos_dphi;
+    // if (cosh_deta < 1.0)
+    // {
+    //     return std::nullopt;
+    // }
+    // Float_t delta_eta = std::acosh(cosh_deta);
+    // Float_t eta = add_deta ? vis.Eta() + delta_eta : vis.Eta() - delta_eta;
+    // if (std::abs(eta) > 7.0)
+    // {
+    //     return std::nullopt;
+    // }
+    // return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
+    Float_t cosh_dy = (mh*mh - mv2)/(2.0*pt*mt) + (vis.Pt()/mt)*cos_dphi;
+    if (cosh_dy < 1.0)
     {
         return std::nullopt;
     }
-    Float_t delta_eta = std::acosh(cosh_deta);
-    Float_t eta = add_deta ? vis.Eta() + delta_eta : vis.Eta() - delta_eta;
-    if (std::abs(eta) > 7.0)
+    Float_t dy = std::acosh(cosh_dy);
+    Float_t y = add_deta ? vis.ColinearRapidity() + dy : vis.ColinearRapidity() - dy;
+    if (std::abs(y) > 7.0)
     {
         return std::nullopt;
     }
-    return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
+    return std::make_optional<LorentzVectorF_t>(pt, y, phi, 0.0);
 }
 
 // std::optional<LorentzVectorF_t> NuFromHiggsConstr(LorentzVectorF_t const& jet1, 
@@ -188,13 +200,15 @@ std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(L
     Float_t B = mw*mw*mT(vis);
     Float_t C = (mh*mh - vis.M2())*lep.Pt()*cos_dphi_nulep - mw*mw*vis.Pt()*cos_dphi_nuvis;
 
-    Float_t D = A*std::cosh(lep.Eta()) - B*std::cosh(vis.Eta());
-    Float_t E = -A*std::sinh(lep.Eta()) + B*std::sinh(vis.Eta());
+    Float_t D = A*std::cosh(lep.ColinearRapidity()) - B*std::cosh(vis.ColinearRapidity());
+    Float_t E = -A*std::sinh(lep.ColinearRapidity()) + B*std::sinh(vis.ColinearRapidity());
 
     // eqn trying to solve:
     // (D - E)x^2 - 2Cx + (D + E) = 0
-    // x = exp(-eta)
+    // x = exp(-y), y - RAPIDITY, not pseudorapidity 
     // x > 0.0
+    // however, for masseless particles rapididyt = pseudorapidity
+    // but in all other calculation the above is not true
 
     // linear equation
     if (D - E == 0.0)
@@ -203,15 +217,19 @@ std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(L
         {
             return std::nullopt;
         }
-        Float_t exp_neg_eta = (D + E)/(2.0*C);
-        if (exp_neg_eta < 0.0)
+        Float_t exp_neg_y = (D + E)/(2.0*C);
+        if (exp_neg_y < 0.0)
         {
             return std::nullopt;
         }
-        Float_t eta = -std::log(exp_neg_eta);
-        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
-        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
-        LorentzVectorF_t nu = LorentzVectorF_t(pt, eta, phi, 0.0);
+        Float_t y = -std::log(exp_neg_y);
+        Float_t cosh_dy_nulep = std::cosh(y - lep.ColinearRapidity());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_dy_nulep - cos_dphi_nulep));
+        if (pt < 0.0 || std::isnan(pt) || std::isinf(pt))
+        {
+            return std::nullopt;
+        }
+        LorentzVectorF_t nu = LorentzVectorF_t(pt, y, phi, 0.0);
         return std::make_optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>(nu, nu);
     }
 
@@ -225,41 +243,53 @@ std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(L
     // quadratic: two equal solutions
     if (disc2 == 0.0)
     {
-        Float_t exp_neg_eta = C/(D - E);
-        if (exp_neg_eta < 0.0)
+        Float_t exp_neg_y = C/(D - E);
+        if (exp_neg_y < 0.0)
         {
             return std::nullopt;
         }
-        Float_t eta = -std::log(exp_neg_eta);
-        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
-        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
-        LorentzVectorF_t nu = LorentzVectorF_t(pt, eta, phi, 0.0);
+        Float_t y = -std::log(exp_neg_y);
+        Float_t cosh_dy_nulep = std::cosh(y - lep.ColinearRapidity());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_dy_nulep - cos_dphi_nulep));
+        if (pt < 0.0 || std::isnan(pt) || std::isinf(pt))
+        {
+            return std::nullopt;
+        }
+        LorentzVectorF_t nu = LorentzVectorF_t(pt, y, phi, 0.0);
         return std::make_optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>(nu, nu);
     }
 
     // quadratic: two different solutions
-    Float_t exp_neg_eta1 = (C + std::sqrt(disc2))/(D - E);
-    Float_t exp_neg_eta2 = (C - std::sqrt(disc2))/(D - E);
-    if (exp_neg_eta1 < 0.0 && exp_neg_eta2 < 0.0)
+    Float_t exp_neg_y1 = (C + std::sqrt(disc2))/(D - E);
+    Float_t exp_neg_y2 = (C - std::sqrt(disc2))/(D - E);
+    if (exp_neg_y1 < 0.0 && exp_neg_y2 < 0.0)
     {
         return std::nullopt;
     }
 
     LorentzVectorF_t nu1, nu2;
-    if (exp_neg_eta1 > 0.0)
+    if (exp_neg_y1 > 0.0)
     {
-        Float_t eta = -std::log(exp_neg_eta1);
-        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
-        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
-        nu1 = LorentzVectorF_t(pt, eta, phi, 0.0);
+        Float_t y1 = -std::log(exp_neg_y1);
+        Float_t cosh_dy_nulep = std::cosh(y1 - lep.ColinearRapidity());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_dy_nulep - cos_dphi_nulep));
+        bool invalid_pt = pt < 0.0 || std::isnan(pt) || std::isinf(pt);
+        if (!invalid_pt)
+        {
+            nu1 = LorentzVectorF_t(pt, y1, phi, 0.0);
+        }
     }
     
-    if (exp_neg_eta2 > 0.0)
+    if (exp_neg_y2 > 0.0)
     {
-        Float_t eta = -std::log(exp_neg_eta2);
-        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
-        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
-        nu2 = LorentzVectorF_t(pt, eta, phi, 0.0);
+        Float_t y2 = -std::log(exp_neg_y2);
+        Float_t cosh_dy_nulep = std::cosh(y2 - lep.ColinearRapidity());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_dy_nulep - cos_dphi_nulep));
+        bool invalid_pt = pt < 0.0 || std::isnan(pt) || std::isinf(pt);
+        if (!invalid_pt)
+        {
+            nu2 = LorentzVectorF_t(pt, y2, phi, 0.0);
+        }
     }
 
     return std::make_optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>(nu1, nu2);
