@@ -101,6 +101,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         pdf_mw1mw2->GetRandom2(mw1, mw2, m_prg.get());
 
         std::vector<Float_t> masses;
+        std::vector<Float_t> hww_dm;
         for (int control = 0; control < 4; ++control)
         {
             bool lepW_onshell = control / 2;
@@ -138,12 +139,14 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             auto nu = NuFromW(lep, met_corr, add_deta, mWlep);
             if (nu)
             {
-                LorentzVectorF_t tmp = b1;
-                tmp += b2; 
-                tmp += j1;
-                tmp += j2;
+                LorentzVectorF_t tmp = j1;
+                tmp += j2; 
                 tmp += lep;
                 tmp += nu.value();
+                hww_dm.push_back(std::abs(mh - tmp.M()));
+
+                tmp += b1; 
+                tmp += b2;
 
                 masses.push_back(tmp.M());
                 hists[control]->Fill(tmp.M());
@@ -160,11 +163,14 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             continue;
         }
 
-        Float_t weight = 1.0/masses.size();
-        for (auto mass: masses)
-        {
-            m_res_mass->Fill(mass, weight);
-        }
+        // Float_t weight = 1.0/masses.size();
+        // for (auto mass: masses)
+        // {
+        //     m_res_mass->Fill(mass, weight);
+        // }
+        auto it = std::min_element(hww_dm.begin(), hww_dm.end());
+        size_t idx = it - hww_dm.begin();
+        m_res_mass->Fill(masses[idx]);
     }
 
     #ifdef PLOT
