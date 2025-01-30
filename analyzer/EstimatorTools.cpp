@@ -1,5 +1,7 @@
 #include "EstimatorTools.hpp"
 
+#include "TVector2.h"
+
 LorentzVectorF_t SamplePNetResCorr(LorentzVectorF_t const& jet, std::unique_ptr<TRandom3>& prg, Float_t resolution)
 {
     Float_t dpt = prg->Gaus(0.0, resolution);
@@ -95,7 +97,7 @@ std::optional<LorentzVectorF_t> NuFromH(LorentzVectorF_t const& jet1,
                                         Float_t mh)
 {
     LorentzVectorF_t vis = jet1 + jet2 + lep;
-    Float_t cos_dphi = std::cos(vis.Phi() - met.Phi()); 
+    Float_t cos_dphi = std::cos(TVector2::Phi_mpi_pi(vis.Phi() - met.Phi())); 
     Float_t mt = mT(vis);
     Float_t mv2 = vis.M2();
     Float_t pt = met.Pt(); 
@@ -158,7 +160,7 @@ std::optional<LorentzVectorF_t> NuFromW(LorentzVectorF_t const& lep, LorentzVect
 {
     Float_t pt = met.Pt();
     Float_t phi = met.Phi();
-    Float_t dphi = phi - lep.Phi();
+    Float_t dphi = TVector2::Phi_mpi_pi(phi - lep.Phi());
     Float_t cosh_deta = mw*mw/(2.0*lep.Pt()*pt) + std::cos(dphi);    
     if (cosh_deta < 1.0)
     {
@@ -171,4 +173,77 @@ std::optional<LorentzVectorF_t> NuFromW(LorentzVectorF_t const& lep, LorentzVect
         return std::nullopt;
     }
     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
+}
+
+std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(LorentzVectorF_t const& jet1, LorentzVectorF_t const& jet2, 
+                                                                               LorentzVectorF_t const& lep, LorentzVectorF_t const& met, 
+                                                                               Float_t mw, Float_t mh)
+{
+    LorentzVectorF_t vis = jet1 + jet2 + lep;
+    Float_t phi = met.Phi();
+    Float_t cos_dphi_nulep = std::cos(TVector2::Phi_mpi_pi(phi - lep.Phi()));
+    Float_t cos_dphi_nuvis = std::cos(TVector2::Phi_mpi_pi(phi - vis.Phi()));
+
+    Float_t A = (mh*mh - vis.M2())*lep.Pt();
+    Float_t B = mw*mw*mT(vis);
+    Float_t C = (mh*mh - vis.M2())*lep.Pt()*cos_dphi_nulep - mw*mw*vis.Pt()*cos_dphi_nuvis;
+
+    Float_t D = A*std::cosh(lep.Eta()) - B*std::cosh(vis.Eta());
+    Float_t E = -A*std::sinh(lep.Eta()) + B*std::sinh(vis.Eta());
+
+    // eqn trying to solve:
+    // (D - E)x^2 - 2Cx + (D + E) = 0
+    // x = exp(-eta)
+    // x > 0.0
+
+    // linear equation
+    if (D - E == 0.0)
+    {
+        if (C == 0.0)
+        {
+            return std::nullopt;
+        }
+        Float_t exp_neg_eta = (D + E)/(2.0*C);
+        if (exp_neg_eta < 0.0)
+        {
+            return std::nullopt;
+        }
+        Float_t eta = -std::log(exp_neg_eta);
+        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
+        LorentzVectorF_t nu = LorentzVectorF_t(pt, eta, phi, 0.0);
+        return std::make_optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>(nu, nu);
+    }
+
+    // quardratic: no solutions
+    Float_t disc2 = C*C - D*D + E*E;
+    if (disc2 < 0.0)
+    {
+        return std::nullopt;
+    }
+
+    // quadratic: two equal solutions
+    if (dsic2 == 0.0)
+    {
+        Float_t exp_neg_eta = C/(D - E);
+        if (exp_neg_eta < 0.0)
+        {
+            return std::nullopt;
+        }
+        Float_t eta = -std::log(exp_neg_eta);
+        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
+        LorentzVectorF_t nu = LorentzVectorF_t(pt, eta, phi, 0.0);
+        return std::make_optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>(nu, nu);
+    }
+
+    // quadratic: two different solutions
+    Float_t exp_neg_eta1 = (C + std::sqrt(disc2))/(D - E);
+    Float_t exp_neg_eta2 = (C - std::sqrt(disc2))/(D - E);
+    if (exp_neg_eta1 < 0.0 && exp_neg_eta2 < 0.0)
+    {
+        return std::nullopt;
+    }
+
+    return std::nullopt;
 }

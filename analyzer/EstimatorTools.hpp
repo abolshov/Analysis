@@ -16,4 +16,8 @@ inline Float_t mT(LorentzVectorF_t p)
     return std::sqrt(p.M2() + p.Pt()*p.Pt());
 }
 
+std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(LorentzVectorF_t const& jet1, LorentzVectorF_t const& jet2, 
+                                                                               LorentzVectorF_t const& lep, LorentzVectorF_t const& met, 
+                                                                               Float_t mw, Float_t mh);
+
 #endif
