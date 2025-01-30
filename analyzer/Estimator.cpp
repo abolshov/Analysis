@@ -111,7 +111,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
 
             LorentzVectorF_t j1 = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
             LorentzVectorF_t j2 = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
-            auto lresc = ComputeJetResc(lj1, lj2, pdf_q1, mWhad);
+            auto lresc = ComputeJetResc(j1, j2, pdf_q1, mWhad);
             if (!lresc.has_value())
             {
                 ++failed_iter;
