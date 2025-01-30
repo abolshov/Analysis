@@ -223,7 +223,7 @@ std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(L
     }
 
     // quadratic: two equal solutions
-    if (dsic2 == 0.0)
+    if (disc2 == 0.0)
     {
         Float_t exp_neg_eta = C/(D - E);
         if (exp_neg_eta < 0.0)
@@ -245,5 +245,22 @@ std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(L
         return std::nullopt;
     }
 
-    return std::nullopt;
+    LorentzVectorF_t nu1, nu2;
+    if (exp_neg_eta1 > 0.0)
+    {
+        Float_t eta = -std::log(exp_neg_eta1);
+        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
+        nu1 = LorentzVectorF_t(pt, eta, phi, 0.0);
+    }
+    
+    if (exp_neg_eta2 > 0.0)
+    {
+        Float_t eta = -std::log(exp_neg_eta2);
+        Float_t cosh_deta_nulep = std::cosh(eta - lep.Eta());
+        Float_t pt = mw*mw/(2.0*lep.Pt()*(cosh_deta_nulep - cos_dphi_nulep));
+        nu2 = LorentzVectorF_t(pt, eta, phi, 0.0);
+    }
+
+    return std::make_optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>(nu1, nu2);
 }
