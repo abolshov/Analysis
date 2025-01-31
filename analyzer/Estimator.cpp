@@ -139,17 +139,18 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             auto nu = NuFromW(lep, met_corr, add_deta, mWlep);
             if (nu)
             {
-                LorentzVectorF_t tmp = j1;
-                tmp += j2; 
-                tmp += lep;
-                tmp += nu.value();
-                hww_dm.push_back(std::abs(mh - tmp.M()));
+                LorentzVectorF_t hww = j1;
+                hww += j2; 
+                hww += lep;
+                hww += nu.value();
+                Float_t dm = std::abs(mh - hww.M());
+                hww_dm.push_back(dm);
 
-                tmp += b1; 
-                tmp += b2;
+                LorentzVectorF_t hbb = b1; 
+                hbb += b2;
 
-                masses.push_back(tmp.M());
-                hists[control]->Fill(tmp.M());
+                masses.push_back((hww + hbb).M());
+                hists[control]->Fill((hww + hbb).M());
             } 
             else 
             {
@@ -163,11 +164,6 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             continue;
         }
 
-        // Float_t weight = 1.0/masses.size();
-        // for (auto mass: masses)
-        // {
-        //     m_res_mass->Fill(mass, weight);
-        // }
         auto it = std::min_element(hww_dm.begin(), hww_dm.end());
         size_t idx = it - hww_dm.begin();
         m_res_mass->Fill(masses[idx]);
@@ -240,7 +236,9 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
     particles[static_cast<size_t>(ObjSL::met)] = met;
 
     std::vector<Float_t> estimations;
-    std::vector<Float_t> integrals;
+    [[maybe_unused]] std::vector<Float_t> integrals;
+    std::vector<Float_t> inv_widths;
+    [[maybe_unused]] std::vector<Float_t> peaks;
 
     std::unordered_set<size_t> used;
     for (size_t bj1_idx = 0; bj1_idx < NUM_BEST_BTAG; ++bj1_idx)
@@ -287,16 +285,16 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
                         particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj1_idx];
                     }
 
-                    // particles[static_cast<size_t>(ObjSL::lj1)] = jets[lj1_idx];
-                    // particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj2_idx];
-
                     TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
                     auto comb_result = EstimateCombViaEqns(particles, evt, comb_label);
 
                     if (comb_result[static_cast<size_t>(Output::mass)] > 0.0)
                     {
                         estimations.push_back(comb_result[static_cast<size_t>(Output::mass)]);
+
                         integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
+                        inv_widths.push_back(1.0/comb_result[static_cast<size_t>(Output::width)]);
+                        peaks.push_back(comb_result[static_cast<size_t>(Output::peak_val)]);
                     }
                     Reset(m_res_mass);
                     used.erase(lj2_idx);
@@ -310,8 +308,8 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
 
     if (!estimations.empty())
     {
-        auto it = std::max_element(integrals.begin(), integrals.end());
-        int idx = it - integrals.begin();
+        auto it = std::max_element(inv_widths.begin(), inv_widths.end());
+        int idx = it - inv_widths.begin();
         return std::make_optional<Float_t>(estimations[idx]);
     }
 
