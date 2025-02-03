@@ -102,6 +102,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
 
         std::vector<Float_t> masses;
         std::vector<Float_t> hww_dm;
+        std::vector<Float_t> hh_dphi;
         for (int control = 0; control < 4; ++control)
         {
             bool lepW_onshell = control / 2;
@@ -149,6 +150,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
                 LorentzVectorF_t hbb = b1; 
                 hbb += b2;
 
+                hh_dphi.push_back(DeltaPhi(hww, hbb));
                 masses.push_back((hww + hbb).M());
                 hists[control]->Fill((hww + hbb).M());
             } 
@@ -164,9 +166,34 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             continue;
         }
 
-        auto it = std::min_element(hww_dm.begin(), hww_dm.end());
-        size_t idx = it - hww_dm.begin();
-        m_res_mass->Fill(masses[idx]);
+        // auto it = std::min_element(hww_dm.begin(), hww_dm.end());
+        // size_t idx = it - hww_dm.begin();
+        // m_res_mass->Fill(masses[idx]);
+
+        Float_t weight = 1.0/masses.size();
+        for (auto mass: masses)
+        {
+            m_res_mass->Fill(mass, weight);
+        }
+
+        // size_t choice = 0;
+        // if (masses.size() > 1)
+        // {
+        //     MinMaxTransform(hww_dm.begin(), hww_dm.end());
+        //     MinMaxTransform(hh_dphi.begin(), hh_dphi.end());
+
+        //     Float_t max_metric = 0.0f;
+        //     for (size_t c = 0; c < masses.size(); ++c)
+        //     {
+        //         Float_t metric = hww_dm[c] + hh_dphi[c];
+        //         if (metric > max_metric)
+        //         {
+        //             max_metric = metric;
+        //             choice = c;
+        //         }
+        //     }
+        // }
+        // m_res_mass->Fill(masses[choice]);
     }
 
     #ifdef PLOT
@@ -306,11 +333,34 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
         used.erase(bj1_idx);
     }
 
+    // if (!estimations.empty())
+    // {
+    //     auto it = std::max_element(inv_widths.begin(), inv_widths.end());
+    //     int idx = it - inv_widths.begin();
+    //     return std::make_optional<Float_t>(estimations[idx]);
+    // }
+
     if (!estimations.empty())
     {
-        auto it = std::max_element(inv_widths.begin(), inv_widths.end());
-        int idx = it - inv_widths.begin();
-        return std::make_optional<Float_t>(estimations[idx]);
+        size_t choice = 0;
+        if (estimations.size() > 1)
+        {
+            MinMaxTransform(integrals.begin(), integrals.end());
+            MinMaxTransform(inv_widths.begin(), inv_widths.end());
+            MinMaxTransform(peaks.begin(), peaks.end());
+
+            Float_t max_metric = 0.0f;
+            for (size_t c = 0; c < estimations.size(); ++c)
+            {
+                Float_t metric = integrals[c] + inv_widths[c] + peaks[c];
+                if (metric > max_metric)
+                {
+                    max_metric = metric;
+                    choice = c;
+                }
+            }
+        }
+        return std::make_optional<Float_t>(estimations[choice]);
     }
 
     return std::nullopt;

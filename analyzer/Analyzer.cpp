@@ -15,7 +15,7 @@ Analyzer::Analyzer(TString const& tree_name, std::map<TString, Channel> const& i
 ,   m_hm()   
 {
     TH1::AddDirectory(false);
-    m_hm.Add("hme_mass", "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 3000}, 100);
+    m_hm.Add("hme_mass", "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2500}, 100);
 }
 
 void Analyzer::ProcessFile(TString const& name, Channel ch)

@@ -95,7 +95,7 @@ bool IsFiducial(Storage const& s, VecLVF_t const& jets, Channel ch)
         matches.insert(idx);
     }
 
-    if (matches.count(-1))
+    if (matches.count(-1) || matches.size() != quarks_p4.size())
     {
         return false;
     }

@@ -29,10 +29,10 @@ struct Storage
     std::array<Int_t, MAX_RECO_LEP> reco_lep_gen_kind = {0};
 
     // gen objects
-    std::array<Float_t, MAX_GEN_JET> gen_jet_pt = {0.0};
-    std::array<Float_t, MAX_GEN_JET> gen_jet_eta = {0.0};
-    std::array<Float_t, MAX_GEN_JET> gen_jet_phi = {0.0};
-    std::array<Float_t, MAX_GEN_JET> gen_jet_mass = {0.0};
+    // std::array<Float_t, MAX_GEN_JET> gen_jet_pt = {0.0};
+    // std::array<Float_t, MAX_GEN_JET> gen_jet_eta = {0.0};
+    // std::array<Float_t, MAX_GEN_JET> gen_jet_phi = {0.0};
+    // std::array<Float_t, MAX_GEN_JET> gen_jet_mass = {0.0};
 
     std::array<Float_t, MAX_GEN_QUARK> gen_quark_pt = {0.0};
     std::array<Float_t, MAX_GEN_QUARK> gen_quark_eta = {0.0};
@@ -49,8 +49,8 @@ struct Storage
     std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {0.0};
     std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {0.0};
 
-    Float_t gen_met_pt = 0.0;
-    Float_t gen_met_phi = 0.0;
+    // Float_t gen_met_pt = 0.0;
+    // Float_t gen_met_phi = 0.0;
 
     Float_t reco_met_pt = 0.0;
     Float_t reco_met_phi = 0.0;

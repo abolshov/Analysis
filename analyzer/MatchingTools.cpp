@@ -8,19 +8,12 @@ using ROOT::Math::VectorUtil::DeltaR;
 
 int MatchIdx(LorentzVectorF_t const& parton, VecLVF_t const& jets)
 {
-    int res = -1;
-    int sz = jets.size();
-    Float_t min_dr = 10.0;
-    for (int i = 0; i < sz; ++i)
+    auto Cmp = [&parton](LorentzVectorF_t const& j1, LorentzVectorF_t const& j2)
     {
-        Float_t dr = DeltaR(parton, jets[i]);
-        if (dr < min_dr)
-        {
-            min_dr = dr;
-            res = i;
-        }
-    }
-    return res;
+        return DeltaR(parton, j1) < DeltaR(parton, j2); 
+    };
+    auto it = std::min_element(jets.begin(), jets.end(), Cmp);
+    return DeltaR(parton, *it) < 0.4 ? it - jets.begin() : -1;
 }
 
 TString MakeTrueLabel(VecLVF_t const& gen, VecLVF_t const& reco)
