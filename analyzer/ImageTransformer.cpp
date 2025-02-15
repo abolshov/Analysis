@@ -1,5 +1,6 @@
 #include "ImageTransformer.hpp"
 
+#include <stdexcept>
 
 ImageTransformer::ImageTransformer(TString output_name)
 :   m_output(std::make_unique<TFile>(output_name, "RECREATE"))
@@ -26,12 +27,13 @@ void ImageTransformer::ResetImgArr(Float_t img[NUM_PIX][NUM_PIX])
     }
 }
 
-std::pair<size_t, size_t> ImageTransformer::FindPixelIdx(Float_t x, Float_t y)
+std::pair<size_t, size_t> ImageTransformer::FindPixelIdx(Float_t eta, Float_t phi)
 {
-    size_t x_disp = std::abs(static_cast<int>(x/PIXEL_SZ));
-    size_t col = x < 0.0 ? ZERO_PIX - x_disp : ZERO_PIX + x_disp;
-    size_t y_disp = std::abs(static_cast<int>(y/PIXEL_SZ));
-    size_t row = y < 0.0 ? ZERO_PIX - y_disp : ZERO_PIX + y_disp;
+    // phi is periodic, eta is not
+    // x axis (eta) is indexing columns
+    // y axis (phi) is indexin rows
+    size_t col = static_cast<size_t>((eta + HALF_LEN)/PIXEL_SZ);
+    size_t row = static_cast<size_t>((phi + HALF_LEN)/PIXEL_SZ) % NUM_PIX;
     return {row, col};
 }
 
@@ -42,7 +44,7 @@ std::pair<Float_t, Float_t> ImageTransformer::FindPixelPos(size_t i, size_t j)
     return {x, y};
 }
 
-void ImageTransformer::ImageP4(LorentzVectorF_t const& p4, Float_t radius)
+void ImageTransformer::DepictP4(LorentzVectorF_t const& p4, Float_t radius)
 {
     Float_t phi = p4.Phi();
     Float_t eta = p4.Eta();
@@ -97,27 +99,13 @@ void ImageTransformer::ImageP4(LorentzVectorF_t const& p4, Float_t radius)
                 if (dsit2 <= r2)
                 {
                     auto [r, c] = FindPixelIdx(cur_eta, cur_phi); // this function needs to be fixed; now it does UB
-                    m_img_en[r][c] += p4.E();
-                    m_img_px[r][c] += p4.Px();
-                    m_img_py[r][c] += p4.Py();
-                    m_img_pz[r][c] += p4.Pz();
+                    m_img_en[r][c] += p4.E()/filled_pixel_count;
+                    m_img_px[r][c] += p4.Px()/filled_pixel_count;
+                    m_img_py[r][c] += p4.Py()/filled_pixel_count;
+                    m_img_pz[r][c] += p4.Pz()/filled_pixel_count;
                 }
             }
         }
-
-        // size_t dn = static_cast<size_t>(radius/PIXEL_SZ)
-
-        // size_t min_row = row > dn ? row - dn : 0;
-        // size_t max_row = row + dn < NUM_PIX ? row + dn : NUM_PIX;
-
-        // int filled_pixel_count = 0;
-        // for (size_t r = min_row; r < max_row; ++r)
-        // {
-        //     for (size_t c = 0; c < n_pix; ++c)
-        //     {
-
-        //     }
-        // }
     }
     else 
     {
@@ -134,4 +122,19 @@ void ImageTransformer::Transform(Storage const& storage, TTree* tree, int evt)
     tree->GetEntry(evt);
     // TODO
     m_tree->Fill();
+}
+
+std::unique_ptr<TH2F> ImageTransformer::ToHist(Float_t img[NUM_PIX][NUM_PIX], TString const& title)
+{
+    auto hist = std::make_unique<TH2F>("img", title, NUM_PIX, -HALF_LEN, HALF_LEN, NUM_PIX, -HALF_LEN, HALF_LEN);
+    hist->SetStats(0);
+    for (size_t r = 0; r < NUM_PIX; ++r)
+    {
+        for (size_t c = 0; c < NUM_PIX; ++c)
+        {
+            int bin = hist->FindBin(img[r][c]);
+            hist->SetBinContent(bin, img[r][c]);
+        }
+    }
+    return hist;
 }

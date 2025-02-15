@@ -21,6 +21,7 @@ class ImageTransformer
     void Transform(Storage const& storage, TTree* tree, int evt);
 
     private:
+    // img[phi_idx][eta_idx]
     Float_t m_img_en[NUM_PIX][NUM_PIX];
     Float_t m_img_px[NUM_PIX][NUM_PIX];
     Float_t m_img_py[NUM_PIX][NUM_PIX];
@@ -29,9 +30,10 @@ class ImageTransformer
     std::unique_ptr<TTree> m_tree;
 
     void ResetImgArr(Float_t img[NUM_PIX][NUM_PIX]);
-    void ImageP4(LorentzVectorF_t const& p4, Float_t radius = 0.0);
-    std::pair<size_t, size_t> FindPixelIdx(Float_t x, Float_t y);
+    void DepictP4(LorentzVectorF_t const& p4, Float_t radius = 0.0);
+    std::pair<size_t, size_t> FindPixelIdx(Float_t eta, Float_t phi);
     std::pair<Float_t, Float_t> FindPixelPos(size_t i, size_t j);
+    std::unique_ptr<TH2F> ToHist(Float_t img[NUM_PIX][NUM_PIX], TString const& title);
 };
 
 #endif
