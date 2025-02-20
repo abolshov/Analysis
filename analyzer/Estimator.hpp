@@ -77,6 +77,31 @@ class EstimatorSingleLep final : public EstimatorBase
                                         LorentzVectorF_t const& met, 
                                         ULong64_t evt, 
                                         TString& chosen_comb) override;
+
+    private: 
+    std::array<LorentzVectorF_t, CONTROL_SL> j1{};
+    std::array<LorentzVectorF_t, CONTROL_SL> j2{};
+    std::array<LorentzVectorF_t, CONTROL_SL> met_corr{};
+    std::array<LorentzVectorF_t, CONTROL_SL> nu{};
+    std::array<LorentzVectorF_t, CONTROL_SL> lepW{};
+    std::array<LorentzVectorF_t, CONTROL_SL> hadW{};
+    std::array<LorentzVectorF_t, CONTROL_SL> hww{};
+    std::array<LorentzVectorF_t, CONTROL_SL> hbb{};
+    
+    LorentzVectorF_t b1{};
+    LorentzVectorF_t b{};
+
+    std::array<Float_t, CONTROL_SL> c3{0.0};
+    std::array<Float_t, CONTROL_SL> c4{0.0};
+
+    Float_t c1{0.0};
+    Float_t c2{0.0};
+    Float_t gen_mw1{0.0};
+    Float_t gen_mw2{0.0};
+    Float_t smear_dpx{0.0};
+    Float_t smear_dpy{0.0};
+    Float_t weight{0.0};
+    Int_t num_sol{0};
 };
 
 
