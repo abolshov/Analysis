@@ -52,7 +52,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
                                                                          ULong64_t evt, 
                                                                          TString const& comb_id)
 {
-    std::array<Float_t, OUTPUT_SIZE> res = {-1.0};
+    std::array<Float_t, OUTPUT_SIZE> res{};
+    std::fill(res.begin(), res.end(), -1.0f);
 
     LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjSL::bj1)];
     LorentzVectorF_t const& bj2 = particles[static_cast<size_t>(ObjSL::bj2)];
@@ -68,20 +69,11 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
 
-    std::array<UHist_t<TH1F>, 4> hists;
-    std::array<TString, 4> hist_names;
-    for (int i = 0; i < 4; ++i)
-    {   
-        TString hist_title = Form("m(X->HH|W->qq %s)", i/2 ? "onshell" : "offshell");
-        hist_names[i] = Form("lepW_%s_%s", i/2 ? "onshell" : "offshell", i%2 ? "plus" : "minus");
-        hists[i] = std::make_unique<TH1F>(hist_names[i], hist_title, 100, MIN_MASS, MAX_MASS);
-    }
-
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
     {
-        Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
-        Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
+        smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
 
         auto bresc = ComputeJetResc(bj1, bj2, pdf_b1, mh);
         if (!bresc.has_value())
@@ -89,20 +81,18 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             ++failed_iter;
             continue;
         }
-        auto [c1, c2] = bresc.value();
+        std::tie(c1, c2) = bresc.value();
+        b1 = c1*bj1;
+        b2 = c2*bj2;
+        Hbb = b1 + b2;
 
-        LorentzVectorF_t b1 = bj1;
-        LorentzVectorF_t b2 = bj2;
-        b1 *= c1;
-        b2 *= c2;
-
-        Double_t mw1 = 1.0;
-        Double_t mw2 = 1.0;
-        pdf_mw1mw2->GetRandom2(mw1, mw2, m_prg.get());
+        Double_t tmp_mw1 = 1.0;
+        Double_t tmp_mw2 = 1.0;
+        pdf_mw1mw2->GetRandom2(tmp_mw1, tmp_mw2, m_prg.get());
+        mw1 = tmp_mw1;
+        mw2 = tmp_mw2;
 
         std::vector<Float_t> masses;
-        std::vector<Float_t> hww_dm;
-        std::vector<Float_t> hh_dphi;
         for (int control = 0; control < CONTROL_SL; ++control)
         {
             bool lepW_onshell = control / 2;
@@ -111,48 +101,42 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             Float_t mWlep = lepW_onshell ? mw1 : mw2;
             Float_t mWhad = lepW_onshell ? mw2 : mw1;
 
-            LorentzVectorF_t j1 = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
-            LorentzVectorF_t j2 = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
-            auto lresc = ComputeJetResc(j1, j2, pdf_q1, mWhad);
+            j1[control] = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
+            j2[control] = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
+            auto lresc = ComputeJetResc(j1[control], j2[control], pdf_q1, mWhad);
             if (!lresc.has_value())
             {
                 ++failed_iter;
                 continue;
             }
-            auto [c3, c4] = lresc.value();
 
-            j1 *= c3;
-            j2 *= c4;
+            std::tie(c3[control], c4[control]) = lresc.value();
+            j1[control] *= c3[control];
+            j2[control] *= c4[control];
 
-            Float_t bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
-            Float_t bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+            bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
+            bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
 
-            Float_t ljet_resc_dpx = -1.0*(c3 - 1)*lj1.Px() - (c4 - 1)*lj2.Px();
-            Float_t ljet_resc_dpy = -1.0*(c3 - 1)*lj1.Py() - (c4 - 1)*lj2.Py();
+            ljet_resc_dpx[control] = -1.0*(c3[control] - 1)*lj1.Px() - (c4[control] - 1)*lj2.Px();
+            ljet_resc_dpy[control] = -1.0*(c3[control] - 1)*lj1.Py() - (c4[control] - 1)*lj2.Py();
 
-            Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx + smear_dpx;
-            Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy + smear_dpy;
+            Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx[control] + smear_dpx;
+            Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy[control] + smear_dpy;
 
             Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
             Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
-            LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
-
-            auto nu = NuFromW(lep, met_corr, add_deta, mWlep);
-            if (nu)
+            met_corr[control] = LorentzVectorF_t(met_corr_pt, 0.0, met_corr_phi, 0.0);
+            
+            auto opt_nu = NuFromW(lep, met_corr[control], add_deta, mWlep);
+            if (opt_nu)
             {
-                LorentzVectorF_t hww = j1;
-                hww += j2; 
-                hww += lep;
-                hww += nu.value();
-                Float_t dm = std::abs(mh - hww.M());
-                hww_dm.push_back(dm);
-
-                LorentzVectorF_t hbb = b1; 
-                hbb += b2;
-
-                hh_dphi.push_back(DeltaPhi(hww, hbb));
-                masses.push_back((hww + hbb).M());
-                hists[control]->Fill((hww + hbb).M());
+                nu[control] = opt_nu.value();
+                lepW[control] = nu[control] + lep;
+                hadW[control] = j1[control] + j2[control];
+                Hww[control] = lepW[control] + hadW[control];
+                Xhh[control] = Hww[control] + Hbb;
+                mass[control] = Xhh[control].M();
+                masses.push_back(mass[control]);
             } 
             else 
             {
@@ -166,66 +150,13 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             continue;
         }
 
-        // auto it = std::min_element(hww_dm.begin(), hww_dm.end());
-        // size_t idx = it - hww_dm.begin();
-        // m_res_mass->Fill(masses[idx]);
-
-        Float_t weight = 1.0/masses.size();
+        num_sol = masses.size();
+        weight = 1.0/num_sol;
         for (auto mass: masses)
         {
             m_res_mass->Fill(mass, weight);
         }
-
-        // size_t choice = 0;
-        // if (masses.size() > 1)
-        // {
-        //     MinMaxTransform(hww_dm.begin(), hww_dm.end());
-        //     MinMaxTransform(hh_dphi.begin(), hh_dphi.end());
-
-        //     Float_t max_metric = 0.0f;
-        //     for (size_t c = 0; c < masses.size(); ++c)
-        //     {
-        //         Float_t metric = hww_dm[c] + hh_dphi[c];
-        //         if (metric > max_metric)
-        //         {
-        //             max_metric = metric;
-        //             choice = c;
-        //         }
-        //     }
-        // }
-        // m_res_mass->Fill(masses[choice]);
     }
-
-    #ifdef PLOT
-        for (int i = 0; i < 4; ++i)
-        {
-            auto const& h = hists[i];
-
-            auto canv = std::make_unique<TCanvas>("canv", "canv");
-            canv->SetGrid();
-            canv->SetTickx();
-            canv->SetTicky();
-
-            gStyle->SetOptStat();
-            gStyle->SetStatH(0.25);
-
-            h->SetLineWidth(2);
-            h->Draw("hist");
-
-            gPad->Update();
-
-            Float_t width = ComputeWidth(h, Q16, Q84);
-            Float_t mass = h->GetXaxis()->GetBinCenter(h->GetMaximumBin());
-
-            auto stat_box = std::unique_ptr<TPaveStats>(static_cast<TPaveStats*>(h->GetListOfFunctions()->FindObject("stats")));   
-            stat_box->AddText(Form("Width = %.2f", width));
-            stat_box->AddText(Form("Mass = %.2f", mass));
-            stat_box->SetTextSize(0.03);
-            stat_box->DrawClone();
-
-            canv->SaveAs(Form("event/mass/sl/evt_%llu_comb_%s_h%d.png", evt, comb_id.Data(), i));
-        }
-    #endif
 
     Float_t integral = m_res_mass->Integral();
     if (m_res_mass->GetEntries() && integral > 0.0)
@@ -472,7 +403,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingLep_Run3::EstimateCombination(VecL
                                                                             std::pair<Float_t, Float_t> lj_pt_res,
                                                                             ULong64_t evt, TString const& comb_id)
 {
-    std::array<Float_t, OUTPUT_SIZE> res = {-1.0};
+    std::array<Float_t, OUTPUT_SIZE> res{};
+    std::fill(res.begin(), res.end(), -1.0f);
 
     LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjSL::bj1)];
     LorentzVectorF_t const& bj2 = particles[static_cast<size_t>(ObjSL::bj2)];
@@ -793,7 +725,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep_Run2::EstimateCombination(Ve
                                                                               ULong64_t evt, 
                                                                               TString const& comb_id)
 {
-    std::array<Float_t, OUTPUT_SIZE> res = {-1.0};
+    std::array<Float_t, OUTPUT_SIZE> res{};
+    std::fill(res.begin(), res.end(), -1.0f);
 
     LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjDL::bj1)];
     LorentzVectorF_t const& bj2 = particles[static_cast<size_t>(ObjDL::bj2)];

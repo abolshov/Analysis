@@ -88,16 +88,17 @@ class EstimatorSingleLep final : public EstimatorBase
     std::array<LorentzVectorF_t, CONTROL_SL> lepW{};
     std::array<LorentzVectorF_t, CONTROL_SL> hadW{};
     std::array<LorentzVectorF_t, CONTROL_SL> Hww{};
-    std::array<LorentzVectorF_t, CONTROL_SL> Hbb{};
     std::array<LorentzVectorF_t, CONTROL_SL> Xhh{};
     
     LorentzVectorF_t b1{};
     LorentzVectorF_t b2{};
+    LorentzVectorF_t Hbb{};
 
-    std::array<Float_t, CONTROL_SL> c3{0.0};
-    std::array<Float_t, CONTROL_SL> c4{0.0};
-    std::array<Float_t, CONTROL_SL> ljet_resc_dpx{0.0};
-    std::array<Float_t, CONTROL_SL> ljet_resc_dpy{0.0};
+    std::array<Float_t, CONTROL_SL> c3{};
+    std::array<Float_t, CONTROL_SL> c4{};
+    std::array<Float_t, CONTROL_SL> ljet_resc_dpx{};
+    std::array<Float_t, CONTROL_SL> ljet_resc_dpy{};
+    std::array<Float_t, CONTROL_SL> mass{};
 
     Float_t c1{0.0};
     Float_t c2{0.0};
@@ -109,7 +110,6 @@ class EstimatorSingleLep final : public EstimatorBase
     Float_t bjet_resc_dpx{0.0};
     Float_t bjet_resc_dpy{0.0};
     Float_t weight{0.0};
-    Float_t mass{0.0};
     ULong64_t event_idx{0};
     ULong64_t event_id{0};
     Int_t num_sol{0};
