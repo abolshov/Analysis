@@ -6,7 +6,7 @@
 #include "TFile.h"
 #include "TTree.h"
 
-class EstimationRecorder()
+class EstimationRecorder
 {
     public:
     explicit EstimationRecorder(TString const& out_file_name);
@@ -14,6 +14,7 @@ class EstimationRecorder()
     inline void ResetTree(std::unique_ptr<TTree> tree) { m_tree = std::move(tree); }
     inline void ReleaseTree() { m_tree.release(); }
     inline void WriteTree() { m_file->Write(); }
+    inline void FillTree() { m_tree->Fill(); }
 
     private:
     std::unique_ptr<TFile> m_file;
