@@ -103,7 +103,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         std::vector<Float_t> masses;
         std::vector<Float_t> hww_dm;
         std::vector<Float_t> hh_dphi;
-        for (int control = 0; control < 4; ++control)
+        for (int control = 0; control < CONTROL_SL; ++control)
         {
             bool lepW_onshell = control / 2;
             bool add_deta = control % 2;
@@ -367,6 +367,14 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
 }
 
 
+std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
+{
+    auto tree = std::make_unique<TTree>(tree_name, "debug tree");
+    // declare branches here
+    return tree;
+}
+
+
 EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name)
 {
     m_pdf_1d.resize(pdf1d_dl_names.size());
@@ -415,6 +423,13 @@ std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets,
 {
     // TODO
     return std::nullopt;
+}
+
+std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
+{
+    auto tree = std::make_unique<TTree>(tree_name, "debug tree");
+    // declare branches here
+    return tree;
 }
 
 

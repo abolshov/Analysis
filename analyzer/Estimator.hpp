@@ -48,6 +48,8 @@ class EstimatorBase
     HistVec_t<TH2F> m_pdf_2d;
     std::unique_ptr<TRandom3> m_prg;
     UHist_t<TH1F> m_res_mass; 
+
+    virtual std::unique_ptr<TTree> MakeTree(TString const& tree_name) = 0;
 };
 
 
@@ -85,23 +87,34 @@ class EstimatorSingleLep final : public EstimatorBase
     std::array<LorentzVectorF_t, CONTROL_SL> nu{};
     std::array<LorentzVectorF_t, CONTROL_SL> lepW{};
     std::array<LorentzVectorF_t, CONTROL_SL> hadW{};
-    std::array<LorentzVectorF_t, CONTROL_SL> hww{};
-    std::array<LorentzVectorF_t, CONTROL_SL> hbb{};
+    std::array<LorentzVectorF_t, CONTROL_SL> Hww{};
+    std::array<LorentzVectorF_t, CONTROL_SL> Hbb{};
+    std::array<LorentzVectorF_t, CONTROL_SL> Xhh{};
     
     LorentzVectorF_t b1{};
-    LorentzVectorF_t b{};
+    LorentzVectorF_t b2{};
 
     std::array<Float_t, CONTROL_SL> c3{0.0};
     std::array<Float_t, CONTROL_SL> c4{0.0};
+    std::array<Float_t, CONTROL_SL> ljet_resc_dpx{0.0};
+    std::array<Float_t, CONTROL_SL> ljet_resc_dpy{0.0};
 
     Float_t c1{0.0};
     Float_t c2{0.0};
-    Float_t gen_mw1{0.0};
-    Float_t gen_mw2{0.0};
+    Float_t mh{0.0};
+    Float_t mw1{0.0};
+    Float_t mw2{0.0};
     Float_t smear_dpx{0.0};
     Float_t smear_dpy{0.0};
+    Float_t bjet_resc_dpx{0.0};
+    Float_t bjet_resc_dpy{0.0};
     Float_t weight{0.0};
+    Float_t mass{0.0};
+    ULong64_t event_idx{0};
+    ULong64_t event_id{0};
     Int_t num_sol{0};
+
+    std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 };
 
 
@@ -131,6 +144,39 @@ class EstimatorDoubleLep final : public EstimatorBase
                                         LorentzVectorF_t const& met, 
                                         ULong64_t evt, 
                                         TString& chosen_comb) override;
+
+    private: 
+    std::array<LorentzVectorF_t, CONTROL_DL> nu_offshell{};
+    std::array<LorentzVectorF_t, CONTROL_DL> nu_onshell{};
+    std::array<LorentzVectorF_t, CONTROL_DL> l_offshell{};
+    std::array<LorentzVectorF_t, CONTROL_DL> l_onshell{};
+    std::array<LorentzVectorF_t, CONTROL_DL> offshellW{};
+    std::array<LorentzVectorF_t, CONTROL_DL> onshellW{};
+    std::array<LorentzVectorF_t, CONTROL_DL> Hww{};
+    std::array<LorentzVectorF_t, CONTROL_DL> Hbb{};
+    std::array<LorentzVectorF_t, CONTROL_DL> Xhh{};
+    
+    LorentzVectorF_t b1{};
+    LorentzVectorF_t b2{};
+    LorentzVectorF_t met_corr{};
+
+    Float_t c1{0.0};
+    Float_t c2{0.0};
+    Float_t mw{0.0};
+    Float_t mh{0.0};
+    Float_t phi_gen{0.0};
+    Float_t eta_gen{0.0};
+    Float_t smear_dpx{0.0};
+    Float_t smear_dpy{0.0};
+    Float_t bjet_resc_dpx{0.0};
+    Float_t bjet_resc_dpy{0.0};
+    Float_t weight{0.0};
+    Float_t mass{0.0};
+    ULong64_t event_idx{0};
+    ULong64_t event_id{0};
+    Int_t num_sol{0};
+
+    std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 };
 
 
