@@ -68,6 +68,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
 
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
+    TString tree_name = Form("evt_%llu_%s", evt, comb_id.Data());
+    m_recorder.ResetTree(MakeTree(tree_name));
 
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
@@ -156,7 +158,11 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         {
             m_res_mass->Fill(mass, weight);
         }
+
+        m_recorder.FillTree();
     }
+
+    m_recorder.WriteTree(tree_name);
 
     Float_t integral = m_res_mass->Integral();
     if (m_res_mass->GetEntries() && integral > 0.0)
@@ -302,6 +308,33 @@ std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
 {
     auto tree = std::make_unique<TTree>(tree_name, "debug tree");
     // declare branches here
+    // tree->Branch("light_jet1", &EstimatorSingleLep::j1, "light_jet1[CONTROL_SL]/F");
+    // tree->Branch("light_jet2", &EstimatorSingleLep::j2, "light_jet2[CONTROL_SL]/F");
+    // tree->Branch("met_corr", &EstimatorSingleLep::j1, "met_corr[CONTROL_SL]/F");
+    // tree->Branch("nu", &EstimatorSingleLep::nu, "nu[CONTROL_SL]/F");
+    // tree->Branch("lepW", &EstimatorSingleLep::j1, "lepW[CONTROL_SL]/F");
+    // tree->Branch("hadW", &EstimatorSingleLep::j2, "hadW[CONTROL_SL]/F");
+    // tree->Branch("Hww", &EstimatorSingleLep::j1, "Hww[CONTROL_SL]/F");
+    // tree->Branch("Xhh", &EstimatorSingleLep::Xhh, "Xhh[CONTROL_SL]/F");
+    // tree->Branch("bjet1", &EstimatorSingleLep::b1, "bjet1/F");
+    // tree->Branch("bjet2", &EstimatorSingleLep::b2, "bjet2/F");
+    // tree->Branch("Hbb", &EstimatorSingleLep::Hbb, "Hbb/F");
+    tree->Branch("c1", &c1, "c1/F");
+    tree->Branch("c2", &c2, "c2/F");
+    tree->Branch("mw1", &mw1, "mw1/F");
+    tree->Branch("mw2", &mw2, "mw2/F");
+    tree->Branch("smear_dpx", &smear_dpx, "smear_dpx/F");
+    tree->Branch("smear_dpy", &smear_dpy, "smear_dpy/F");
+    tree->Branch("bjet_resc_dpx", &bjet_resc_dpx, "bjet_resc_dpx/F");
+    tree->Branch("bjet_resc_dpy", &bjet_resc_dpy, "bjet_resc_dpy/F");
+    tree->Branch("c3", &c3[0], "c3[CONTROL_SL]/F");
+    tree->Branch("c4", &c4[0], "c4[CONTROL_SL]/F");
+    tree->Branch("ljet_resc_dpx", &ljet_resc_dpx[0], "ljet_resc_dpx[CONTROL_SL]/F");
+    tree->Branch("ljet_resc_dpy", &ljet_resc_dpy[0], "ljet_resc_dpy[CONTROL_SL]/F");
+    tree->Branch("mass", &mass[0], "mass[CONTROL_SL]/F");
+    tree->Branch("weight", &weight, "weight/F");
+    tree->Branch("num_sol", &num_sol, "num_sol/I");
+    tree->Branch("event_idx", &event_idx, "event_idx/g");
     return tree;
 }
 

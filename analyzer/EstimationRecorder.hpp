@@ -9,12 +9,13 @@
 class EstimationRecorder
 {
     public:
+    EstimationRecorder();
     explicit EstimationRecorder(TString const& out_file_name);
 
     inline void ResetTree(std::unique_ptr<TTree> tree) { m_tree = std::move(tree); }
     inline void ReleaseTree() { m_tree.release(); }
-    inline void WriteTree() { m_file->Write(); }
     inline void FillTree() { m_tree->Fill(); }
+    inline void WriteTree(TString const& tree_name) { m_file->WriteObject(m_tree.get(), tree_name); }
 
     private:
     std::unique_ptr<TFile> m_file;

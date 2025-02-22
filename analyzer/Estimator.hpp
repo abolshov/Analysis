@@ -10,6 +10,7 @@
 #include "EstimatorUtils.hpp"
 #include "EstimatorTools.hpp"
 #include "Constants.hpp"
+#include "EstimationRecorder.hpp"
 
 
 class EstimatorBase
@@ -47,7 +48,8 @@ class EstimatorBase
     HistVec_t<TH1F> m_pdf_1d;
     HistVec_t<TH2F> m_pdf_2d;
     std::unique_ptr<TRandom3> m_prg;
-    UHist_t<TH1F> m_res_mass; 
+    UHist_t<TH1F> m_res_mass;
+    EstimationRecorder m_recorder; 
 
     virtual std::unique_ptr<TTree> MakeTree(TString const& tree_name) = 0;
 };
