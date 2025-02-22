@@ -307,6 +307,7 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
 std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
 {
     auto tree = std::make_unique<TTree>(tree_name, "debug tree");
+    tree->SetDirectory(nullptr);
     // declare branches here
     // tree->Branch("light_jet1", &EstimatorSingleLep::j1, "light_jet1[CONTROL_SL]/F");
     // tree->Branch("light_jet2", &EstimatorSingleLep::j2, "light_jet2[CONTROL_SL]/F");
@@ -327,14 +328,13 @@ std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
     tree->Branch("smear_dpy", &smear_dpy, "smear_dpy/F");
     tree->Branch("bjet_resc_dpx", &bjet_resc_dpx, "bjet_resc_dpx/F");
     tree->Branch("bjet_resc_dpy", &bjet_resc_dpy, "bjet_resc_dpy/F");
-    tree->Branch("c3", &c3[0], "c3[CONTROL_SL]/F");
-    tree->Branch("c4", &c4[0], "c4[CONTROL_SL]/F");
-    tree->Branch("ljet_resc_dpx", &ljet_resc_dpx[0], "ljet_resc_dpx[CONTROL_SL]/F");
-    tree->Branch("ljet_resc_dpy", &ljet_resc_dpy[0], "ljet_resc_dpy[CONTROL_SL]/F");
-    tree->Branch("mass", &mass[0], "mass[CONTROL_SL]/F");
+    tree->Branch("c3", c3, "c3[4]/F");
+    tree->Branch("c4", c4, "c4[4]/F");
+    tree->Branch("ljet_resc_dpx", ljet_resc_dpx, "ljet_resc_dpx[4]/F");
+    tree->Branch("ljet_resc_dpy", ljet_resc_dpy, "ljet_resc_dpy[4]/F");
+    tree->Branch("mass", mass, "mass[4]/F");
     tree->Branch("weight", &weight, "weight/F");
     tree->Branch("num_sol", &num_sol, "num_sol/I");
-    tree->Branch("event_idx", &event_idx, "event_idx/g");
     return tree;
 }
 

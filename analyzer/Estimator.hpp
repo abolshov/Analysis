@@ -96,11 +96,11 @@ class EstimatorSingleLep final : public EstimatorBase
     LorentzVectorF_t b2{};
     LorentzVectorF_t Hbb{};
 
-    std::array<Float_t, CONTROL_SL> c3{};
-    std::array<Float_t, CONTROL_SL> c4{};
-    std::array<Float_t, CONTROL_SL> ljet_resc_dpx{};
-    std::array<Float_t, CONTROL_SL> ljet_resc_dpy{};
-    std::array<Float_t, CONTROL_SL> mass{};
+    Float_t c3[CONTROL_SL] = {};
+    Float_t c4[CONTROL_SL] = {};
+    Float_t ljet_resc_dpx[CONTROL_SL] = {};
+    Float_t ljet_resc_dpy[CONTROL_SL] = {};
+    Float_t mass[CONTROL_SL] = {};
 
     Float_t c1{0.0};
     Float_t c2{0.0};
@@ -112,8 +112,6 @@ class EstimatorSingleLep final : public EstimatorBase
     Float_t bjet_resc_dpx{0.0};
     Float_t bjet_resc_dpy{0.0};
     Float_t weight{0.0};
-    ULong64_t event_idx{0};
-    ULong64_t event_id{0};
     Int_t num_sol{0};
 
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
@@ -174,8 +172,6 @@ class EstimatorDoubleLep final : public EstimatorBase
     Float_t bjet_resc_dpy{0.0};
     Float_t weight{0.0};
     Float_t mass{0.0};
-    ULong64_t event_idx{0};
-    ULong64_t event_id{0};
     Int_t num_sol{0};
 
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
