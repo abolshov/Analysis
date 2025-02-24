@@ -28,7 +28,7 @@ UHist_t<T> Copy(UHist_t<T> const& hist)
 }
 
 template <typename T>
-void Reset(UHist_t<T>& hist)
+void ResetHist(UHist_t<T>& hist)
 {
     hist->Reset("ICES");
 }
