@@ -2,7 +2,7 @@
 #define ESTIMATOR_HPP
 
 #include <optional>
-#include <stdexcept>
+#include <type_traits>
 
 #include "TRandom3.h"
 
@@ -13,10 +13,17 @@
 #include "EstimationRecorder.hpp"
 
 
+template <typename T, std::enable_if_t<std::is_default_constructible_v<T>, bool> = true>
+void ResetObject(T& object)
+{
+    object = T{};
+}
+
+
 class EstimatorBase
 {
     public:
-    EstimatorBase();
+    explicit EstimatorBase(TString dbg_file_name = {});
     virtual ~EstimatorBase() = default;
 
     // this method does not solve any constraints
@@ -50,6 +57,7 @@ class EstimatorBase
     std::unique_ptr<TRandom3> m_prg;
     UHist_t<TH1F> m_res_mass;
     EstimationRecorder m_recorder; 
+    bool m_record;
 
     virtual std::unique_ptr<TTree> MakeTree(TString const& tree_name) = 0;
 };
@@ -58,7 +66,7 @@ class EstimatorBase
 class EstimatorSingleLep final : public EstimatorBase
 {
     public:
-    EstimatorSingleLep(TString const& pdf_file_name);
+    EstimatorSingleLep(TString const& pdf_file_name, TString const& dbg_file_name);
 
     std::array<Float_t, OUTPUT_SIZE> EstimateCombViaWeights(VecLVF_t const& particles, 
                                                             std::pair<Float_t, Float_t> lj_pt_res, 
@@ -86,7 +94,6 @@ class EstimatorSingleLep final : public EstimatorBase
     struct IterData;
     std::unique_ptr<IterData> m_iter_data;
 
-    void ResetIterData();
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 };
 
@@ -94,7 +101,7 @@ class EstimatorSingleLep final : public EstimatorBase
 class EstimatorDoubleLep final : public EstimatorBase
 {
     public:
-    EstimatorDoubleLep(TString const& pdf_file_name);
+    EstimatorDoubleLep(TString const& pdf_file_name, TString const& dbg_file_name);
 
     std::array<Float_t, OUTPUT_SIZE> EstimateCombViaWeights(VecLVF_t const& particles, 
                                                             std::pair<Float_t, Float_t> lj_pt_res, 
@@ -119,33 +126,8 @@ class EstimatorDoubleLep final : public EstimatorBase
                                         TString& chosen_comb) override;
 
     private: 
-    std::array<LorentzVectorF_t, CONTROL> nu_offshell{};
-    std::array<LorentzVectorF_t, CONTROL> nu_onshell{};
-    std::array<LorentzVectorF_t, CONTROL> l_offshell{};
-    std::array<LorentzVectorF_t, CONTROL> l_onshell{};
-    std::array<LorentzVectorF_t, CONTROL> offshellW{};
-    std::array<LorentzVectorF_t, CONTROL> onshellW{};
-    std::array<LorentzVectorF_t, CONTROL> Hww{};
-    std::array<LorentzVectorF_t, CONTROL> Hbb{};
-    std::array<LorentzVectorF_t, CONTROL> Xhh{};
-    
-    LorentzVectorF_t b1{};
-    LorentzVectorF_t b2{};
-    LorentzVectorF_t met_corr{};
-
-    Float_t c1{0.0};
-    Float_t c2{0.0};
-    Float_t mw{0.0};
-    Float_t mh{0.0};
-    Float_t phi_gen{0.0};
-    Float_t eta_gen{0.0};
-    Float_t smear_dpx{0.0};
-    Float_t smear_dpy{0.0};
-    Float_t bjet_resc_dpx{0.0};
-    Float_t bjet_resc_dpy{0.0};
-    Float_t weight{0.0};
-    Float_t mass{0.0};
-    Int_t num_sol{0};
+    struct IterData;
+    std::unique_ptr<IterData> m_iter_data;
 
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 };
@@ -154,7 +136,7 @@ class EstimatorDoubleLep final : public EstimatorBase
 class Estimator
 {
     public:
-    Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl);
+    Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl, TString const& dbg_file_name);
 
     private:
     EstimatorSingleLep m_estimator_sl;
@@ -276,6 +258,68 @@ struct EstimatorSingleLep::IterData
     Float_t mh{0.0};
     Float_t mw1{0.0};
     Float_t mw2{0.0};
+    Float_t smear_dpx{0.0};
+    Float_t smear_dpy{0.0};
+    Float_t bjet_resc_dpx{0.0};
+    Float_t bjet_resc_dpy{0.0};
+    Float_t weight{0.0};
+    Int_t num_sol{0};
+};
+
+struct EstimatorDoubleLep::IterData
+{
+    Float_t offshellW_pt[CONTROL] = {};
+    Float_t offshellW_eta[CONTROL] = {};
+    Float_t offshellW_phi[CONTROL] = {};
+    Float_t offshellW_mass[CONTROL] = {};
+
+    Float_t onshellW_pt[CONTROL] = {};
+    Float_t onshellW_eta[CONTROL] = {};
+    Float_t onshellW_phi[CONTROL] = {};
+    Float_t onshellW_mass[CONTROL] = {};
+
+    Float_t Hww_pt[CONTROL] = {};
+    Float_t Hww_eta[CONTROL] = {};
+    Float_t Hww_phi[CONTROL] = {};
+    Float_t Hww_mass[CONTROL] = {};
+
+    Float_t Xhh_pt[CONTROL] = {};
+    Float_t Xhh_eta[CONTROL] = {};
+    Float_t Xhh_phi[CONTROL] = {};
+    Float_t Xhh_mass[CONTROL] = {};
+
+    Float_t nu_offshell_pt[CONTROL] = {};
+    Float_t nu_offshell_eta[CONTROL] = {};
+    Float_t nu_offshell_phi[CONTROL] = {};
+
+    Float_t nu_onshell_pt[CONTROL] = {};
+    Float_t nu_onshell_eta[CONTROL] = {};
+    Float_t nu_onshell_phi[CONTROL] = {};
+
+    Float_t mass[CONTROL] = {};
+
+    Float_t met_corr_pt{0.0};
+    Float_t met_corr_phi{0.0};
+
+    Float_t b1_pt{0.0};
+    Float_t b1_eta{0.0};
+    Float_t b1_phi{0.0};
+    Float_t b1_mass{0.0};
+
+    Float_t b2_pt{0.0};
+    Float_t b2_eta{0.0};
+    Float_t b2_phi{0.0};
+    Float_t b2_mass{0.0};
+
+    Float_t Hbb_pt{0.0};
+    Float_t Hbb_eta{0.0};
+    Float_t Hbb_phi{0.0};
+    Float_t Hbb_mass{0.0};
+
+    Float_t bjet_resc_fact_1{0.0};
+    Float_t bjet_resc_fact_2{0.0};
+    Float_t mh{0.0};
+    Float_t mw{0.0};
     Float_t smear_dpx{0.0};
     Float_t smear_dpy{0.0};
     Float_t bjet_resc_dpx{0.0};

@@ -21,14 +21,17 @@ using ROOT::Math::VectorUtil::DeltaPhi;
     #include "TStyle.h"
 #endif
 
-EstimatorBase::EstimatorBase() 
+EstimatorBase::EstimatorBase(TString dbg_file_name) 
 :   m_prg(std::make_unique<TRandom3>(SEED))
 ,   m_res_mass(std::make_unique<TH1F>("none", "none", N_BINS, MIN_MASS, MAX_MASS))
+,   m_recorder(dbg_file_name)
+,   m_record(!dbg_file_name.EqualTo(""))
 {}
 
 
-EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name)
-:   m_iter_data(std::make_unique<IterData>())
+EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name, TString const& dbg_file_name)
+:   EstimatorBase(dbg_file_name)
+,   m_iter_data(std::make_unique<IterData>())
 {
     m_pdf_1d.resize(pdf1d_sl_names.size());
     m_pdf_2d.resize(pdf2d_sl_names.size());
@@ -69,8 +72,12 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
 
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
     m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
-    TString tree_name = Form("evt_%llu_%s", evt, comb_id.Data());
-    m_recorder.ResetTree(MakeTree(tree_name));
+    
+    [[maybe_unused]] TString tree_name = Form("evt_%llu_%s", evt, comb_id.Data());
+    if (m_record)
+    {
+        m_recorder.ResetTree(MakeTree(tree_name));
+    }
 
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
@@ -174,90 +181,96 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         {
             m_res_mass->Fill(mass, weight);
         }
-
-        // here iteration was succusseful
-        // assign local vaiables to members of IterData and dump them in a tree
-        // after writing, reset all members of IterData to avoid writing junk values from previous iterations 
-        for (int i = 0; i < CONTROL; ++i)
+        
+        if (m_record)
         {
-            m_iter_data->j1_pt[i] = j1[i].Pt();
-            m_iter_data->j1_eta[i] = j1[i].Eta();
-            m_iter_data->j1_phi[i] = j1[i].Phi();
-            m_iter_data->j1_mass[i] = j1[i].M();
+            // here iteration was succusseful
+            // assign local vaiables to members of IterData and dump them in a tree
+            // after writing, reset all members of IterData to avoid writing junk values from previous iterations 
+            for (int i = 0; i < CONTROL; ++i)
+            {
+                m_iter_data->j1_pt[i] = j1[i].Pt();
+                m_iter_data->j1_eta[i] = j1[i].Eta();
+                m_iter_data->j1_phi[i] = j1[i].Phi();
+                m_iter_data->j1_mass[i] = j1[i].M();
 
-            m_iter_data->j2_pt[i] = j2[i].Pt();
-            m_iter_data->j2_eta[i] = j2[i].Eta();
-            m_iter_data->j2_phi[i] = j2[i].Phi();
-            m_iter_data->j2_mass[i] = j2[i].M();
+                m_iter_data->j2_pt[i] = j2[i].Pt();
+                m_iter_data->j2_eta[i] = j2[i].Eta();
+                m_iter_data->j2_phi[i] = j2[i].Phi();
+                m_iter_data->j2_mass[i] = j2[i].M();
 
-            m_iter_data->lepW_pt[i] = lepW[i].Pt();
-            m_iter_data->lepW_eta[i] = lepW[i].Eta();
-            m_iter_data->lepW_phi[i] = lepW[i].Phi();
-            m_iter_data->lepW_mass[i] = lepW[i].M();
+                m_iter_data->lepW_pt[i] = lepW[i].Pt();
+                m_iter_data->lepW_eta[i] = lepW[i].Eta();
+                m_iter_data->lepW_phi[i] = lepW[i].Phi();
+                m_iter_data->lepW_mass[i] = lepW[i].M();
 
-            m_iter_data->hadW_pt[i] = hadW[i].Pt();
-            m_iter_data->hadW_eta[i] = hadW[i].Eta();
-            m_iter_data->hadW_phi[i] = hadW[i].Phi();
-            m_iter_data->hadW_mass[i] = hadW[i].M();
+                m_iter_data->hadW_pt[i] = hadW[i].Pt();
+                m_iter_data->hadW_eta[i] = hadW[i].Eta();
+                m_iter_data->hadW_phi[i] = hadW[i].Phi();
+                m_iter_data->hadW_mass[i] = hadW[i].M();
 
-            m_iter_data->Hww_pt[i] = Hww[i].Pt();
-            m_iter_data->Hww_eta[i] = Hww[i].Eta();
-            m_iter_data->Hww_phi[i] = Hww[i].Phi();
-            m_iter_data->Hww_mass[i] = Hww[i].M();
+                m_iter_data->Hww_pt[i] = Hww[i].Pt();
+                m_iter_data->Hww_eta[i] = Hww[i].Eta();
+                m_iter_data->Hww_phi[i] = Hww[i].Phi();
+                m_iter_data->Hww_mass[i] = Hww[i].M();
 
-            m_iter_data->nu_pt[i] = nu[i].Pt();
-            m_iter_data->nu_eta[i] = nu[i].Eta();
-            m_iter_data->nu_phi[i] = nu[i].Phi();
+                m_iter_data->nu_pt[i] = nu[i].Pt();
+                m_iter_data->nu_eta[i] = nu[i].Eta();
+                m_iter_data->nu_phi[i] = nu[i].Phi();
 
-            m_iter_data->Xhh_pt[i] = Xhh[i].Pt();
-            m_iter_data->Xhh_eta[i] = Xhh[i].Eta();
-            m_iter_data->Xhh_phi[i] = Xhh[i].Phi();
-            m_iter_data->Xhh_mass[i] = Xhh[i].M();
+                m_iter_data->Xhh_pt[i] = Xhh[i].Pt();
+                m_iter_data->Xhh_eta[i] = Xhh[i].Eta();
+                m_iter_data->Xhh_phi[i] = Xhh[i].Phi();
+                m_iter_data->Xhh_mass[i] = Xhh[i].M();
 
-            m_iter_data->met_corr_pt[i] = met_corr[i].Pt();
-            m_iter_data->met_corr_phi[i] = met_corr[i].Phi();
+                m_iter_data->met_corr_pt[i] = met_corr[i].Pt();
+                m_iter_data->met_corr_phi[i] = met_corr[i].Phi();
 
-            m_iter_data->mass[i] = mass[i];
+                m_iter_data->mass[i] = mass[i];
 
-            m_iter_data->ljet_resc_fact_1[i] = c3[i];
-            m_iter_data->ljet_resc_fact_2[i] = c4[i];
+                m_iter_data->ljet_resc_fact_1[i] = c3[i];
+                m_iter_data->ljet_resc_fact_2[i] = c4[i];
 
-            m_iter_data->ljet_resc_dpx[i] = ljet_resc_dpx[i];
-            m_iter_data->ljet_resc_dpy[i] = ljet_resc_dpy[i];
+                m_iter_data->ljet_resc_dpx[i] = ljet_resc_dpx[i];
+                m_iter_data->ljet_resc_dpy[i] = ljet_resc_dpy[i];
+            }
+
+            m_iter_data->b1_pt = b1.Pt();
+            m_iter_data->b1_eta = b1.Eta();
+            m_iter_data->b1_phi = b1.Phi();
+            m_iter_data->b1_mass = b1.M();
+
+            m_iter_data->b2_pt = b2.Pt();
+            m_iter_data->b2_eta = b2.Eta();
+            m_iter_data->b2_phi = b2.Phi();
+            m_iter_data->b2_mass = b2.M();
+
+            m_iter_data->Hbb_pt = Hbb.Pt();
+            m_iter_data->Hbb_eta = Hbb.Eta();
+            m_iter_data->Hbb_phi = Hbb.Phi();
+            m_iter_data->Hbb_mass = Hbb.M();
+
+            m_iter_data->bjet_resc_fact_1 = c1;
+            m_iter_data->bjet_resc_fact_2 = c2;
+            m_iter_data->mh = mh;
+            m_iter_data->mw1 = mw1;
+            m_iter_data->mw2 = mw2;
+            m_iter_data->smear_dpx = smear_dpx;
+            m_iter_data->smear_dpy = smear_dpy;
+            m_iter_data->bjet_resc_dpx = bjet_resc_dpx;
+            m_iter_data->bjet_resc_dpy = bjet_resc_dpy;
+            m_iter_data->weight = weight;
+            m_iter_data->num_sol = num_sol;
+
+            m_recorder.FillTree();
+            ResetObject(*m_iter_data);
         }
-
-        m_iter_data->b1_pt = b1.Pt();
-        m_iter_data->b1_eta = b1.Eta();
-        m_iter_data->b1_phi = b1.Phi();
-        m_iter_data->b1_mass = b1.M();
-
-        m_iter_data->b2_pt = b2.Pt();
-        m_iter_data->b2_eta = b2.Eta();
-        m_iter_data->b2_phi = b2.Phi();
-        m_iter_data->b2_mass = b2.M();
-
-        m_iter_data->Hbb_pt = Hbb.Pt();
-        m_iter_data->Hbb_eta = Hbb.Eta();
-        m_iter_data->Hbb_phi = Hbb.Phi();
-        m_iter_data->Hbb_mass = Hbb.M();
-
-        m_iter_data->bjet_resc_fact_1 = c1;
-        m_iter_data->bjet_resc_fact_2 = c2;
-        m_iter_data->mh = mh;
-        m_iter_data->mw1 = mw1;
-        m_iter_data->mw2 = mw2;
-        m_iter_data->smear_dpx = smear_dpx;
-        m_iter_data->smear_dpy = smear_dpy;
-        m_iter_data->bjet_resc_dpx = bjet_resc_dpx;
-        m_iter_data->bjet_resc_dpy = bjet_resc_dpy;
-        m_iter_data->weight = weight;
-        m_iter_data->num_sol = num_sol;
-
-        m_recorder.FillTree();
-        ResetIterData();
     }
 
-    m_recorder.WriteTree(tree_name);
+    if (m_record)
+    {
+        m_recorder.WriteTree(tree_name);
+    }
 
     Float_t integral = m_res_mass->Integral();
     if (m_res_mass->GetEntries() && integral > 0.0)
@@ -435,7 +448,8 @@ std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
 }
 
 
-EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name)
+EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name, TString const& dbg_file_name)
+:   EstimatorBase(dbg_file_name)
 {
     m_pdf_1d.resize(pdf1d_dl_names.size());
     m_pdf_2d.resize(pdf2d_dl_names.size());
@@ -493,9 +507,9 @@ std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
 }
 
 
-Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl)
-:   m_estimator_sl(pdf_file_name_sl)
-,   m_estimator_dl(pdf_file_name_dl)
+Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl, TString const& dbg_file_name)
+:   m_estimator_sl(pdf_file_name_sl, Form("sl_%s", dbg_file_name.Data()))
+,   m_estimator_dl(pdf_file_name_dl, Form("dl_%s", dbg_file_name.Data()))
 {}
 
 
@@ -1164,9 +1178,4 @@ std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jet
     }
 
     return std::nullopt;
-}
-
-void EstimatorSingleLep::ResetIterData()
-{ 
-    *m_iter_data = EstimatorSingleLep::IterData{}; 
 }

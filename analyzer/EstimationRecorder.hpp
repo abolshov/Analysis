@@ -9,8 +9,7 @@
 class EstimationRecorder
 {
     public:
-    EstimationRecorder();
-    explicit EstimationRecorder(TString const& out_file_name);
+    EstimationRecorder(TString const& dbg_file_name);
 
     inline void ResetTree(std::unique_ptr<TTree> tree) { m_tree = std::move(tree); }
     inline void ReleaseTree() { m_tree.release(); }

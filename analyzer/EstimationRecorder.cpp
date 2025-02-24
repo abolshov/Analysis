@@ -1,9 +1,9 @@
 #include "EstimationRecorder.hpp"
 
-EstimationRecorder::EstimationRecorder(TString const& out_file_name)
-:   m_file(std::make_unique<TFile>(out_file_name, "RECREATE"))
-{}
-
-EstimationRecorder::EstimationRecorder()
-:   m_file(std::make_unique<TFile>("debug.root", "RECREATE"))
-{}
+EstimationRecorder::EstimationRecorder(TString const& dbg_file_name)
+{
+    if (!dbg_file_name.EqualTo(""))
+    {
+        m_file = std::make_unique<TFile>(dbg_file_name, "RECREATE");
+    }
+}

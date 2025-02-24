@@ -31,7 +31,7 @@ class Analyzer
     inline static int counter = 0;
 
     public:
-    Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, TString const& pdf_file_name, Mode mode);
+    Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, TString const& pdf_file_name);
     
     void ProcessFile(TString const& name, Channel ch);
     void ProcessEvent(ULong64_t evt, TTree* tree, Channel ch);
