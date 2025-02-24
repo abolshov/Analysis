@@ -83,24 +83,24 @@ class EstimatorSingleLep final : public EstimatorBase
                                         TString& chosen_comb) override;
 
     private: 
-    std::array<LorentzVectorF_t, CONTROL_SL> j1{};
-    std::array<LorentzVectorF_t, CONTROL_SL> j2{};
-    std::array<LorentzVectorF_t, CONTROL_SL> met_corr{};
-    std::array<LorentzVectorF_t, CONTROL_SL> nu{};
-    std::array<LorentzVectorF_t, CONTROL_SL> lepW{};
-    std::array<LorentzVectorF_t, CONTROL_SL> hadW{};
-    std::array<LorentzVectorF_t, CONTROL_SL> Hww{};
-    std::array<LorentzVectorF_t, CONTROL_SL> Xhh{};
+    std::array<LorentzVectorF_t, CONTROL> j1{};
+    std::array<LorentzVectorF_t, CONTROL> j2{};
+    std::array<LorentzVectorF_t, CONTROL> met_corr{};
+    std::array<LorentzVectorF_t, CONTROL> nu{};
+    std::array<LorentzVectorF_t, CONTROL> lepW{};
+    std::array<LorentzVectorF_t, CONTROL> hadW{};
+    std::array<LorentzVectorF_t, CONTROL> Hww{};
+    std::array<LorentzVectorF_t, CONTROL> Xhh{};
     
     LorentzVectorF_t b1{};
     LorentzVectorF_t b2{};
     LorentzVectorF_t Hbb{};
 
-    Float_t c3[CONTROL_SL] = {};
-    Float_t c4[CONTROL_SL] = {};
-    Float_t ljet_resc_dpx[CONTROL_SL] = {};
-    Float_t ljet_resc_dpy[CONTROL_SL] = {};
-    Float_t mass[CONTROL_SL] = {};
+    Float_t c3[CONTROL] = {};
+    Float_t c4[CONTROL] = {};
+    Float_t ljet_resc_dpx[CONTROL] = {};
+    Float_t ljet_resc_dpy[CONTROL] = {};
+    Float_t mass[CONTROL] = {};
 
     Float_t c1{0.0};
     Float_t c2{0.0};
@@ -114,6 +114,10 @@ class EstimatorSingleLep final : public EstimatorBase
     Float_t weight{0.0};
     Int_t num_sol{0};
 
+    struct IterData;
+    std::unique_ptr<IterData> m_iter_data;
+    void FillData(); // to be removed
+    inline void ResetIterData() { *m_iter_data = IterData{}; }
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 };
 
@@ -146,15 +150,15 @@ class EstimatorDoubleLep final : public EstimatorBase
                                         TString& chosen_comb) override;
 
     private: 
-    std::array<LorentzVectorF_t, CONTROL_DL> nu_offshell{};
-    std::array<LorentzVectorF_t, CONTROL_DL> nu_onshell{};
-    std::array<LorentzVectorF_t, CONTROL_DL> l_offshell{};
-    std::array<LorentzVectorF_t, CONTROL_DL> l_onshell{};
-    std::array<LorentzVectorF_t, CONTROL_DL> offshellW{};
-    std::array<LorentzVectorF_t, CONTROL_DL> onshellW{};
-    std::array<LorentzVectorF_t, CONTROL_DL> Hww{};
-    std::array<LorentzVectorF_t, CONTROL_DL> Hbb{};
-    std::array<LorentzVectorF_t, CONTROL_DL> Xhh{};
+    std::array<LorentzVectorF_t, CONTROL> nu_offshell{};
+    std::array<LorentzVectorF_t, CONTROL> nu_onshell{};
+    std::array<LorentzVectorF_t, CONTROL> l_offshell{};
+    std::array<LorentzVectorF_t, CONTROL> l_onshell{};
+    std::array<LorentzVectorF_t, CONTROL> offshellW{};
+    std::array<LorentzVectorF_t, CONTROL> onshellW{};
+    std::array<LorentzVectorF_t, CONTROL> Hww{};
+    std::array<LorentzVectorF_t, CONTROL> Hbb{};
+    std::array<LorentzVectorF_t, CONTROL> Xhh{};
     
     LorentzVectorF_t b1{};
     LorentzVectorF_t b2{};
@@ -234,6 +238,61 @@ class EstimatorDoubleLep_Run2
     HistVec_t<TH2F> m_pdf_2d;
     std::unique_ptr<TRandom3> m_prg;
     UHist_t<TH1F> m_res_mass;
+};
+
+struct EstimatorSingleLep::IterData
+{
+    Float_t j1_pt[CONTROL] = {};
+    Float_t j1_eta[CONTROL] = {};
+    Float_t j1_phi[CONTROL] = {};
+    Float_t j1_mass[CONTROL] = {};
+
+    Float_t j2_pt[CONTROL] = {};
+    Float_t j2_eta[CONTROL] = {};
+    Float_t j2_phi[CONTROL] = {};
+    Float_t j2_mass[CONTROL] = {};
+
+    Float_t lepW_pt[CONTROL] = {};
+    Float_t lepW_eta[CONTROL] = {};
+    Float_t lepW_phi[CONTROL] = {};
+    Float_t lepW_mass[CONTROL] = {};
+
+    Float_t hadW_pt[CONTROL] = {};
+    Float_t hadW_eta[CONTROL] = {};
+    Float_t hadW_phi[CONTROL] = {};
+    Float_t hadW_mass[CONTROL] = {};
+
+    Float_t Hww_pt[CONTROL] = {};
+    Float_t Hww_eta[CONTROL] = {};
+    Float_t Hww_phi[CONTROL] = {};
+    Float_t Hww_mass[CONTROL] = {};
+
+    Float_t Xhh_pt[CONTROL] = {};
+    Float_t Xhh_eta[CONTROL] = {};
+    Float_t Xhh_phi[CONTROL] = {};
+    Float_t Xhh_mass[CONTROL] = {};
+
+    Float_t met_corr_pt[CONTROL] = {};
+    Float_t met_corr_phi[CONTROL] = {};
+
+    Float_t nu_pt[CONTROL] = {};
+    Float_t nu_eta[CONTROL] = {};
+    Float_t nu_phi[CONTROL] = {};
+
+    Float_t b1_pt{0.0};
+    Float_t b1_eta{0.0};
+    Float_t b1_phi{0.0};
+    Float_t b1_mass{0.0};
+
+    Float_t b2_pt{0.0};
+    Float_t b2_eta{0.0};
+    Float_t b2_phi{0.0};
+    Float_t b2_mass{0.0};
+
+    Float_t Hbb_pt{0.0};
+    Float_t Hbb_eta{0.0};
+    Float_t Hbb_phi{0.0};
+    Float_t Hbb_mass{0.0};
 };
 
 #endif

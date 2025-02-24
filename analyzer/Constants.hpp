@@ -50,8 +50,7 @@ inline constexpr Float_t HIGGS_WIDTH = 0.004;
 inline constexpr Float_t TOL = 10e-7;
 inline constexpr int N_ATTEMPTS = 1;
 inline constexpr int N_ITER = 1000;
-inline constexpr int CONTROL_SL = 4;
-inline constexpr int CONTROL_DL = 4;
+inline constexpr int CONTROL = 4;
 
 inline constexpr Float_t MAX_MASS = 5000.0;
 inline constexpr Float_t MIN_MASS = 200.0;

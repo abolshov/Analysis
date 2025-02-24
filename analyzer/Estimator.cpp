@@ -28,6 +28,7 @@ EstimatorBase::EstimatorBase()
 
 
 EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name)
+:   m_iter_data(std::make_unique<IterData>())
 {
     m_pdf_1d.resize(pdf1d_sl_names.size());
     m_pdf_2d.resize(pdf2d_sl_names.size());
@@ -95,7 +96,7 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
         mw2 = tmp_mw2;
 
         std::vector<Float_t> masses;
-        for (int control = 0; control < CONTROL_SL; ++control)
+        for (int control = 0; control < CONTROL; ++control)
         {
             bool lepW_onshell = control / 2;
             bool add_deta = control % 2;
@@ -1068,4 +1069,15 @@ std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jet
     }
 
     return std::nullopt;
+}
+
+void EstimatorSingleLep::FillData() // to be removed
+{
+    for (int i = 0; i < CONTROL; ++i)
+    {
+        m_iter_data->j1_pt[i] = j1[i].Pt();
+        m_iter_data->j1_eta[i] = j1[i].Eta();
+        m_iter_data->j1_phi[i] = j1[i].Phi();
+        m_iter_data->j1_mass[i] = j1[i].M();
+    }
 }
