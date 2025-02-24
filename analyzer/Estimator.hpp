@@ -83,41 +83,10 @@ class EstimatorSingleLep final : public EstimatorBase
                                         TString& chosen_comb) override;
 
     private: 
-    std::array<LorentzVectorF_t, CONTROL> j1{};
-    std::array<LorentzVectorF_t, CONTROL> j2{};
-    std::array<LorentzVectorF_t, CONTROL> met_corr{};
-    std::array<LorentzVectorF_t, CONTROL> nu{};
-    std::array<LorentzVectorF_t, CONTROL> lepW{};
-    std::array<LorentzVectorF_t, CONTROL> hadW{};
-    std::array<LorentzVectorF_t, CONTROL> Hww{};
-    std::array<LorentzVectorF_t, CONTROL> Xhh{};
-    
-    LorentzVectorF_t b1{};
-    LorentzVectorF_t b2{};
-    LorentzVectorF_t Hbb{};
-
-    Float_t c3[CONTROL] = {};
-    Float_t c4[CONTROL] = {};
-    Float_t ljet_resc_dpx[CONTROL] = {};
-    Float_t ljet_resc_dpy[CONTROL] = {};
-    Float_t mass[CONTROL] = {};
-
-    Float_t c1{0.0};
-    Float_t c2{0.0};
-    Float_t mh{0.0};
-    Float_t mw1{0.0};
-    Float_t mw2{0.0};
-    Float_t smear_dpx{0.0};
-    Float_t smear_dpy{0.0};
-    Float_t bjet_resc_dpx{0.0};
-    Float_t bjet_resc_dpy{0.0};
-    Float_t weight{0.0};
-    Int_t num_sol{0};
-
     struct IterData;
     std::unique_ptr<IterData> m_iter_data;
-    void FillData(); // to be removed
-    inline void ResetIterData() { *m_iter_data = IterData{}; }
+
+    void ResetIterData();
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 };
 
@@ -272,12 +241,20 @@ struct EstimatorSingleLep::IterData
     Float_t Xhh_phi[CONTROL] = {};
     Float_t Xhh_mass[CONTROL] = {};
 
-    Float_t met_corr_pt[CONTROL] = {};
-    Float_t met_corr_phi[CONTROL] = {};
-
     Float_t nu_pt[CONTROL] = {};
     Float_t nu_eta[CONTROL] = {};
     Float_t nu_phi[CONTROL] = {};
+
+    Float_t mass[CONTROL] = {};
+
+    Float_t met_corr_pt[CONTROL] = {};
+    Float_t met_corr_phi[CONTROL] = {};
+
+    Float_t ljet_resc_fact_1[CONTROL] = {};
+    Float_t ljet_resc_fact_2[CONTROL] = {};
+
+    Float_t ljet_resc_dpx[CONTROL] = {};
+    Float_t ljet_resc_dpy[CONTROL] = {};
 
     Float_t b1_pt{0.0};
     Float_t b1_eta{0.0};
@@ -293,6 +270,18 @@ struct EstimatorSingleLep::IterData
     Float_t Hbb_eta{0.0};
     Float_t Hbb_phi{0.0};
     Float_t Hbb_mass{0.0};
+
+    Float_t bjet_resc_fact_1{0.0};
+    Float_t bjet_resc_fact_2{0.0};
+    Float_t mh{0.0};
+    Float_t mw1{0.0};
+    Float_t mw2{0.0};
+    Float_t smear_dpx{0.0};
+    Float_t smear_dpy{0.0};
+    Float_t bjet_resc_dpx{0.0};
+    Float_t bjet_resc_dpy{0.0};
+    Float_t weight{0.0};
+    Int_t num_sol{0};
 };
 
 #endif

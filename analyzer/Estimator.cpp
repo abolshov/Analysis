@@ -75,8 +75,8 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
     {
-        smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
-        smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
 
         auto bresc = ComputeJetResc(bj1, bj2, pdf_b1, mh);
         if (!bresc.has_value())
@@ -84,18 +84,36 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             ++failed_iter;
             continue;
         }
-        std::tie(c1, c2) = bresc.value();
-        b1 = c1*bj1;
-        b2 = c2*bj2;
-        Hbb = b1 + b2;
+        auto [c1, c2] = bresc.value();
 
-        Double_t tmp_mw1 = 1.0;
-        Double_t tmp_mw2 = 1.0;
-        pdf_mw1mw2->GetRandom2(tmp_mw1, tmp_mw2, m_prg.get());
-        mw1 = tmp_mw1;
-        mw2 = tmp_mw2;
+        LorentzVectorF_t b1 = bj1;
+        LorentzVectorF_t b2 = bj2;
+        b1 *= c1;
+        b2 *= c2;
+
+        LorentzVectorF_t Hbb = b1 + b2;
+
+        Float_t bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
+        Float_t bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+
+        Double_t mw1 = 1.0;
+        Double_t mw2 = 1.0;
+        pdf_mw1mw2->GetRandom2(mw1, mw2, m_prg.get());
 
         std::vector<Float_t> masses;
+        std::array<LorentzVectorF_t, CONTROL> j1{};
+        std::array<LorentzVectorF_t, CONTROL> j2{};
+        std::array<LorentzVectorF_t, CONTROL> met_corr{};
+        std::array<LorentzVectorF_t, CONTROL> lepW{};
+        std::array<LorentzVectorF_t, CONTROL> hadW{};
+        std::array<LorentzVectorF_t, CONTROL> Hww{};
+        std::array<LorentzVectorF_t, CONTROL> Xhh{};
+        std::array<LorentzVectorF_t, CONTROL> nu{};
+        std::array<Float_t, CONTROL> c3{};
+        std::array<Float_t, CONTROL> c4{};
+        std::array<Float_t, CONTROL> ljet_resc_dpx{};
+        std::array<Float_t, CONTROL> ljet_resc_dpy{};
+        std::array<Float_t, CONTROL> mass{};
         for (int control = 0; control < CONTROL; ++control)
         {
             bool lepW_onshell = control / 2;
@@ -116,9 +134,6 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             std::tie(c3[control], c4[control]) = lresc.value();
             j1[control] *= c3[control];
             j2[control] *= c4[control];
-
-            bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
-            bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
 
             ljet_resc_dpx[control] = -1.0*(c3[control] - 1)*lj1.Px() - (c4[control] - 1)*lj2.Px();
             ljet_resc_dpy[control] = -1.0*(c3[control] - 1)*lj1.Py() - (c4[control] - 1)*lj2.Py();
@@ -153,14 +168,93 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorSingleLep::EstimateCombViaEqns(VecLVF_
             continue;
         }
 
-        num_sol = masses.size();
-        weight = 1.0/num_sol;
+        Int_t num_sol = masses.size();
+        Float_t weight = 1.0/num_sol;
         for (auto mass: masses)
         {
             m_res_mass->Fill(mass, weight);
         }
 
+        // here iteration was succusseful
+        // assign local vaiables to members of IterData and dump them in a tree
+        // after writing, reset all members of IterData to avoid writing junk values from previous iterations 
+        for (int i = 0; i < CONTROL; ++i)
+        {
+            m_iter_data->j1_pt[i] = j1[i].Pt();
+            m_iter_data->j1_eta[i] = j1[i].Eta();
+            m_iter_data->j1_phi[i] = j1[i].Phi();
+            m_iter_data->j1_mass[i] = j1[i].M();
+
+            m_iter_data->j2_pt[i] = j2[i].Pt();
+            m_iter_data->j2_eta[i] = j2[i].Eta();
+            m_iter_data->j2_phi[i] = j2[i].Phi();
+            m_iter_data->j2_mass[i] = j2[i].M();
+
+            m_iter_data->lepW_pt[i] = lepW[i].Pt();
+            m_iter_data->lepW_eta[i] = lepW[i].Eta();
+            m_iter_data->lepW_phi[i] = lepW[i].Phi();
+            m_iter_data->lepW_mass[i] = lepW[i].M();
+
+            m_iter_data->hadW_pt[i] = hadW[i].Pt();
+            m_iter_data->hadW_eta[i] = hadW[i].Eta();
+            m_iter_data->hadW_phi[i] = hadW[i].Phi();
+            m_iter_data->hadW_mass[i] = hadW[i].M();
+
+            m_iter_data->Hww_pt[i] = Hww[i].Pt();
+            m_iter_data->Hww_eta[i] = Hww[i].Eta();
+            m_iter_data->Hww_phi[i] = Hww[i].Phi();
+            m_iter_data->Hww_mass[i] = Hww[i].M();
+
+            m_iter_data->nu_pt[i] = nu[i].Pt();
+            m_iter_data->nu_eta[i] = nu[i].Eta();
+            m_iter_data->nu_phi[i] = nu[i].Phi();
+
+            m_iter_data->Xhh_pt[i] = Xhh[i].Pt();
+            m_iter_data->Xhh_eta[i] = Xhh[i].Eta();
+            m_iter_data->Xhh_phi[i] = Xhh[i].Phi();
+            m_iter_data->Xhh_mass[i] = Xhh[i].M();
+
+            m_iter_data->met_corr_pt[i] = met_corr[i].Pt();
+            m_iter_data->met_corr_phi[i] = met_corr[i].Phi();
+
+            m_iter_data->mass[i] = mass[i];
+
+            m_iter_data->ljet_resc_fact_1[i] = c3[i];
+            m_iter_data->ljet_resc_fact_2[i] = c4[i];
+
+            m_iter_data->ljet_resc_dpx[i] = ljet_resc_dpx[i];
+            m_iter_data->ljet_resc_dpy[i] = ljet_resc_dpy[i];
+        }
+
+        m_iter_data->b1_pt = b1.Pt();
+        m_iter_data->b1_eta = b1.Eta();
+        m_iter_data->b1_phi = b1.Phi();
+        m_iter_data->b1_mass = b1.M();
+
+        m_iter_data->b2_pt = b2.Pt();
+        m_iter_data->b2_eta = b2.Eta();
+        m_iter_data->b2_phi = b2.Phi();
+        m_iter_data->b2_mass = b2.M();
+
+        m_iter_data->Hbb_pt = Hbb.Pt();
+        m_iter_data->Hbb_eta = Hbb.Eta();
+        m_iter_data->Hbb_phi = Hbb.Phi();
+        m_iter_data->Hbb_mass = Hbb.M();
+
+        m_iter_data->bjet_resc_fact_1 = c1;
+        m_iter_data->bjet_resc_fact_2 = c2;
+        m_iter_data->mh = mh;
+        m_iter_data->mw1 = mw1;
+        m_iter_data->mw2 = mw2;
+        m_iter_data->smear_dpx = smear_dpx;
+        m_iter_data->smear_dpy = smear_dpy;
+        m_iter_data->bjet_resc_dpx = bjet_resc_dpx;
+        m_iter_data->bjet_resc_dpy = bjet_resc_dpy;
+        m_iter_data->weight = weight;
+        m_iter_data->num_sol = num_sol;
+
         m_recorder.FillTree();
+        ResetIterData();
     }
 
     m_recorder.WriteTree(tree_name);
@@ -321,21 +415,22 @@ std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
     // tree->Branch("bjet1", &EstimatorSingleLep::b1, "bjet1/F");
     // tree->Branch("bjet2", &EstimatorSingleLep::b2, "bjet2/F");
     // tree->Branch("Hbb", &EstimatorSingleLep::Hbb, "Hbb/F");
-    tree->Branch("c1", &c1, "c1/F");
-    tree->Branch("c2", &c2, "c2/F");
-    tree->Branch("mw1", &mw1, "mw1/F");
-    tree->Branch("mw2", &mw2, "mw2/F");
-    tree->Branch("smear_dpx", &smear_dpx, "smear_dpx/F");
-    tree->Branch("smear_dpy", &smear_dpy, "smear_dpy/F");
-    tree->Branch("bjet_resc_dpx", &bjet_resc_dpx, "bjet_resc_dpx/F");
-    tree->Branch("bjet_resc_dpy", &bjet_resc_dpy, "bjet_resc_dpy/F");
-    tree->Branch("c3", c3, "c3[4]/F");
-    tree->Branch("c4", c4, "c4[4]/F");
-    tree->Branch("ljet_resc_dpx", ljet_resc_dpx, "ljet_resc_dpx[4]/F");
-    tree->Branch("ljet_resc_dpy", ljet_resc_dpy, "ljet_resc_dpy[4]/F");
-    tree->Branch("mass", mass, "mass[4]/F");
-    tree->Branch("weight", &weight, "weight/F");
-    tree->Branch("num_sol", &num_sol, "num_sol/I");
+    
+    tree->Branch("bjet_resc_fact_1", &m_iter_data->bjet_resc_fact_1, "bjet_resc_fact_1/F");
+    tree->Branch("bjet_resc_fact_2", &m_iter_data->bjet_resc_fact_2, "bjet_resc_fact_2/F");
+    tree->Branch("mw1", &m_iter_data->mw1, "mw1/F");
+    tree->Branch("mw2", &m_iter_data->mw2, "mw2/F");
+    tree->Branch("smear_dpx", &m_iter_data->smear_dpx, "smear_dpx/F");
+    tree->Branch("smear_dpy", &m_iter_data->smear_dpy, "smear_dpy/F");
+    tree->Branch("bjet_resc_dpx", &m_iter_data->bjet_resc_dpx, "bjet_resc_dpx/F");
+    tree->Branch("bjet_resc_dpy", &m_iter_data->bjet_resc_dpy, "bjet_resc_dpy/F");
+    tree->Branch("ljet_resc_fact_1", m_iter_data->ljet_resc_fact_1, "ljet_resc_fact_1[4]/F");
+    tree->Branch("ljet_resc_fact_2", m_iter_data->ljet_resc_fact_2, "ljet_resc_fact_2[4]/F");
+    tree->Branch("ljet_resc_dpx", m_iter_data->ljet_resc_dpx, "ljet_resc_dpx[4]/F");
+    tree->Branch("ljet_resc_dpy", m_iter_data->ljet_resc_dpy, "ljet_resc_dpy[4]/F");
+    tree->Branch("mass", m_iter_data->mass, "mass[4]/F");
+    tree->Branch("weight", &m_iter_data->weight, "weight/F");
+    tree->Branch("num_sol", &m_iter_data->num_sol, "num_sol/I");
     return tree;
 }
 
@@ -1071,13 +1166,7 @@ std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jet
     return std::nullopt;
 }
 
-void EstimatorSingleLep::FillData() // to be removed
-{
-    for (int i = 0; i < CONTROL; ++i)
-    {
-        m_iter_data->j1_pt[i] = j1[i].Pt();
-        m_iter_data->j1_eta[i] = j1[i].Eta();
-        m_iter_data->j1_phi[i] = j1[i].Phi();
-        m_iter_data->j1_mass[i] = j1[i].M();
-    }
+void EstimatorSingleLep::ResetIterData()
+{ 
+    *m_iter_data = EstimatorSingleLep::IterData{}; 
 }
