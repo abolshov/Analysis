@@ -278,6 +278,16 @@ struct EstimatorDoubleLep::IterData
     Float_t onshellW_phi[CONTROL] = {};
     Float_t onshellW_mass[CONTROL] = {};
 
+    Float_t l_offshell_pt[CONTROL] = {};
+    Float_t l_offshell_eta[CONTROL] = {};
+    Float_t l_offshell_phi[CONTROL] = {};
+    Float_t l_offshell_mass[CONTROL] = {};
+
+    Float_t l_onshell_pt[CONTROL] = {};
+    Float_t l_onshell_eta[CONTROL] = {};
+    Float_t l_onshell_phi[CONTROL] = {};
+    Float_t l_onshell_mass[CONTROL] = {};
+
     Float_t Hww_pt[CONTROL] = {};
     Float_t Hww_eta[CONTROL] = {};
     Float_t Hww_phi[CONTROL] = {};

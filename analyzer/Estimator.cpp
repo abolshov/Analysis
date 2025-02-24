@@ -368,7 +368,7 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
                         inv_widths.push_back(1.0/comb_result[static_cast<size_t>(Output::width)]);
                         peaks.push_back(comb_result[static_cast<size_t>(Output::peak_val)]);
                     }
-                    Reset(m_res_mass);
+                    ResetHist(m_res_mass);
                     used.erase(lj2_idx);
                 }
                 used.erase(lj1_idx);
@@ -414,20 +414,60 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets,
 
 std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
 {
-    auto tree = std::make_unique<TTree>(tree_name, "debug tree");
+    auto tree = std::make_unique<TTree>(tree_name, "SL channel debug tree");
     tree->SetDirectory(nullptr);
-    // declare branches here
-    // tree->Branch("light_jet1", &EstimatorSingleLep::j1, "light_jet1[CONTROL_SL]/F");
-    // tree->Branch("light_jet2", &EstimatorSingleLep::j2, "light_jet2[CONTROL_SL]/F");
-    // tree->Branch("met_corr", &EstimatorSingleLep::j1, "met_corr[CONTROL_SL]/F");
-    // tree->Branch("nu", &EstimatorSingleLep::nu, "nu[CONTROL_SL]/F");
-    // tree->Branch("lepW", &EstimatorSingleLep::j1, "lepW[CONTROL_SL]/F");
-    // tree->Branch("hadW", &EstimatorSingleLep::j2, "hadW[CONTROL_SL]/F");
-    // tree->Branch("Hww", &EstimatorSingleLep::j1, "Hww[CONTROL_SL]/F");
-    // tree->Branch("Xhh", &EstimatorSingleLep::Xhh, "Xhh[CONTROL_SL]/F");
-    // tree->Branch("bjet1", &EstimatorSingleLep::b1, "bjet1/F");
-    // tree->Branch("bjet2", &EstimatorSingleLep::b2, "bjet2/F");
-    // tree->Branch("Hbb", &EstimatorSingleLep::Hbb, "Hbb/F");
+
+    tree->Branch("light_jet_1_pt", m_iter_data->j1_pt, "light_jet_1_pt[4]/F");
+    tree->Branch("light_jet_1_eta", m_iter_data->j1_eta, "light_jet_1_eta[4]/F");
+    tree->Branch("light_jet_1_phi", m_iter_data->j1_phi, "light_jet_1_phi[4]/F");
+    tree->Branch("light_jet_1_mass", m_iter_data->j1_mass, "light_jet_1_mass[4]/F");
+
+    tree->Branch("light_jet_2_pt", m_iter_data->j2_pt, "light_jet_2_pt[4]/F");
+    tree->Branch("light_jet_2_eta", m_iter_data->j2_eta, "light_jet_2_eta[4]/F");
+    tree->Branch("light_jet_2_phi", m_iter_data->j2_phi, "light_jet_2_phi[4]/F");
+    tree->Branch("light_jet_2_mass", m_iter_data->j2_mass, "light_jet_2_mass[4]/F");
+
+    tree->Branch("met_corr_pt", m_iter_data->met_corr_pt, "met_corr_pt[4]/F");
+    tree->Branch("met_corr_phi", m_iter_data->met_corr_phi, "met_corr_phi[4]/F");
+
+    tree->Branch("nu_pt", m_iter_data->nu_pt, "nu_pt[4]/F");
+    tree->Branch("nu_eta", m_iter_data->nu_eta, "nu_eta[4]/F");
+    tree->Branch("nu_phi", m_iter_data->nu_phi, "nu_phi[4]/F");
+
+    tree->Branch("lepW_pt", m_iter_data->lepW_pt, "lepW_pt[4]/F");
+    tree->Branch("lepW_eta", m_iter_data->lepW_eta, "lepW_eta[4]/F");
+    tree->Branch("lepW_phi", m_iter_data->lepW_phi, "lepW_phi[4]/F");
+    tree->Branch("lepW_mass", m_iter_data->lepW_mass, "lepW_mass[4]/F");
+
+    tree->Branch("hadW_pt", m_iter_data->hadW_pt, "hadW_pt[4]/F");
+    tree->Branch("hadW_eta", m_iter_data->hadW_eta, "hadW_eta[4]/F");
+    tree->Branch("hadW_phi", m_iter_data->hadW_phi, "hadW_phi[4]/F");
+    tree->Branch("hadW_mass", m_iter_data->hadW_mass, "hadW_mass[4]/F");
+
+    tree->Branch("Hww_pt", m_iter_data->Hww_pt, "Hww_pt[4]/F");
+    tree->Branch("Hww_eta", m_iter_data->Hww_eta, "Hww_eta[4]/F");
+    tree->Branch("Hww_phi", m_iter_data->Hww_phi, "Hww_phi[4]/F");
+    tree->Branch("Hww_mass", m_iter_data->Hww_mass, "Hww_mass[4]/F");
+
+    tree->Branch("Xhh_pt", m_iter_data->Xhh_pt, "Xhh_pt[4]/F");
+    tree->Branch("Xhh_eta", m_iter_data->Xhh_eta, "Xhh_eta[4]/F");
+    tree->Branch("Xhh_phi", m_iter_data->Xhh_phi, "Xhh_phi[4]/F");
+    tree->Branch("Xhh_mass", m_iter_data->Xhh_mass, "Xhh_mass[4]/F");
+
+    tree->Branch("bjet_1_pt", &m_iter_data->b1_pt, "bjet_1_pt/F");
+    tree->Branch("bjet_1_eta", &m_iter_data->b1_eta, "bjet_1_eta/F");
+    tree->Branch("bjet_1_phi", &m_iter_data->b1_phi, "bjet_1_phi/F");
+    tree->Branch("bjet_1_mass", &m_iter_data->b1_mass, "bjet_1_mass/F");
+
+    tree->Branch("bjet_2_pt", &m_iter_data->b2_pt, "bjet_2_pt/F");
+    tree->Branch("bjet_2_eta", &m_iter_data->b2_eta, "bjet_2_eta/F");
+    tree->Branch("bjet_2_phi", &m_iter_data->b2_phi, "bjet_2_phi/F");
+    tree->Branch("bjet_2_mass", &m_iter_data->b2_mass, "bjet_2_mass/F");
+
+    tree->Branch("Hbb_pt", &m_iter_data->Hbb_pt, "Hbb_pt/F");
+    tree->Branch("Hbb_eta", &m_iter_data->Hbb_eta, "Hbb_eta/F");
+    tree->Branch("Hbb_phi", &m_iter_data->Hbb_phi, "Hbb_phi/F");
+    tree->Branch("Hbb_mass", &m_iter_data->Hbb_mass, "Hbb_mass/F");
     
     tree->Branch("bjet_resc_fact_1", &m_iter_data->bjet_resc_fact_1, "bjet_resc_fact_1/F");
     tree->Branch("bjet_resc_fact_2", &m_iter_data->bjet_resc_fact_2, "bjet_resc_fact_2/F");
@@ -474,8 +514,129 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep::EstimateCombViaEqns(VecLVF_
                                                                          ULong64_t evt, 
                                                                          TString const& comb_id)
 {
-    // TODO
-    return {};
+    std::array<Float_t, OUTPUT_SIZE> res{};
+    std::fill(res.begin(), res.end(), -1.0f);
+
+    LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjDL::bj1)];
+    LorentzVectorF_t const& bj2 = particles[static_cast<size_t>(ObjDL::bj2)];
+    LorentzVectorF_t const& lep1 = particles[static_cast<size_t>(ObjDL::lep1)];
+    LorentzVectorF_t const& lep2 = particles[static_cast<size_t>(ObjDL::lep2)];
+    LorentzVectorF_t const& met = particles[static_cast<size_t>(ObjDL::met)];
+
+    UHist_t<TH1F>& pdf_b1 = m_pdf_1d[static_cast<size_t>(PDF1_dl::b1)];
+    UHist_t<TH1F>& pdf_mw_onshell = m_pdf_1d[static_cast<size_t>(PDF1_dl::mw_onshell)];
+
+    m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt, comb_id.Data()));
+
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        Float_t eta_gen = m_prg->Uniform(-6, 6);
+        Float_t phi_gen = m_prg->Uniform(-3.1415926, 3.1415926);
+        Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
+        Float_t mw = pdf_mw_onshell->GetRandom(m_prg.get());
+        Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
+
+        auto bresc = ComputeJetResc(bj1, bj2, pdf_b1, mh);
+        if (!bresc.has_value())
+        {
+            continue;
+        }
+        auto [c1, c2] = bresc.value();
+
+        LorentzVectorF_t b1 = bj1;
+        LorentzVectorF_t b2 = bj2;
+        b1 *= c1;
+        b2 *= c2;
+
+        Float_t jet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
+        Float_t jet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+
+        Float_t met_corr_px = met.Px() + jet_resc_dpx + smear_dpx;
+        Float_t met_corr_py = met.Py() + jet_resc_dpy + smear_dpy;
+
+        Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
+        Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
+        LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+
+        LorentzVectorF_t Hbb = b1;
+        Hbb += b2;
+
+        std::vector<Float_t> estimates;
+        // two options: 
+        // lep1 comes from onshell W and lep2 comes from offshell W
+        // lep1 comes from offshell W and lep2 comes from onshell W
+        // when neutrino is computed in each case again two options are possible: delta_eta is added or subtracted to nu
+        // in total: 4 combinations; they are encoded in this for loop
+        for (int j = 0; j < CONTROL; ++j)
+        {
+            LorentzVectorF_t l_offshell;
+            LorentzVectorF_t l_onshell;
+            
+            int is_onshell = j/2;
+            if (is_onshell == 0) 
+            {
+                l_onshell = lep1;
+                l_offshell = lep2;
+            } 
+            else 
+            {
+                l_onshell = lep2;
+                l_offshell = lep1;
+            }
+
+            auto nu_onshell = NuFromOnshellW(eta_gen, phi_gen, mw, l_onshell);  
+            if (!nu_onshell)
+            {
+                continue;
+            }
+
+            int is_offshell = j%2;
+            auto nu_offshell = NuFromOffshellW(lep1, lep2, nu_onshell.value(), met_corr, is_offshell, mh);
+            if (!nu_offshell)
+            {
+                continue;
+            }
+
+            LorentzVectorF_t onshellW = l_onshell + nu_onshell.value();
+            LorentzVectorF_t offshellW = l_offshell + nu_offshell.value();
+            LorentzVectorF_t Hww = onshellW + offshellW;
+
+            if (offshellW.M() > mh/2)
+            {
+                continue;
+            }
+
+            if (std::abs(Hww.M() - mh) > 1.0)
+            {
+                continue;
+            }
+
+            Float_t mX = (Hbb + Hww).M();
+            if (mX > 0.0)
+            {
+                estimates.push_back(mX);
+            }
+        }
+
+        Float_t weight = estimates.empty() ? 0.0 : 1.0/estimates.size();
+        for (auto est: estimates)
+        {
+            m_res_mass->Fill(est, weight);
+        }
+    }
+
+    Float_t integral = m_res_mass->Integral();
+    if (m_res_mass->GetEntries() && integral > 0.0)
+    {
+        int binmax = m_res_mass->GetMaximumBin(); 
+        res[static_cast<size_t>(Output::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+        res[static_cast<size_t>(Output::peak_val)] = m_res_mass->GetBinContent(binmax);
+        res[static_cast<size_t>(Output::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+        res[static_cast<size_t>(Output::integral)] = integral;
+        return res;
+    }
+    return res;
 }
 
 std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, 
@@ -495,13 +656,56 @@ std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets,
                                                         ULong64_t evt, 
                                                         TString& chosen_comb)
 {
-    // TODO
+    VecLVF_t particles(static_cast<size_t>(ObjDL::count));
+    particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
+    particles[static_cast<size_t>(ObjDL::lep2)] = leptons[static_cast<size_t>(Lep::lep2)];
+    particles[static_cast<size_t>(ObjDL::met)] = met;
+
+    std::vector<Float_t> estimations;
+    std::vector<Float_t> integrals;
+
+    for (size_t bj1_idx = 0; bj1_idx < NUM_BEST_BTAG; ++bj1_idx)
+    {
+        for (size_t bj2_idx = bj1_idx + 1; bj2_idx < NUM_BEST_BTAG; ++bj2_idx)
+        {
+            // order jets such that first b jet has bigger pt and save their p4
+            if (jets[bj1_idx].Pt() > jets[bj2_idx].Pt())
+            {
+                particles[static_cast<size_t>(ObjDL::bj1)] = jets[bj1_idx];
+                particles[static_cast<size_t>(ObjDL::bj2)] = jets[bj2_idx];
+            }
+            else 
+            {
+                particles[static_cast<size_t>(ObjDL::bj1)] = jets[bj2_idx];
+                particles[static_cast<size_t>(ObjDL::bj2)] = jets[bj1_idx];
+            }
+
+            TString comb_label = Form("b%zub%zu", bj1_idx, bj2_idx);
+            auto comb_result = EstimateCombViaEqns(particles, evt, comb_label);
+
+            // success: mass > 0
+            if (comb_result[static_cast<size_t>(Output::mass)] > 0.0)
+            {
+                estimations.push_back(comb_result[static_cast<size_t>(Output::mass)]);
+                integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
+            }
+
+            // clear the histogram to be reused 
+            ResetHist(m_res_mass);
+        }
+    }
+
+    // success: at least one combination produced an estimate of X->HH mass
+    if (!estimations.empty())
+    {
+        return std::make_optional<Float_t>(estimations[0]);
+    }
     return std::nullopt;
 }
 
 std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
 {
-    auto tree = std::make_unique<TTree>(tree_name, "debug tree");
+    auto tree = std::make_unique<TTree>(tree_name, "DL channel debug tree");
     // declare branches here
     return tree;
 }
@@ -512,6 +716,14 @@ Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_na
 ,   m_estimator_dl(pdf_file_name_dl, Form("dl_%s", dbg_file_name.Data()))
 {}
 
+
+// #################################################################################################################
+// #################################################################################################################
+// #################################################################################################################
+// ######################################## OLD STUFF ##############################################################
+// #################################################################################################################
+// #################################################################################################################
+// #################################################################################################################
 
 EstimatorSingLep_Run3::EstimatorSingLep_Run3(TString const& file_name)
 :   m_pdf_1d(pdf1d_sl_names.size())
@@ -835,7 +1047,7 @@ std::optional<Float_t> EstimatorSingLep_Run3::EstimateMass(VecLVF_t const& jets,
                     }
 
                     // clear the histogram to be reused 
-                    Reset(m_res_mass);
+                    ResetHist(m_res_mass);
 
                     // remove indices of light jets from used
                     used.erase(lj2_idx);
@@ -1159,7 +1371,7 @@ std::optional<Float_t> EstimatorDoubleLep_Run2::EstimateMass(VecLVF_t const& jet
             }
 
             // clear the histogram to be reused 
-            Reset(m_res_mass);
+            ResetHist(m_res_mass);
         }
     }
 
