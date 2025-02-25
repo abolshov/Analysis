@@ -137,6 +137,12 @@ class Estimator
 {
     public:
     Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl, TString const& dbg_file_name);
+    std::optional<Float_t> EstimateMass(VecLVF_t const& jets, 
+                                        VecLVF_t const& leptons, 
+                                        LorentzVectorF_t const& met, 
+                                        ULong64_t evt, 
+                                        TString& chosen_comb,
+                                        Channel ch);
 
     private:
     EstimatorSingleLep m_estimator_sl;

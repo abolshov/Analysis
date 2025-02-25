@@ -712,9 +712,31 @@ std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
 
 
 Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl, TString const& dbg_file_name)
-:   m_estimator_sl(pdf_file_name_sl, Form("sl_%s", dbg_file_name.Data()))
-,   m_estimator_dl(pdf_file_name_dl, Form("dl_%s", dbg_file_name.Data()))
+:   m_estimator_sl(pdf_file_name_sl, dbg_file_name)
+,   m_estimator_dl(pdf_file_name_dl, dbg_file_name)
 {}
+
+
+std::optional<Float_t>Estimator::EstimateMass(VecLVF_t const& jets, 
+                                              VecLVF_t const& leptons, 
+                                              LorentzVectorF_t const& met, 
+                                              ULong64_t evt, 
+                                              TString& chosen_comb,
+                                              Channel ch)
+{
+    if (ch == Channel::SL)
+    {
+        return m_estimator_sl.EstimateMass(jets, leptons, met, evt, chosen_comb);
+    }
+    else if (ch == Channel::DL)
+    {
+        return m_estimator_dl.EstimateMass(jets, leptons, met, evt, chosen_comb);
+    }
+    else 
+    {
+        throw std::runtime_error("Attempting to process data in unknown channel");
+    }
+}
 
 
 // #################################################################################################################
