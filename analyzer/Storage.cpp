@@ -17,6 +17,7 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("lep1_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_type", reco_lep_type.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_gen_kind", reco_lep_gen_kind.data() + static_cast<size_t>(Lep::lep1));
+    // tree->SetBranchAddress("lep1_genLep_kind", reco_lep_gen_kind.data() + static_cast<size_t>(Lep::lep1));
 
     tree->SetBranchAddress("lep2_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep2));
@@ -24,6 +25,7 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("lep2_mass", reco_lep_mass.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_type", reco_lep_type.data() + static_cast<size_t>(Lep::lep2));
     tree->SetBranchAddress("lep2_gen_kind", reco_lep_gen_kind.data() + static_cast<size_t>(Lep::lep2));
+    // tree->SetBranchAddress("lep2_genLep_kind", reco_lep_gen_kind.data() + static_cast<size_t>(Lep::lep2));
 
     tree->SetBranchAddress("event", &eventId);
 
