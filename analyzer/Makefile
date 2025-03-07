@@ -1,41 +1,52 @@
-CXX=clang++
-CXXFLAGS= -c -O2 -Wall -Wextra -pedantic `root-config --cflags `
-LDFLAGS= `root-config --glibs ` -lSpectrum
+CXX      := clang++
+CXXFLAGS := -pedantic-errors -Wall -Wextra `root-config --cflags `
+LDFLAGS	 := `root-config --glibs `
+BUILD    := ./build
+OBJ_DIR  := $(BUILD)/objects
+APP_DIR  := $(BUILD)/apps
+TARGET   := analysis
+INCLUDE  := -Iinclude/
+SRC      := $(wildcard src/*.cpp)
 
-analysis.o: analysis.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+OBJECTS  := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
+DEPENDENCIES := $(OBJECTS:.o=.d)
 
-Analyzer.o: Analyzer.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+all: build $(APP_DIR)/$(TARGET)
 
-Storage.o: Storage.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+$(OBJ_DIR)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -MMD -o $@
 
-Estimator.o: Estimator.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+$(APP_DIR)/$(TARGET): $(OBJECTS)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -o $(APP_DIR)/$(TARGET) $^ $(LDFLAGS)
 
-EstimatorUtils.o: EstimatorUtils.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+-include $(DEPENDENCIES)
 
-EstimatorTools.o: EstimatorTools.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+.PHONY: all build clean debug release info
 
-MatchingTools.o: MatchingTools.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+build:
+	@mkdir -p $(APP_DIR)
+	@mkdir -p $(OBJ_DIR)
 
-SelectionUtils.o: SelectionUtils.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+debug: CXXFLAGS += -DDEBUG -g
+debug: all
 
-HistManager.o: HistManager.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+release: CXXFLAGS += -O2
+release: all
 
-EstimationRecorder.o: EstimationRecorder.cpp
-	$(CXX) $(CXXFLAGS) $^ -o $@
+clean:
+	-@rm -rvf $(OBJ_DIR)/*
+	-@rm -rvf $(APP_DIR)/*
 
-analysis: analysis.o Analyzer.o Storage.o Estimator.o EstimatorUtils.o EstimatorTools.o MatchingTools.o HistManager.o SelectionUtils.o EstimationRecorder.o
-	$(CXX) $^ -o $@ $(LDFLAGS)
-
-.PHONY: clean
-clean: 
-	rm analysis
-	rm *.o
+info:
+	@echo "[*] Applications: "
+	@$(foreach item, ${APP_DIR}, echo "\t$(item)";)
+	@echo "[*] Object dir: "
+	@$(foreach item, ${OBJ_DIR}, echo "\t$(item)";)
+	@echo "[*] Sources: "
+	@$(foreach item, ${SRC}, echo "\t$(item)";)
+	@echo "[*] Objects: "
+	@$(foreach item, ${OBJECTS}, echo "\t$(item)";)
+	@echo "[*] Dependencies: "
+	@$(foreach item, ${DEPENDENCIES}, echo "\t$(item)";)
