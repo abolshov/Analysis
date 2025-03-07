@@ -11,6 +11,8 @@
 #include "TH1.h"
 #include "TH2.h"
 
+#include "Constants.hpp"
+
 template <typename T> 
 using UHist_t = std::unique_ptr<T>;
 
@@ -20,6 +22,11 @@ using HistVec_t = std::vector<UHist_t<T>>;
 using LorentzVectorF_t = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<Float_t>>;
 using VecLVF_t = std::vector<LorentzVectorF_t>;
 
-using OptionalPair = std::optional<std::pair<double, double>>;
+template <size_t N>
+using OptArrF_t = std::optional<std::array<Float_t, N>>;
+
+using OptPairF_t = std::optional<std::pair<Float_t, Float_t>>;
+using OptLVecF_t = std::optional<LorentzVectorF_t>;
+using OptLVecFPair_t = std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>;
 
 #endif

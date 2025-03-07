@@ -32,8 +32,11 @@ inline constexpr size_t NUM_PDF_1D_DL = static_cast<size_t>(PDF1_dl::count);
 inline constexpr size_t NUM_PDF_2D_DL = static_cast<size_t>(PDF2_dl::count);
 
 // return values of Estimator
-enum class Output { mass, integral, width, peak_val, count };
-inline constexpr size_t OUTPUT_SIZE = static_cast<size_t>(Output::count);
+enum class CombOut { mass, integral, width, peak_value, count };
+inline constexpr size_t COMB_OUT_SZ = static_cast<size_t>(CombOut::count);
+
+enum class EstimOut { mass, integral, width, peak_value, score, count };
+inline constexpr size_t ESTIM_OUT_SZ = static_cast<size_t>(EstimOut::count);
 
 // objects
 enum class ObjSL { bj1, bj2, lj1, lj2, lep, met, count };

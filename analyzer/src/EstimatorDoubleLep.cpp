@@ -23,9 +23,9 @@ EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name, TString con
     pf->Close();
 }
 
-std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
+std::array<Float_t, COMB_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
 {
-    std::array<Float_t, OUTPUT_SIZE> res{};
+    std::array<Float_t, COMB_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
 
     LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjDL::bj1)];
@@ -141,10 +141,10 @@ std::array<Float_t, OUTPUT_SIZE> EstimatorDoubleLep::EstimateCombination(VecLVF_
     if (m_res_mass->GetEntries() && integral > 0.0)
     {
         int binmax = m_res_mass->GetMaximumBin(); 
-        res[static_cast<size_t>(Output::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
-        res[static_cast<size_t>(Output::peak_val)] = m_res_mass->GetBinContent(binmax);
-        res[static_cast<size_t>(Output::width)] = ComputeWidth(m_res_mass, Q16, Q84);
-        res[static_cast<size_t>(Output::integral)] = integral;
+        res[static_cast<size_t>(CombOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+        res[static_cast<size_t>(CombOut::peak_value)] = m_res_mass->GetBinContent(binmax);
+        res[static_cast<size_t>(CombOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+        res[static_cast<size_t>(CombOut::integral)] = integral;
         return res;
     }
     return res;
@@ -182,10 +182,10 @@ std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, Ve
             auto comb_result = EstimateCombination(particles, evt_id, comb_label);
 
             // success: mass > 0
-            if (comb_result[static_cast<size_t>(Output::mass)] > 0.0)
+            if (comb_result[static_cast<size_t>(CombOut::mass)] > 0.0)
             {
-                estimations.push_back(comb_result[static_cast<size_t>(Output::mass)]);
-                integrals.push_back(comb_result[static_cast<size_t>(Output::integral)]);
+                estimations.push_back(comb_result[static_cast<size_t>(CombOut::mass)]);
+                integrals.push_back(comb_result[static_cast<size_t>(CombOut::integral)]);
             }
 
             // clear the histogram to be reused 

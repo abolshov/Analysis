@@ -13,7 +13,7 @@ LorentzVectorF_t SamplePNetResCorr(LorentzVectorF_t const& jet, std::unique_ptr<
     return LorentzVectorF_t(pt + dpt, jet.Eta(), jet.Phi(), jet.M());
 }
 
-std::optional<std::pair<Float_t, Float_t>> ComputeJetResc(LorentzVectorF_t const& p1, LorentzVectorF_t const& p2, UHist_t<TH1F>& pdf, Float_t mass)
+OptPairF_t ComputeJetResc(LorentzVectorF_t const& p1, LorentzVectorF_t const& p2, UHist_t<TH1F>& pdf, Float_t mass)
 {
     Float_t c1 = pdf->GetRandom();
     Float_t x1 = p2.M2();
@@ -28,11 +28,10 @@ std::optional<std::pair<Float_t, Float_t>> ComputeJetResc(LorentzVectorF_t const
             return std::make_optional<std::pair<Float_t, Float_t>>(c1, c2); 
         }
     }
-    // return {1.0, 1.0};
     return std::nullopt;
 }
 
-std::optional<LorentzVectorF_t> NuFromOnshellW(Float_t eta, Float_t phi, Float_t mw, LorentzVectorF_t const& lep_onshell)
+OptLVecF_t NuFromOnshellW(Float_t eta, Float_t phi, Float_t mw, LorentzVectorF_t const& lep_onshell)
 {
     Float_t deta = eta - lep_onshell.Eta();
     Float_t dphi = phi - lep_onshell.Phi();
@@ -45,12 +44,12 @@ std::optional<LorentzVectorF_t> NuFromOnshellW(Float_t eta, Float_t phi, Float_t
     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 }
 
-std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1, 
-                                                LorentzVectorF_t const& lep2, 
-                                                LorentzVectorF_t const& nu1,
-                                                LorentzVectorF_t const& met,
-                                                int control, 
-                                                Float_t mh)
+OptLVecF_t NuFromOffshellW(LorentzVectorF_t const& lep1, 
+                           LorentzVectorF_t const& lep2, 
+                           LorentzVectorF_t const& nu1,
+                           LorentzVectorF_t const& met,
+                           int control, 
+                           Float_t mh)
 {
     LorentzVectorF_t tmp = lep1 + lep2 + nu1;
 
@@ -89,12 +88,12 @@ std::optional<LorentzVectorF_t> NuFromOffshellW(LorentzVectorF_t const& lep1,
     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 }
 
-std::optional<LorentzVectorF_t> NuFromH(LorentzVectorF_t const& jet1, 
-                                        LorentzVectorF_t const& jet2, 
-                                        LorentzVectorF_t const& lep, 
-                                        LorentzVectorF_t const& met, 
-                                        bool add_deta,
-                                        Float_t mh)
+OptLVecF_t NuFromH(LorentzVectorF_t const& jet1, 
+                   LorentzVectorF_t const& jet2, 
+                   LorentzVectorF_t const& lep, 
+                   LorentzVectorF_t const& met, 
+                   bool add_deta,
+                   Float_t mh)
 {
     LorentzVectorF_t vis = jet1 + jet2 + lep;
     Float_t cos_dphi = std::cos(TVector2::Phi_mpi_pi(vis.Phi() - met.Phi())); 
@@ -168,7 +167,7 @@ std::optional<LorentzVectorF_t> NuFromH(LorentzVectorF_t const& jet1,
 //     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 // }
 
-std::optional<LorentzVectorF_t> NuFromW(LorentzVectorF_t const& lep, LorentzVectorF_t const& met, bool add_deta, Float_t mw)
+OptLVecF_t NuFromW(LorentzVectorF_t const& lep, LorentzVectorF_t const& met, bool add_deta, Float_t mw)
 {
     Float_t pt = met.Pt();
     Float_t phi = met.Phi();
@@ -187,9 +186,9 @@ std::optional<LorentzVectorF_t> NuFromW(LorentzVectorF_t const& lep, LorentzVect
     return std::make_optional<LorentzVectorF_t>(pt, eta, phi, 0.0);
 }
 
-std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>> NuFromConstraints(LorentzVectorF_t const& jet1, LorentzVectorF_t const& jet2, 
-                                                                               LorentzVectorF_t const& lep, LorentzVectorF_t const& met, 
-                                                                               Float_t mw, Float_t mh)
+OptLVecFPair_t NuFromConstraints(LorentzVectorF_t const& jet1, LorentzVectorF_t const& jet2, 
+                                 LorentzVectorF_t const& lep, LorentzVectorF_t const& met, 
+                                 Float_t mw, Float_t mh)
 {
     LorentzVectorF_t vis = jet1 + jet2 + lep;
     Float_t phi = met.Phi();

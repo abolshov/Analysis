@@ -22,7 +22,7 @@ class EstimatorBase
     explicit EstimatorBase(TString dbg_file_name = {});
     virtual ~EstimatorBase() = default;
 
-    virtual std::array<Float_t, OUTPUT_SIZE> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) = 0;
+    virtual std::array<Float_t, COMB_OUT_SZ> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) = 0;
     virtual std::optional<Float_t> EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) = 0;
 
     protected:
