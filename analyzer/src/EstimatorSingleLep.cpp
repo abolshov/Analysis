@@ -24,9 +24,9 @@ EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name, TString con
     pf->Close();
 }
 
-std::array<Float_t, COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
+ArrF_t<COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
 {
-    std::array<Float_t, COMB_OUT_SZ> res{};
+    ArrF_t<COMB_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
 
     LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjSL::bj1)];
@@ -255,11 +255,13 @@ std::array<Float_t, COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_
     return res;
 }
 
-std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
+OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
 {
     VecLVF_t particles(static_cast<size_t>(ObjSL::count));
     particles[static_cast<size_t>(ObjSL::lep)] = leptons[static_cast<size_t>(Lep::lep1)];
     particles[static_cast<size_t>(ObjSL::met)] = met;
+
+    std::vector<ArrF_t<ESTIM_OUT_SZ>> results;
 
     std::vector<Float_t> estimations;
     [[maybe_unused]] std::vector<Float_t> integrals;
@@ -314,10 +316,18 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, Ve
                     }
 
                     TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
-                    auto comb_result = EstimateCombination(particles, evt_id, comb_label);
+                    ArrF_t<COMB_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
 
                     if (comb_result[static_cast<size_t>(CombOut::mass)] > 0.0)
                     {
+                        ArrF_t<ESTIM_OUT_SZ> arr = {};
+                        arr[static_cast<size_t>(EstimOut::mass)] = comb_result[static_cast<size_t>(CombOut::mass)],
+                        arr[static_cast<size_t>(EstimOut::integral)] = comb_result[static_cast<size_t>(CombOut::integral)], 
+                        arr[static_cast<size_t>(EstimOut::width)] = comb_result[static_cast<size_t>(CombOut::width)], 
+                        arr[static_cast<size_t>(EstimOut::peak_value)] = comb_result[static_cast<size_t>(CombOut::peak_value)],
+                        arr[static_cast<size_t>(EstimOut::score)] = -1.0;
+                        results.push_back(arr);
+
                         estimations.push_back(comb_result[static_cast<size_t>(CombOut::mass)]);
                         integrals.push_back(comb_result[static_cast<size_t>(CombOut::integral)]);
                         inv_widths.push_back(1.0/comb_result[static_cast<size_t>(CombOut::width)]);
@@ -352,8 +362,9 @@ std::optional<Float_t> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, Ve
                     choice = c;
                 }
             }
+            results[choice][static_cast<size_t>(EstimOut::score)] = max_metric;
         }
-        return std::make_optional<Float_t>(estimations[choice]);
+        return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
     }
     return std::nullopt;
 }

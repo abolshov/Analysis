@@ -23,7 +23,10 @@ using LorentzVectorF_t = ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<Float
 using VecLVF_t = std::vector<LorentzVectorF_t>;
 
 template <size_t N>
-using OptArrF_t = std::optional<std::array<Float_t, N>>;
+using ArrF_t = std::array<Float_t, N>;
+
+template <size_t N>
+using OptArrF_t = std::optional<ArrF_t<N>>;
 
 using OptPairF_t = std::optional<std::pair<Float_t, Float_t>>;
 using OptLVecF_t = std::optional<LorentzVectorF_t>;

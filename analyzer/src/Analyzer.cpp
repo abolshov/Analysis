@@ -15,6 +15,10 @@ Analyzer::Analyzer(TString const& tree_name, std::map<TString, Channel> const& i
 {
     TH1::AddDirectory(false);
     m_hm.Add("hme_mass", "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2500}, 100);
+    m_hm.Add("hme_score", "HME score", {"score", "Count"}, {0, 4}, 50);
+    m_hm.Add("hme_width", "HME width", {"width, [GeV]", "Count"}, {0, 1000}, 100);
+    m_hm.Add("hme_peak", "HME peak value", {"peak value", "Count"}, {0, 200}, 100);
+    m_hm.Add("hme_integral", "HME integral", {"integral", "Count"}, {0, 10000}, 100);
 }
 
 void Analyzer::ProcessFile(TString const& name, Channel ch)
@@ -62,6 +66,11 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
     auto hme = m_estimator.EstimateMass(jets, leptons, met, evt_id, ch);
     if (hme)
     {
-        m_hm.Fill("hme_mass", hme.value());
+        auto out_array = hme.value();
+        m_hm.Fill("hme_mass", out_array[static_cast<size_t>(EstimOut::mass)]);
+        m_hm.Fill("hme_score", out_array[static_cast<size_t>(EstimOut::score)]);
+        m_hm.Fill("hme_width", out_array[static_cast<size_t>(EstimOut::width)]);
+        m_hm.Fill("hme_peak", out_array[static_cast<size_t>(EstimOut::peak_value)]);
+        m_hm.Fill("hme_integral", out_array[static_cast<size_t>(EstimOut::integral)]);
     }
 }

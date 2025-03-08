@@ -11,8 +11,8 @@ class EstimatorSingleLep final : public EstimatorBase
     EstimatorSingleLep(TString const& pdf_file_name, TString const& dbg_file_name);
     ~EstimatorSingleLep() override = default;
 
-    std::array<Float_t, COMB_OUT_SZ> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) override;
-    std::optional<Float_t> EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) override;
+    ArrF_t<COMB_OUT_SZ> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) override;
+    OptArrF_t<ESTIM_OUT_SZ> EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) override;
 
     private: 
     struct IterData;

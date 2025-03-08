@@ -5,7 +5,7 @@ Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_na
 ,   m_estimator_dl(pdf_file_name_dl, dbg_file_name)
 {}
 
-std::optional<Float_t> Estimator::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id, Channel ch)
+OptArrF_t<ESTIM_OUT_SZ> Estimator::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id, Channel ch)
 {
     if (ch == Channel::SL)
     {

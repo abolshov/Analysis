@@ -23,9 +23,9 @@ EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name, TString con
     pf->Close();
 }
 
-std::array<Float_t, COMB_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
+ArrF_t<COMB_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
 {
-    std::array<Float_t, COMB_OUT_SZ> res{};
+    ArrF_t<COMB_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
 
     LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjDL::bj1)];
@@ -150,7 +150,7 @@ std::array<Float_t, COMB_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_
     return res;
 }
 
-std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
+OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
 {
     VecLVF_t particles(static_cast<size_t>(ObjDL::count));
     particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
@@ -159,9 +159,9 @@ std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, Ve
 
     std::vector<Float_t> estimations;
     std::vector<Float_t> integrals;
+    std::vector<ArrF_t<ESTIM_OUT_SZ>> results;
 
     size_t num_bjets = jets.size() < NUM_BEST_BTAG ? jets.size() : NUM_BEST_BTAG;
-
     for (size_t bj1_idx = 0; bj1_idx < num_bjets; ++bj1_idx)
     {
         for (size_t bj2_idx = bj1_idx + 1; bj2_idx < num_bjets; ++bj2_idx)
@@ -179,13 +179,21 @@ std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, Ve
             }
 
             TString comb_label = Form("b%zub%zu", bj1_idx, bj2_idx);
-            auto comb_result = EstimateCombination(particles, evt_id, comb_label);
+            ArrF_t<COMB_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
 
             // success: mass > 0
             if (comb_result[static_cast<size_t>(CombOut::mass)] > 0.0)
             {
                 estimations.push_back(comb_result[static_cast<size_t>(CombOut::mass)]);
                 integrals.push_back(comb_result[static_cast<size_t>(CombOut::integral)]);
+
+                ArrF_t<ESTIM_OUT_SZ> arr = {};
+                arr[static_cast<size_t>(EstimOut::mass)] = comb_result[static_cast<size_t>(CombOut::mass)],
+                arr[static_cast<size_t>(EstimOut::integral)] = comb_result[static_cast<size_t>(CombOut::integral)], 
+                arr[static_cast<size_t>(EstimOut::width)] = comb_result[static_cast<size_t>(CombOut::width)], 
+                arr[static_cast<size_t>(EstimOut::peak_value)] = comb_result[static_cast<size_t>(CombOut::peak_value)],
+                arr[static_cast<size_t>(EstimOut::score)] = -1.0;
+                results.push_back(arr);
             }
 
             // clear the histogram to be reused 
@@ -196,7 +204,7 @@ std::optional<Float_t> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, Ve
     // success: at least one combination produced an estimate of X->HH mass
     if (!estimations.empty())
     {
-        return std::make_optional<Float_t>(estimations[0]);
+        return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[0]);
     }
     return std::nullopt;
 }
