@@ -51,7 +51,7 @@ VecLVF_t GetGenNuP4(Storage const& s, Channel ch);
 
 Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r);
 
-template <typename It, std::enable_if_t<std::is_arithmetic_v<typename It::value_type>, bool> = true>
+template <typename It, std::enable_if_t<std::is_floating_point_v<typename It::value_type>, bool> = true>
 void ZScoreTransform(It begin, It end)
 {
     if (begin == end)
@@ -59,22 +59,22 @@ void ZScoreTransform(It begin, It end)
         return;
     }
 
-    Float_t sum = 0.0;
-    Float_t sum_sqr = 0.0;
+    typename It::value_type sum = 0.0;
+    typename It::value_type sum_sqr = 0.0;
 
     It it = begin;
     while (it != end)
     {
-        Float_t val = static_cast<Float_t>(*it);
+        typename It::value_type val = *it;
         sum += val;
         sum_sqr += val*val;
         ++it;
     }
 
     size_t n = end - begin;
-    Float_t mean = sum/n;
-    Float_t mean_sqr = sum_sqr/n;
-    Float_t std = std::sqrt(mean_sqr - mean*mean);
+    typename It::value_type mean = sum/n;
+    typename It::value_type mean_sqr = sum_sqr/n;
+    typename It::value_type std = std::sqrt(mean_sqr - mean*mean);
 
     it = begin;
     while (it != end)
@@ -85,7 +85,7 @@ void ZScoreTransform(It begin, It end)
     }
 }
 
-template <typename It, std::enable_if_t<std::is_arithmetic_v<typename It::value_type>, bool> = true>
+template <typename It, std::enable_if_t<std::is_floating_point_v<typename It::value_type>, bool> = true>
 void MinMaxTransform(It begin, It end)
 {
     if (begin == end)
@@ -94,12 +94,14 @@ void MinMaxTransform(It begin, It end)
     }
 
     auto [min_it, max_it] = std::minmax_element(begin, end);
-    auto diff = *max_it - *min_it;
+    typename It::value_type diff = *max_it - *min_it;
+    typename It::value_type min = *min_it;
 
     It it = begin;
     while (it != end)
     {
-        *it = (*it - *min_it)/diff;
+        *it -= min;
+        *it /= diff;
         ++it;
     }
 }
