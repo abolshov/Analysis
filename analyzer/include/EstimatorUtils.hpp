@@ -97,13 +97,14 @@ void MinMaxTransform(It begin, It end)
     typename It::value_type diff = *max_it - *min_it;
     typename It::value_type min = *min_it;
 
-    It it = begin;
-    while (it != end)
-    {
-        *it -= min;
-        *it /= diff;
-        ++it;
-    }
+    auto Func = [&min, &diff](typename It::value_type const& val)
+    { 
+        typename It::value_type ret = val;
+        ret -= min; 
+        ret /= diff;
+        return ret;
+    };
+    std::transform(begin, end, begin, Func);
 }
 
 void LogP4(std::stringstream& ss, LorentzVectorF_t const& p4, std::string const& name);
