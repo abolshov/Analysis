@@ -91,6 +91,7 @@ ArrF_t<COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& part
         std::array<Float_t, CONTROL> ljet_resc_dpx{};
         std::array<Float_t, CONTROL> ljet_resc_dpy{};
         std::array<Float_t, CONTROL> mass{};
+        std::array<Bool_t, CONTROL> correct_hww_mass{};
         for (int control = 0; control < CONTROL; ++control)
         {
             bool lepW_onshell = control / 2;
@@ -131,6 +132,11 @@ ArrF_t<COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& part
                 Hww[control] = lepW[control] + hadW[control];
                 Xhh[control] = Hww[control] + Hbb;
                 mass[control] = Xhh[control].M();
+                correct_hww_mass[control] = (std::abs(mh - Hww[control].M()) < 1.0);
+                if (!correct_hww_mass[control])
+                {
+                    continue;
+                }
                 masses.push_back(mass[control]);
             } 
             else 
@@ -203,6 +209,8 @@ ArrF_t<COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& part
 
                 m_iter_data->ljet_resc_dpx[i] = ljet_resc_dpx[i];
                 m_iter_data->ljet_resc_dpy[i] = ljet_resc_dpy[i];
+
+                m_iter_data->correct_hww_mass[i] = correct_hww_mass[i];
             }
 
             m_iter_data->b1_pt = b1.Pt();
@@ -442,5 +450,6 @@ std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
     tree->Branch("mass", m_iter_data->mass, "mass[4]/F");
     tree->Branch("weight", &m_iter_data->weight, "weight/F");
     tree->Branch("num_sol", &m_iter_data->num_sol, "num_sol/I");
+    tree->Branch("correct_hww_mass", &m_iter_data->correct_hww_mass, "correct_hww_mass[4]/B");
     return tree;
 }

@@ -93,6 +93,7 @@ struct EstimatorSingleLep::IterData
     Float_t bjet_resc_dpy{0.0};
     Float_t weight{0.0};
     Int_t num_sol{0};
+    Bool_t correct_hww_mass[CONTROL] = {};
 };
 
 #endif
