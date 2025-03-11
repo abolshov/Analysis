@@ -24,9 +24,9 @@ EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name, TString con
     pf->Close();
 }
 
-ArrF_t<COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
+ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
 {
-    ArrF_t<COMB_OUT_SZ> res{};
+    ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
 
     LorentzVectorF_t const& bj1 = particles[static_cast<size_t>(ObjSL::bj1)];
@@ -254,10 +254,10 @@ ArrF_t<COMB_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& part
     if (m_res_mass->GetEntries() && integral > 0.0)
     {
         int binmax = m_res_mass->GetMaximumBin(); 
-        res[static_cast<size_t>(CombOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
-        res[static_cast<size_t>(CombOut::peak_value)] = m_res_mass->GetBinContent(binmax);
-        res[static_cast<size_t>(CombOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
-        res[static_cast<size_t>(CombOut::integral)] = integral;
+        res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+        res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
+        res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+        res[static_cast<size_t>(EstimOut::integral)] = integral;
         return res;
     }
     return res;
@@ -270,12 +270,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
     particles[static_cast<size_t>(ObjSL::met)] = met;
 
     std::vector<ArrF_t<ESTIM_OUT_SZ>> results;
-
     std::vector<Float_t> estimations;
-    [[maybe_unused]] std::vector<Float_t> integrals;
-    std::vector<Float_t> inv_widths;
-    [[maybe_unused]] std::vector<Float_t> peaks;
-
     size_t num_bjets = jets.size() < NUM_BEST_BTAG ? jets.size() : NUM_BEST_BTAG;
 
     std::unordered_set<size_t> used;
@@ -324,22 +319,12 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
                     }
 
                     TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
-                    ArrF_t<COMB_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
+                    ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
 
-                    if (comb_result[static_cast<size_t>(CombOut::mass)] > 0.0)
+                    if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
                     {
-                        ArrF_t<ESTIM_OUT_SZ> arr = {};
-                        arr[static_cast<size_t>(EstimOut::mass)] = comb_result[static_cast<size_t>(CombOut::mass)],
-                        arr[static_cast<size_t>(EstimOut::integral)] = comb_result[static_cast<size_t>(CombOut::integral)], 
-                        arr[static_cast<size_t>(EstimOut::width)] = comb_result[static_cast<size_t>(CombOut::width)], 
-                        arr[static_cast<size_t>(EstimOut::peak_value)] = comb_result[static_cast<size_t>(CombOut::peak_value)],
-                        arr[static_cast<size_t>(EstimOut::score)] = -1.0;
-                        results.push_back(arr);
-
-                        estimations.push_back(comb_result[static_cast<size_t>(CombOut::mass)]);
-                        integrals.push_back(comb_result[static_cast<size_t>(CombOut::integral)]);
-                        inv_widths.push_back(1.0/comb_result[static_cast<size_t>(CombOut::width)]);
-                        peaks.push_back(comb_result[static_cast<size_t>(CombOut::peak_value)]);
+                        results.push_back(comb_result);
+                        estimations.push_back(comb_result[static_cast<size_t>(EstimOut::mass)]);
                     }
                     ResetHist(m_res_mass);
                     used.erase(lj2_idx);
@@ -356,21 +341,8 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
         size_t choice = 0;
         if (estimations.size() > 1)
         {
-            MinMaxTransform(integrals.begin(), integrals.end());
-            MinMaxTransform(inv_widths.begin(), inv_widths.end());
-            MinMaxTransform(peaks.begin(), peaks.end());
-
-            Float_t max_metric = 0.0f;
-            for (size_t c = 0; c < estimations.size(); ++c)
-            {
-                Float_t metric = integrals[c] + inv_widths[c] + peaks[c];
-                if (metric > max_metric)
-                {
-                    max_metric = metric;
-                    choice = c;
-                }
-            }
-            results[choice][static_cast<size_t>(EstimOut::score)] = max_metric;
+            auto it = std::max_element(estimations.begin(), estimations.end());
+            choice = it - estimations.begin();
         }
         return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
     }
@@ -450,6 +422,6 @@ std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
     tree->Branch("mass", m_iter_data->mass, "mass[4]/F");
     tree->Branch("weight", &m_iter_data->weight, "weight/F");
     tree->Branch("num_sol", &m_iter_data->num_sol, "num_sol/I");
-    tree->Branch("correct_hww_mass", &m_iter_data->correct_hww_mass, "correct_hww_mass[4]/B");
+    tree->Branch("correct_hww_mass", m_iter_data->correct_hww_mass, "correct_hww_mass[4]/B");
     return tree;
 }
