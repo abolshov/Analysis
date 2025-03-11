@@ -157,8 +157,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, V
     particles[static_cast<size_t>(ObjDL::lep2)] = leptons[static_cast<size_t>(Lep::lep2)];
     particles[static_cast<size_t>(ObjDL::met)] = met;
 
-    std::vector<Float_t> estimations;
-    std::vector<ArrF_t<ESTIM_OUT_SZ>> results;
+    std::vector<ArrF_t<ESTIM_OUT_SZ>> estimations;
     size_t num_bjets = jets.size() < NUM_BEST_BTAG ? jets.size() : NUM_BEST_BTAG;
     
     for (size_t bj1_idx = 0; bj1_idx < num_bjets; ++bj1_idx)
@@ -183,8 +182,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, V
             // success: mass > 0
             if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
             {
-                estimations.push_back(comb_result[static_cast<size_t>(EstimOut::mass)]);
-                results.push_back(comb_result);
+                estimations.push_back(comb_result);
             }
 
             // clear the histogram to be reused 
@@ -195,7 +193,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, V
     // success: at least one combination produced an estimate of X->HH mass
     if (!estimations.empty())
     {
-        return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[0]);
+        return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[0]);
     }
     return std::nullopt;
 }
