@@ -8,6 +8,7 @@
 #endif 
 
 #include <iostream>
+#include <chrono>
 
 #include "TH1.h"
 
@@ -27,6 +28,11 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
 {
     TFile* file = TFile::Open(name);
     TTree* tree = static_cast<TTree*>(file->Get<TTree>(m_tree_name));
+
+    #ifdef DEBUG
+        TString dbg_file_name = ch == Channel::SL ? "hme_iter_sl.root" : "hme_iter_dl.root";
+        m_estimator.OpenDbgFile(dbg_file_name, ch);
+    #endif
 
     m_storage.ConnectTree(tree, ch);
     ULong64_t n_events = tree->GetEntries();

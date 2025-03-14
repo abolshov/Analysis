@@ -85,12 +85,4 @@ inline static const std::unordered_map<PDF1_dl, TString> pdf1d_dl_names = { { PD
                                                                         
 inline static const std::unordered_map<PDF2_dl, TString> pdf2d_dl_names = {};
 
-#ifdef DEBUG 
-    inline static const TString DBG_NAME_SL = "dbg_sl.root";
-    inline static const TString DBG_NAME_DL = "dbg_dl.root";
-#else 
-    inline static const TString DBG_NAME_SL = "";
-    inline static const TString DBG_NAME_DL = "";
-#endif
-
 #endif

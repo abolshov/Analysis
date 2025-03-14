@@ -11,8 +11,9 @@ using ROOT::Math::VectorUtil::DeltaPhi;
 #include "EstimatorUtils.hpp"
 #include "EstimatorTools.hpp"
 
-EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name, TString const& dbg_file_name)
-:   EstimatorBase(dbg_file_name)
+EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name)
+:   EstimatorBase()
+,   m_iter_data(std::make_unique<IterData>())
 {
     m_pdf_1d.resize(pdf1d_dl_names.size());
     m_pdf_2d.resize(pdf2d_dl_names.size());
