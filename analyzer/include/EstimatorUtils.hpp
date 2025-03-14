@@ -42,11 +42,11 @@ VecLVF_t GetRecoLepP4(Storage const& s, Channel ch);
 std::vector<Float_t> GetPNetRes(Storage const& s);
 
 #ifdef DEBUG
-inline LorentzVectorF_t GetGenMET(Storage const& s) { return LorentzVectorF_t(s.gen_met_pt, 0.0, s.gen_met_phi, 0.0); }
-VecLVF_t GetGenJetP4(Storage const& s);
-VecLVF_t GetGenLepP4(Storage const& s, Channel ch);
-VecLVF_t GetGenQuarksP4(Storage const& s, Channel ch);
-VecLVF_t GetGenNuP4(Storage const& s, Channel ch);
+    // inline LorentzVectorF_t GetGenMET(Storage const& s) { return LorentzVectorF_t(s.gen_met_pt, 0.0, s.gen_met_phi, 0.0); }
+    // VecLVF_t GetGenJetP4(Storage const& s);
+    VecLVF_t GetGenLepP4(Storage const& s, Channel ch);
+    VecLVF_t GetGenQuarksP4(Storage const& s, Channel ch);
+    VecLVF_t GetGenNuP4(Storage const& s, Channel ch);
 #endif
 
 Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r);
@@ -106,6 +106,4 @@ void MinMaxTransform(It begin, It end)
     };
     std::transform(begin, end, begin, Func);
 }
-
-void LogP4(std::stringstream& ss, LorentzVectorF_t const& p4, std::string const& name);
 #endif

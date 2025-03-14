@@ -245,14 +245,14 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
         }
     }
 
-    if (m_recorder.ShouldRecord())
-    {
-        m_recorder.WriteTree(tree_name);
-    }
-
     Float_t integral = m_res_mass->Integral();
     if (m_res_mass->GetEntries() && integral > 0.0)
     {
+        if (m_recorder.ShouldRecord())
+        {
+            m_recorder.WriteTree(tree_name);
+        }
+
         int binmax = m_res_mass->GetMaximumBin(); 
         res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
         res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
@@ -270,7 +270,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
     particles[static_cast<size_t>(ObjSL::met)] = met;
 
     std::vector<ArrF_t<ESTIM_OUT_SZ>> results;
-    std::vector<Float_t> estimations;
+    std::vector<Float_t> masses, inv_widths, integrals, peaks;
     size_t num_bjets = jets.size() < NUM_BEST_BTAG ? jets.size() : NUM_BEST_BTAG;
 
     std::unordered_set<size_t> used;
@@ -324,7 +324,10 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
                     if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
                     {
                         results.push_back(comb_result);
-                        estimations.push_back(comb_result[static_cast<size_t>(EstimOut::mass)]);
+                        masses.push_back(comb_result[static_cast<size_t>(EstimOut::mass)]);
+                        inv_widths.push_back(1.0/comb_result[static_cast<size_t>(EstimOut::width)]);
+                        peaks.push_back(comb_result[static_cast<size_t>(EstimOut::peak_value)]);
+                        integrals.push_back(comb_result[static_cast<size_t>(EstimOut::integral)]);
                     }
                     ResetHist(m_res_mass);
                     used.erase(lj2_idx);
@@ -336,13 +339,30 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
         used.erase(bj1_idx);
     }
 
-    if (!estimations.empty())
+    if (!results.empty())
     {
         size_t choice = 0;
-        if (estimations.size() > 1)
+        if (results.size() > 1)
         {
-            auto it = std::max_element(estimations.begin(), estimations.end());
-            choice = it - estimations.begin();
+            // MinMaxTransform(integrals.begin(), integrals.end());
+            // MinMaxTransform(inv_widths.begin(), inv_widths.end());
+            // MinMaxTransform(peaks.begin(), peaks.end());
+            // MinMaxTransform(masses.begin(), masses.end());
+
+            // Float_t max_metric = 0.0f;
+            // for (size_t c = 0; c < results.size(); ++c)
+            // {
+            //     // Float_t metric = (integrals[c] + inv_widths[c] + peaks[c] + masses[c])/4.0;
+            //     Float_t metric = (integrals[c] + inv_widths[c] + peaks[c])/3.0;
+            //     if (metric > max_metric)
+            //     {
+            //         max_metric = metric;
+            //         choice = c;
+            //     }
+            // }
+
+            auto it = std::max_element(masses.begin(), masses.end());
+            choice = it - masses.begin();
         }
         return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
     }

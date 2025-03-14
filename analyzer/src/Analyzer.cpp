@@ -1,8 +1,11 @@
 #include "Analyzer.hpp"
 #include "Definitions.hpp"
 #include "EstimatorUtils.hpp"
-#include "MatchingTools.hpp"
-#include "SelectionUtils.hpp"
+
+#ifdef DEBUG
+    #include "MatchingTools.hpp"
+    #include "SelectionUtils.hpp"
+#endif 
 
 #include <iostream>
 
@@ -11,11 +14,10 @@
 Analyzer::Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, std::map<Channel, TString> const& pdf_file_map)
 :   m_file_map(input_file_map)
 ,   m_tree_name(tree_name)  
-,   m_estimator(pdf_file_map.at(Channel::SL), pdf_file_map.at(Channel::DL), "")
+,   m_estimator(pdf_file_map.at(Channel::SL), pdf_file_map.at(Channel::DL))
 {
     TH1::AddDirectory(false);
     m_hm.Add("hme_mass", "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2500}, 100);
-    m_hm.Add("hme_score", "HME score", {"score", "Count"}, {0, 4}, 50);
     m_hm.Add("hme_width", "HME width", {"width, [GeV]", "Count"}, {0, 1000}, 100);
     m_hm.Add("hme_peak", "HME peak value", {"peak value", "Count"}, {0, 200}, 100);
     m_hm.Add("hme_integral", "HME integral", {"integral", "Count"}, {0, 10000}, 100);
@@ -51,15 +53,18 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
     VecLVF_t leptons = GetRecoLepP4(m_storage, ch);
     LorentzVectorF_t met = GetRecoMET(m_storage);
 
-    if (!IsRecoverable(m_storage, ch))
-    {
-        return;
-    }
+    
+    #ifdef DEBUG 
+        if (!IsRecoverable(m_storage, ch))
+        {
+            return;
+        }
 
-    if (!IsFiducial(m_storage, jets, ch))
-    {
-        return;
-    }
+        if (!IsFiducial(m_storage, jets, ch))
+        {
+            return;
+        }
+    #endif
 
     ++counter;
 
@@ -68,7 +73,6 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
     {
         auto out_array = hme.value();
         m_hm.Fill("hme_mass", out_array[static_cast<size_t>(EstimOut::mass)]);
-        m_hm.Fill("hme_score", out_array[static_cast<size_t>(EstimOut::score)]);
         m_hm.Fill("hme_width", out_array[static_cast<size_t>(EstimOut::width)]);
         m_hm.Fill("hme_peak", out_array[static_cast<size_t>(EstimOut::peak_value)]);
         m_hm.Fill("hme_integral", out_array[static_cast<size_t>(EstimOut::integral)]);

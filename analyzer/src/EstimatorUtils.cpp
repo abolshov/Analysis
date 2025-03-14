@@ -96,77 +96,72 @@ Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)
 }
 
 #ifdef DEBUG
-VecLVF_t GetGenJetP4(Storage const& s)
-{
-    VecLVF_t res;
-    for (int i = 0; i < s.n_gen_jet; ++i)
-    {
-        res.emplace_back(s.gen_jet_pt[i], s.gen_jet_eta[i], s.gen_jet_phi[i], s.gen_jet_mass[i]);
-    }
-    return res;
-}
+    // VecLVF_t GetGenJetP4(Storage const& s)
+    // {
+    //     VecLVF_t res;
+    //     for (int i = 0; i < s.n_gen_jet; ++i)
+    //     {
+    //         res.emplace_back(s.gen_jet_pt[i], s.gen_jet_eta[i], s.gen_jet_phi[i], s.gen_jet_mass[i]);
+    //     }
+    //     return res;
+    // }
 
-VecLVF_t GetGenLepP4(Storage const& s, Channel ch)
-{
-    VecLVF_t res;
-    res.emplace_back(s.gen_lep_pt[static_cast<size_t>(Lep::lep1)], 
-                     s.gen_lep_eta[static_cast<size_t>(Lep::lep1)], 
-                     s.gen_lep_phi[static_cast<size_t>(Lep::lep1)], 
-                     s.gen_lep_mass[static_cast<size_t>(Lep::lep1)]);
-    if (ch == Channel::DL)
+    VecLVF_t GetGenLepP4(Storage const& s, Channel ch)
     {
-        res.emplace_back(s.gen_lep_pt[static_cast<size_t>(Lep::lep2)], 
-                         s.gen_lep_eta[static_cast<size_t>(Lep::lep2)], 
-                         s.gen_lep_phi[static_cast<size_t>(Lep::lep2)], 
-                         s.gen_lep_mass[static_cast<size_t>(Lep::lep2)]);
+        VecLVF_t res;
+        res.emplace_back(s.gen_lep_pt[static_cast<size_t>(Lep::lep1)], 
+                        s.gen_lep_eta[static_cast<size_t>(Lep::lep1)], 
+                        s.gen_lep_phi[static_cast<size_t>(Lep::lep1)], 
+                        s.gen_lep_mass[static_cast<size_t>(Lep::lep1)]);
+        if (ch == Channel::DL)
+        {
+            res.emplace_back(s.gen_lep_pt[static_cast<size_t>(Lep::lep2)], 
+                            s.gen_lep_eta[static_cast<size_t>(Lep::lep2)], 
+                            s.gen_lep_phi[static_cast<size_t>(Lep::lep2)], 
+                            s.gen_lep_mass[static_cast<size_t>(Lep::lep2)]);
+        }
+        return res;
     }
-    return res;
-}
 
-VecLVF_t GetGenQuarksP4(Storage const& s, Channel ch)
-{
-    VecLVF_t res;
-    res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::b1)], 
-                     s.gen_quark_eta[static_cast<size_t>(Quark::b1)], 
-                     s.gen_quark_phi[static_cast<size_t>(Quark::b1)], 
-                     s.gen_quark_mass[static_cast<size_t>(Quark::b1)]);
-    res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::b2)], 
-                     s.gen_quark_eta[static_cast<size_t>(Quark::b2)], 
-                     s.gen_quark_phi[static_cast<size_t>(Quark::b2)], 
-                     s.gen_quark_mass[static_cast<size_t>(Quark::b2)]);
-    if (ch == Channel::SL)
+    VecLVF_t GetGenQuarksP4(Storage const& s, Channel ch)
     {
-        res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::q1)], 
-                         s.gen_quark_eta[static_cast<size_t>(Quark::q1)], 
-                         s.gen_quark_phi[static_cast<size_t>(Quark::q1)], 
-                         s.gen_quark_mass[static_cast<size_t>(Quark::q1)]);
-        res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::q2)], 
-                         s.gen_quark_eta[static_cast<size_t>(Quark::q2)], 
-                         s.gen_quark_phi[static_cast<size_t>(Quark::q2)], 
-                         s.gen_quark_mass[static_cast<size_t>(Quark::q2)]);
+        VecLVF_t res;
+        res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::b1)], 
+                        s.gen_quark_eta[static_cast<size_t>(Quark::b1)], 
+                        s.gen_quark_phi[static_cast<size_t>(Quark::b1)], 
+                        s.gen_quark_mass[static_cast<size_t>(Quark::b1)]);
+        res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::b2)], 
+                        s.gen_quark_eta[static_cast<size_t>(Quark::b2)], 
+                        s.gen_quark_phi[static_cast<size_t>(Quark::b2)], 
+                        s.gen_quark_mass[static_cast<size_t>(Quark::b2)]);
+        if (ch == Channel::SL)
+        {
+            res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::q1)], 
+                            s.gen_quark_eta[static_cast<size_t>(Quark::q1)], 
+                            s.gen_quark_phi[static_cast<size_t>(Quark::q1)], 
+                            s.gen_quark_mass[static_cast<size_t>(Quark::q1)]);
+            res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::q2)], 
+                            s.gen_quark_eta[static_cast<size_t>(Quark::q2)], 
+                            s.gen_quark_phi[static_cast<size_t>(Quark::q2)], 
+                            s.gen_quark_mass[static_cast<size_t>(Quark::q2)]);
+        }
+        return res;
     }
-    return res;
-}
 
-VecLVF_t GetGenNuP4(Storage const& s, Channel ch)
-{
-    VecLVF_t res;
-    res.emplace_back(s.gen_nu_pt[static_cast<size_t>(Nu::nu1)], 
-                     s.gen_nu_eta[static_cast<size_t>(Nu::nu1)], 
-                     s.gen_nu_phi[static_cast<size_t>(Nu::nu1)], 
-                     s.gen_nu_mass[static_cast<size_t>(Nu::nu1)]);
-    if (ch == Channel::DL)
+    VecLVF_t GetGenNuP4(Storage const& s, Channel ch)
     {
-        res.emplace_back(s.gen_nu_pt[static_cast<size_t>(Nu::nu2)], 
-                         s.gen_nu_eta[static_cast<size_t>(Nu::nu2)], 
-                         s.gen_nu_phi[static_cast<size_t>(Nu::nu2)], 
-                         s.gen_nu_mass[static_cast<size_t>(Nu::nu2)]);
+        VecLVF_t res;
+        res.emplace_back(s.gen_nu_pt[static_cast<size_t>(Nu::nu1)], 
+                        s.gen_nu_eta[static_cast<size_t>(Nu::nu1)], 
+                        s.gen_nu_phi[static_cast<size_t>(Nu::nu1)], 
+                        s.gen_nu_mass[static_cast<size_t>(Nu::nu1)]);
+        if (ch == Channel::DL)
+        {
+            res.emplace_back(s.gen_nu_pt[static_cast<size_t>(Nu::nu2)], 
+                            s.gen_nu_eta[static_cast<size_t>(Nu::nu2)], 
+                            s.gen_nu_phi[static_cast<size_t>(Nu::nu2)], 
+                            s.gen_nu_mass[static_cast<size_t>(Nu::nu2)]);
+        }
+        return res;
     }
-    return res;
-}
-
-void LogP4(std::stringstream& ss, LorentzVectorF_t const& p4, std::string const& name)
-{
-    ss << "\t" << name << "=(" << p4.Pt() << ", " << p4.Eta() << ", " << p4.Phi() << ", " << p4.M() << ")\n";
-}
 #endif

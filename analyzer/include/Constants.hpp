@@ -32,10 +32,7 @@ inline constexpr size_t NUM_PDF_1D_DL = static_cast<size_t>(PDF1_dl::count);
 inline constexpr size_t NUM_PDF_2D_DL = static_cast<size_t>(PDF2_dl::count);
 
 // return values of Estimator
-enum class CombOut { mass, integral, width, peak_value, count };
-inline constexpr size_t COMB_OUT_SZ = static_cast<size_t>(CombOut::count);
-
-enum class EstimOut { mass, integral, width, peak_value, score, count };
+enum class EstimOut { mass, integral, width, peak_value, count };
 inline constexpr size_t ESTIM_OUT_SZ = static_cast<size_t>(EstimOut::count);
 
 // objects
@@ -87,5 +84,13 @@ inline static const std::unordered_map<PDF1_dl, TString> pdf1d_dl_names = { { PD
                                                                             { PDF1_dl::mw_onshell, "pdf_mw_onshell" }};
                                                                         
 inline static const std::unordered_map<PDF2_dl, TString> pdf2d_dl_names = {};
+
+#ifdef DEBUG 
+    inline static const TString DBG_NAME_SL = "dbg_sl.root";
+    inline static const TString DBG_NAME_DL = "dbg_dl.root";
+#else 
+    inline static const TString DBG_NAME_SL = "";
+    inline static const TString DBG_NAME_DL = "";
+#endif
 
 #endif

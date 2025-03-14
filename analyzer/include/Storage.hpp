@@ -14,51 +14,60 @@ struct Storage
     void ConnectTree(TTree* tree, Channel ch);
 
     //reco objects
-    std::array<Float_t, MAX_RECO_JET> reco_jet_pt = {0.0};
-    std::array<Float_t, MAX_RECO_JET> reco_jet_eta = {0.0};
-    std::array<Float_t, MAX_RECO_JET> reco_jet_phi = {0.0};
-    std::array<Float_t, MAX_RECO_JET> reco_jet_mass = {0.0};
-    std::array<Float_t, MAX_RECO_JET> reco_jet_corr = {0.0};
-    std::array<Float_t, MAX_RECO_JET> reco_jet_res = {0.0};
+    // 6x4x20 = 480
+    std::array<Float_t, MAX_RECO_JET> reco_jet_pt = {};
+    std::array<Float_t, MAX_RECO_JET> reco_jet_eta = {};
+    std::array<Float_t, MAX_RECO_JET> reco_jet_phi = {};
+    std::array<Float_t, MAX_RECO_JET> reco_jet_mass = {};
+    std::array<Float_t, MAX_RECO_JET> reco_jet_corr = {};
+    std::array<Float_t, MAX_RECO_JET> reco_jet_res = {};
 
-    std::array<Float_t, MAX_RECO_LEP> reco_lep_pt = {0.0};
-    std::array<Float_t, MAX_RECO_LEP> reco_lep_eta = {0.0};
-    std::array<Float_t, MAX_RECO_LEP> reco_lep_phi = {0.0};
-    std::array<Float_t, MAX_RECO_LEP> reco_lep_mass = {0.0};
-    std::array<Int_t, MAX_RECO_LEP> reco_lep_type = {0};
-    std::array<Int_t, MAX_RECO_LEP> reco_lep_gen_kind = {0};
+    // 6x4x2 = 48
+    std::array<Float_t, MAX_RECO_LEP> reco_lep_pt = {};
+    std::array<Float_t, MAX_RECO_LEP> reco_lep_eta = {};
+    std::array<Float_t, MAX_RECO_LEP> reco_lep_phi = {};
+    std::array<Float_t, MAX_RECO_LEP> reco_lep_mass = {};
+    std::array<Int_t, MAX_RECO_LEP> reco_lep_type = {};
+    std::array<Int_t, MAX_RECO_LEP> reco_lep_gen_kind = {};
 
-    // gen objects
-    // std::array<Float_t, MAX_GEN_JET> gen_jet_pt = {0.0};
-    // std::array<Float_t, MAX_GEN_JET> gen_jet_eta = {0.0};
-    // std::array<Float_t, MAX_GEN_JET> gen_jet_phi = {0.0};
-    // std::array<Float_t, MAX_GEN_JET> gen_jet_mass = {0.0};
-
-    std::array<Float_t, MAX_GEN_QUARK> gen_quark_pt = {0.0};
-    std::array<Float_t, MAX_GEN_QUARK> gen_quark_eta = {0.0};
-    std::array<Float_t, MAX_GEN_QUARK> gen_quark_phi = {0.0};
-    std::array<Float_t, MAX_GEN_QUARK> gen_quark_mass = {0.0};
-
-    std::array<Float_t, MAX_GEN_LEP> gen_lep_pt = {0.0};
-    std::array<Float_t, MAX_GEN_LEP> gen_lep_eta = {0.0};
-    std::array<Float_t, MAX_GEN_LEP> gen_lep_phi = {0.0};
-    std::array<Float_t, MAX_GEN_LEP> gen_lep_mass = {0.0};
-
-    std::array<Float_t, MAX_GEN_NU> gen_nu_pt = {0.0};
-    std::array<Float_t, MAX_GEN_NU> gen_nu_eta = {0.0};
-    std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {0.0};
-    std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {0.0};
-
-    // Float_t gen_met_pt = 0.0;
-    // Float_t gen_met_phi = 0.0;
-
+    // 2x4 = 8
     Float_t reco_met_pt = 0.0;
     Float_t reco_met_phi = 0.0;
 
+    // 8
     ULong64_t event_id = 0;
 
+    // 4
     int n_reco_jet = 0;
-    int n_gen_jet = 0;
+
+    #ifdef DEBUG 
+        // gen objects
+        std::array<Float_t, MAX_GEN_JET> gen_jet_pt = {};
+        std::array<Float_t, MAX_GEN_JET> gen_jet_eta = {};
+        std::array<Float_t, MAX_GEN_JET> gen_jet_phi = {};
+        std::array<Float_t, MAX_GEN_JET> gen_jet_mass = {};
+
+        // 4x4x4 = 64
+        std::array<Float_t, MAX_GEN_QUARK> gen_quark_pt = {};
+        std::array<Float_t, MAX_GEN_QUARK> gen_quark_eta = {};
+        std::array<Float_t, MAX_GEN_QUARK> gen_quark_phi = {};
+        std::array<Float_t, MAX_GEN_QUARK> gen_quark_mass = {};
+
+        // 4x4x4 = 64
+        std::array<Float_t, MAX_GEN_LEP> gen_lep_pt = {};
+        std::array<Float_t, MAX_GEN_LEP> gen_lep_eta = {};
+        std::array<Float_t, MAX_GEN_LEP> gen_lep_phi = {};
+        std::array<Float_t, MAX_GEN_LEP> gen_lep_mass = {};
+
+        // 4x4x4 = 64
+        std::array<Float_t, MAX_GEN_NU> gen_nu_pt = {};
+        std::array<Float_t, MAX_GEN_NU> gen_nu_eta = {};
+        std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {};
+        std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {};
+
+        // 4
+        int n_gen_jet = 0;
+    #endif 
 }; 
 
 #endif
