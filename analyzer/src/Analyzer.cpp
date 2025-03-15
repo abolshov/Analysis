@@ -37,7 +37,7 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
     #endif
     m_storage.ConnectTree(tree, ch);
     ULong64_t n_events = tree->GetEntries();
-    std::chrono::duration<double> average_duration;
+    std::chrono::duration<double> average_duration{};
     for (ULong64_t evt = 0; evt < n_events; ++evt)
     {
         auto process_event_start{std::chrono::steady_clock::now()};
@@ -45,10 +45,9 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
         auto process_event_end{std::chrono::steady_clock::now()};
         std::chrono::duration<double> process_event_duration{process_event_end - process_event_start};
         average_duration += process_event_duration;
-        std::chrono::duration<double, std::milli> avg_dur_ms{average_duration};
         if (evt % 5000 == 0 && evt > 0)
         {
-            std::cout << "===> Processed " << 100.0*evt/n_events << "%, average per event: " << avg_dur_ms.count()/evt << " ms\n";
+            std::cout << "===> Processed " << 100.0*evt/n_events << "%, average per event: " << std::chrono::duration<double, std::milli>(average_duration).count()/counter << " ms\n";
         }
     }
     std::cout << "counter=" << counter << "\n";
@@ -57,7 +56,7 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
     auto process_file_end{std::chrono::steady_clock::now()};
     std::chrono::duration<double> elapsed_seconds{process_file_end - process_file_start};
     std::cout << "Processing " << name << " took " << elapsed_seconds.count() << " seconds\n";
-    std::cout << "Average per event: " << std::chrono::duration<double, std::milli>(average_duration).count()/n_events << " ms\n";
+    std::cout << "Average per event: " << std::chrono::duration<double, std::milli>(average_duration).count()/counter << " ms\n";
 }
 
 void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
