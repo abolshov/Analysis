@@ -32,7 +32,7 @@ build:
 debug: CXXFLAGS += -DDEBUG -g
 debug: all
 
-release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops
+release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt
 release: all
 
 clean:
