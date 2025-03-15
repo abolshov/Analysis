@@ -11,6 +11,7 @@
 int main()
 {
     gROOT->ProcessLine("gErrorIgnoreLevel = 6001;");
+    std::cout << std::setprecision(3);
     TString tree_name = "Events";
     
     std::map<TString, Channel> input_file_map = { { "nano_sl_M800.root", Channel::SL },

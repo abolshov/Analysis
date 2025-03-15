@@ -26,6 +26,8 @@ Analyzer::Analyzer(TString const& tree_name, std::map<TString, Channel> const& i
 
 void Analyzer::ProcessFile(TString const& name, Channel ch)
 {
+    std::cout << "Start processing " << name << "\n";
+    auto process_file_start{std::chrono::steady_clock::now()};
     TFile* file = TFile::Open(name);
     TTree* tree = static_cast<TTree*>(file->Get<TTree>(m_tree_name));
 
@@ -33,16 +35,29 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
         TString dbg_file_name = ch == Channel::SL ? "hme_iter_sl.root" : "hme_iter_dl.root";
         m_estimator.OpenDbgFile(dbg_file_name, ch);
     #endif
-
     m_storage.ConnectTree(tree, ch);
     ULong64_t n_events = tree->GetEntries();
+    std::chrono::duration<double> average_duration;
     for (ULong64_t evt = 0; evt < n_events; ++evt)
     {
+        auto process_event_start{std::chrono::steady_clock::now()};
         ProcessEvent(evt, tree, ch);
+        auto process_event_end{std::chrono::steady_clock::now()};
+        std::chrono::duration<double> process_event_duration{process_event_end - process_event_start};
+        average_duration += process_event_duration;
+        std::chrono::duration<double, std::milli> avg_dur_ms{average_duration};
+        if (evt % 5000 == 0 && evt > 0)
+        {
+            std::cout << "===> Processed " << 100.0*evt/n_events << "%, average per event: " << avg_dur_ms.count()/evt << " ms\n";
+        }
     }
     std::cout << "counter=" << counter << "\n";
     m_hm.Draw();
     file->Close();
+    auto process_file_end{std::chrono::steady_clock::now()};
+    std::chrono::duration<double> elapsed_seconds{process_file_end - process_file_start};
+    std::cout << "Processing " << name << " took " << elapsed_seconds.count() << " seconds\n";
+    std::cout << "Average per event: " << std::chrono::duration<double, std::milli>(average_duration).count()/n_events << " ms\n";
 }
 
 void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
@@ -58,7 +73,6 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
     VecLVF_t jets = GetRecoJetP4(m_storage);
     VecLVF_t leptons = GetRecoLepP4(m_storage, ch);
     LorentzVectorF_t met = GetRecoMET(m_storage);
-
     
     #ifdef DEBUG 
         if (!IsRecoverable(m_storage, ch))
