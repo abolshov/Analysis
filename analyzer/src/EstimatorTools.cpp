@@ -20,6 +20,7 @@ OptPairF_t ComputeJetResc(LorentzVectorF_t const& p1, LorentzVectorF_t const& p2
     Float_t x2 = 2.0*c1*(p1.Dot(p2));
     Float_t x3 = c1*c1*p1.M2() - mass*mass;
     Float_t discrim = x2*x2 - 4.0*x1*x3;
+    // maybe I should not be requiring x2 > 0 when using this function to compute light jet corrections?
     if (x2 >= 0.0 && x1 != 0.0 && discrim >= 0.0)
     {
         Float_t c2 = (-x2 + std::sqrt(discrim))/(2.0*x1);
