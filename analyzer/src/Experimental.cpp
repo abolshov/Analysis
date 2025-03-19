@@ -4,6 +4,25 @@ namespace Experimental
 {
     namespace SL 
     {
+        std::optional<Float_t> ComputeSublRescFromMassConstr(LorentzVectorF_t const& lead_jet,
+                                                             LorentzVectorF_t const& subl_jet,
+                                                             Float_t lead_resc, Float_t mass)
+        {
+            Float_t x1 = subl_jet.M2();
+            Float_t x2 = 2.0*lead_resc*(lead_jet.Dot(subl_jet));
+            Float_t x3 = lead_resc*lead_resc*lead_jet.M2() - mass*mass;
+            Float_t discrim = x2*x2 - 4.0*x1*x3;
+            if (x2 > 0.0 && x1 != 0.0 && discrim > 0.0)
+            {
+                Float_t subl_resc = (-x2 + std::sqrt(discrim))/(2.0*x1);
+                if (subl_resc > 0.0)
+                {
+                    return std::make_optional<subl_resc>;
+                }
+            }
+            return std::nullopt;
+        }   
+
         ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, 
                                                  HistVec_t<TH1F> const& pdfs_1d,
                                                  HistVec_t<TH2F> const& pdfs_2d, 
@@ -52,6 +71,25 @@ namespace Experimental
 
                 Float_t bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
                 Float_t bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
+
+                LorentzVectorF_t j1 = lj1;
+                LorentzVectorF_t j2 = lj2;
+
+                Double_t lead_resc = 1.0;
+                Double_t mWhad = 1.0;
+                pdf_c3mWhad>GetRandom2(lead_resc, mWhad, prg.get());
+                auto subl_resc = ComputeSublRescFromMassConstr(j1, j2, lead_resc, mWhad);
+                if (!subl_resc.has_value())
+                {
+                    continue;
+                }
+
+                Float_t c3 = lead_resc;
+                Float_t c4 = subl_resc.value();
+                Float_t ljet_resc_dpx = -1.0*(c3 - 1)*lj1.Px() - (c4 - 1)*lj2.Px();
+                Float_t ljet_resc_dpy = -1.0*(c3 - 1)*lj1.Py() - (c4 - 1)*lj2.Py();
+                j1 *= c3;
+                j2 *= c4;
             }
         }
     }
