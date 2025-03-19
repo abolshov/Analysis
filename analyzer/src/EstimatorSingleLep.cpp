@@ -100,8 +100,8 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
             Float_t mWlep = lepW_onshell ? mw1 : mw2;
             Float_t mWhad = lepW_onshell ? mw2 : mw1;
 
-            j1[control] = lj1.Pt() > lj2.Pt() ? lj1 : lj2;
-            j2[control] = lj1.Pt() > lj2.Pt() ? lj2 : lj1;
+            j1[control] = lj1;
+            j2[control] = lj2;
             auto lresc = ComputeJetResc(j1[control], j2[control], pdf_q1, mWhad);
             if (!lresc.has_value())
             {
@@ -112,7 +112,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
             std::tie(c3[control], c4[control]) = lresc.value();
             j1[control] *= c3[control];
             j2[control] *= c4[control];
-
+            
             ljet_resc_dpx[control] = -1.0*(c3[control] - 1)*lj1.Px() - (c4[control] - 1)*lj2.Px();
             ljet_resc_dpy[control] = -1.0*(c3[control] - 1)*lj1.Py() - (c4[control] - 1)*lj2.Py();
 
