@@ -21,7 +21,17 @@ namespace Experimental
                 }
             }
             return std::nullopt;
-        }   
+        }  
+        
+        Float_t GenerateLepWMass(UHist_t<TH1F>& pdf, std::unique_ptr<TRandom3>& prg, Float_t mh, Float_t mWhad)
+        {
+            Float_t mWlep = pdf->GetRandom(prg.get());
+            while (mWlep + mWhad > mh)
+            {
+                mWlep = pdf->GetRandom(prg.get());
+            }
+            return mWlep;
+        }
 
         ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, 
                                                  HistVec_t<TH1F> const& pdfs_1d,
@@ -43,6 +53,9 @@ namespace Experimental
 
             UHist_t<TH2F>& pdf_c1c2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::c1c2)];
             UHist_t<TH2F>& pdf_c3mWhad = m_pdf_2d[static_cast<size_t>(PDF2_sl::c3mWhad)];
+
+            UHist_t<TH1F>& pdf_mWoffshell = m_pdf_2d[static_cast<size_t>(PDF1_sl::mWoffshell)];
+            UHist_t<TH1F>& pdf_mWonshell = m_pdf_2d[static_cast<size_t>(PDF1_sl::mWonshell)];
 
             TString title = Form("X->HH mass: event %llu, comb %s", evt_id, comb_label.Data());
             auto res_mass = std::make_unique<TH1F>("X_mass", title, N_BINS, MIN_MASS, MAX_MASS);
@@ -77,7 +90,7 @@ namespace Experimental
 
                 Double_t lead_resc = 1.0;
                 Double_t mWhad = 1.0;
-                pdf_c3mWhad>GetRandom2(lead_resc, mWhad, prg.get());
+                pdf_c3mWhad->GetRandom2(lead_resc, mWhad, prg.get());
                 auto subl_resc = ComputeSublRescFromMassConstr(j1, j2, lead_resc, mWhad);
                 if (!subl_resc.has_value())
                 {
@@ -90,7 +103,70 @@ namespace Experimental
                 Float_t ljet_resc_dpy = -1.0*(c3 - 1)*lj1.Py() - (c4 - 1)*lj2.Py();
                 j1 *= c3;
                 j2 *= c4;
+                
+                LorentzVectorF_t hadW = j1 + j2;
+
+                Float_t mWlep_offshell = GenerateLepWMass(pdf_mWoffshell, prg, mh, mWhad);
+                Float_t mWlep_onshell = GenerateLepWMass(pdf_mWonshell, prg, mh, mWhad);
+
+                Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx[control] + smear_dpx;
+                Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy[control] + smear_dpy;
+
+                Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
+                Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
+                LorentzVectorF_t met_corr = LorentzVectorF_t(met_corr_pt, 0.0, met_corr_phi, 0.0);
+                
+                std::vector<Float_t> masses;
+                std::array<LorentzVectorF_t, CONTROL> lepW{};
+                std::array<LorentzVectorF_t, CONTROL> Hww{};
+                std::array<LorentzVectorF_t, CONTROL> Xhh{};
+                std::array<LorentzVectorF_t, CONTROL> nu{};
+                for (int control = 0; control < CONTROL; ++control)
+                {
+                    bool lepW_onshell = control / 2;
+                    bool add_deta = control % 2;
+                    Float_t mWlep = lepW_onshell ? mWlep_offshell : mWlep_onshell;
+                    auto opt_nu = NuFromW(lep, met_corr, add_deta, mWlep);
+                    if (opt_nu.has_value())
+                    {
+                        nu[control] = opt_nu.value();
+                        lepW[control] = nu[control] + lep;
+                        Hww[control] = lepW[control] + hadW;
+                        Xhh[control] = Hww[control] + Hbb;
+                        mass[control] = Xhh[control].M();
+                        correct_hww_mass[control] = (std::abs(mh - Hww[control].M()) < 1.0);
+                        if (!correct_hww_mass[control])
+                        {
+                            continue;
+                        }
+                        masses.push_back(mass[control]);
+                    }
+                }
+
+                if (masses.empty())
+                {
+                    continue;
+                }
+
+                Int_t num_sol = masses.size();
+                Float_t weight = 1.0/num_sol;
+                for (auto mass: masses)
+                {
+                    res_mass->Fill(mass, weight);
+                }
             }
+
+            Float_t integral = res_mass->Integral();
+            if (res_mass->GetEntries() && integral > 0.0)
+            {
+                int binmax = m_res_mass->GetMaximumBin(); 
+                res[static_cast<size_t>(EstimOut::mass)] = res_mass->GetXaxis()->GetBinCenter(binmax);
+                res[static_cast<size_t>(EstimOut::peak_value)] = res_mass->GetBinContent(binmax);
+                res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(res_mass, Q16, Q84);
+                res[static_cast<size_t>(EstimOut::integral)] = integral;
+                return res;
+            }
+            return res;
         }
     }
 }

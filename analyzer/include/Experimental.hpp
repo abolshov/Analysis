@@ -13,8 +13,10 @@ namespace Experimental
     {
         std::optional<Float_t> ComputeSublRescFromMassConstr(LorentzVectorF_t const& lead_jet,
                                                              LorentzVectorF_t const& subl_jet,
-                                                             Float_t lead_resc, Float_t mass)
+                                                             Float_t lead_resc, Float_t mass);
 
+        Float_t GenLepWMass(UHist_t<TH1F>& pdf, std::unique_ptr<TRandom3>& prg, Float_t mh, Float_t mWhad);
+        
         ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, 
                                                  HistVec_t<TH1F> const& pdfs_1d,
                                                  HistVec_t<TH2F> const& pdfs_2d, 
