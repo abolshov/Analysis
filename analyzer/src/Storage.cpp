@@ -30,13 +30,6 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("PuppiMET_phi", &reco_met_phi);
 
     #ifdef DEBUG
-        // genjet data
-        tree->SetBranchAddress("ncentralGenJet", &n_gen_jet);
-        tree->SetBranchAddress("centralGenJet_pt", gen_jet_pt.data());
-        tree->SetBranchAddress("centralGenJet_eta", gen_jet_eta.data());
-        tree->SetBranchAddress("centralGenJet_phi", gen_jet_phi.data());
-        tree->SetBranchAddress("centralGenJet_mass", gen_jet_mass.data());
-
         tree->SetBranchAddress("genV1prod1_pt", gen_lep_pt.data() + static_cast<size_t>(Lep::lep1));
         tree->SetBranchAddress("genV1prod1_eta", gen_lep_eta.data() + static_cast<size_t>(Lep::lep1));
         tree->SetBranchAddress("genV1prod1_phi", gen_lep_phi.data() + static_cast<size_t>(Lep::lep1));

@@ -15,7 +15,7 @@
 Analyzer::Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, std::map<Channel, TString> const& pdf_file_map)
 :   m_file_map(input_file_map)
 ,   m_tree_name(tree_name)  
-,   m_estimator(pdf_file_map.at(Channel::SL), pdf_file_map.at(Channel::DL))
+,   m_estimator(pdf_file_map.at(Channel::SL), pdf_file_map.at(Channel::DL), AggregationMode::Combination)
 {
     TH1::AddDirectory(false);
     m_hm.Add("hme_mass", "HME X->HH mass", {"X->HH mass, [GeV]", "Count"}, {0, 2500}, 100);
@@ -35,6 +35,7 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
         TString dbg_file_name = ch == Channel::SL ? "hme_iter_sl.root" : "hme_iter_dl.root";
         m_estimator.OpenDbgFile(dbg_file_name, ch);
     #endif
+
     m_storage.ConnectTree(tree, ch);
     ULong64_t n_events = tree->GetEntries();
     std::chrono::duration<double> average_duration{};

@@ -11,8 +11,8 @@ using ROOT::Math::VectorUtil::DeltaPhi;
 #include "EstimatorUtils.hpp"
 #include "EstimatorTools.hpp"
 
-EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name)
-:   EstimatorBase()
+EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name, AggregationMode aggr_mode)
+:   EstimatorBase(aggr_mode)
 ,   m_iter_data(std::make_unique<IterData>())
 {
     m_pdf_1d.resize(pdf1d_sl_names.size());
@@ -41,7 +41,11 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
     UHist_t<TH2F>& pdf_mw1mw2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::mw1mw2)];
 
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
-    m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt_id, comb_label.Data()));
+
+    if (m_aggr_mode == AggregationMode::Combination)
+    {
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt_id, comb_label.Data()));
+    }
     
     [[maybe_unused]] TString tree_name = Form("evt_%llu_%s", evt_id, comb_label.Data());
     if (m_recorder.ShouldRecord())
@@ -245,6 +249,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
         }
     }
 
+    // combination data is returned in any case for further analysis
     Float_t integral = m_res_mass->Integral();
     if (m_res_mass->GetEntries() && integral > 0.0)
     {
@@ -260,6 +265,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
         res[static_cast<size_t>(EstimOut::integral)] = integral;
         return res;
     }
+    
     return res;
 }
 
@@ -272,6 +278,13 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
     std::vector<ArrF_t<ESTIM_OUT_SZ>> results;
     std::vector<Float_t> masses, inv_widths, integrals, peaks;
     size_t num_bjets = jets.size() < NUM_BEST_BTAG ? jets.size() : NUM_BEST_BTAG;
+
+    // in case when aggregating estimations for all combinations into one distribution
+    // name contains only event ID
+    if (m_aggr_mode == AggregationMode::Event)
+    {
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", evt_id));
+    }
 
     std::unordered_set<size_t> used;
     for (size_t bj1_idx = 0; bj1_idx < num_bjets; ++bj1_idx)
@@ -329,7 +342,13 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
                         peaks.push_back(comb_result[static_cast<size_t>(EstimOut::peak_value)]);
                         integrals.push_back(comb_result[static_cast<size_t>(EstimOut::integral)]);
                     }
-                    ResetHist(m_res_mass);
+
+                    // reset m_res_mass and use "clean" hist to build distribution for each combination
+                    // else keep filling histogram and only reset it when moving to another event
+                    if (m_aggr_mode == AggregationMode::Combination)
+                    {
+                        ResetHist(m_res_mass);
+                    }
                     used.erase(lj2_idx);
                 }
                 used.erase(lj1_idx);
@@ -341,8 +360,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
 
     if (!results.empty())
     {
-        size_t choice = 0;
-        if (results.size() > 1)
+        if (m_aggr_mode == AggregationMode::Combination)
         {
             // MinMaxTransform(integrals.begin(), integrals.end());
             // MinMaxTransform(inv_widths.begin(), inv_widths.end());
@@ -362,10 +380,27 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
             // }
 
             auto it = std::max_element(masses.begin(), masses.end());
-            choice = it - masses.begin();
+            size_t choice = it - masses.begin();
+            ResetHist(m_res_mass);
+            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
         }
-        return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
+        else if (m_aggr_mode == AggregationMode::Event)
+        {
+            ArrF_t<ESTIM_OUT_SZ> res{};
+            int binmax = m_res_mass->GetMaximumBin(); 
+            res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+            res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
+            res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+            res[static_cast<size_t>(EstimOut::integral)] = m_res_mass->Integral();
+            ResetHist(m_res_mass);
+            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(res);
+        }
+        else 
+        {
+            throw std::runtime_error("Unknown strategy to aggregate combination data to estimate event mass");
+        }
     }
+    ResetHist(m_res_mass);
     return std::nullopt;
 }
 

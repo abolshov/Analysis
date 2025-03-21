@@ -42,11 +42,6 @@ struct Storage
 
     #ifdef DEBUG 
         // gen objects
-        std::array<Float_t, MAX_GEN_JET> gen_jet_pt = {};
-        std::array<Float_t, MAX_GEN_JET> gen_jet_eta = {};
-        std::array<Float_t, MAX_GEN_JET> gen_jet_phi = {};
-        std::array<Float_t, MAX_GEN_JET> gen_jet_mass = {};
-
         // 4x4x4 = 64
         std::array<Float_t, MAX_GEN_QUARK> gen_quark_pt = {};
         std::array<Float_t, MAX_GEN_QUARK> gen_quark_eta = {};

@@ -19,8 +19,8 @@ void ResetObject(T& object)
 class EstimatorBase
 {
     public:
-    EstimatorBase();
-    explicit EstimatorBase(TString const& dbg_file_name);
+    explicit EstimatorBase(AggregationMode aggr_mode);
+    EstimatorBase(TString const& dbg_file_name, AggregationMode aggr_mode);
     virtual ~EstimatorBase() = default;
 
     virtual ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) = 0;
@@ -33,6 +33,7 @@ class EstimatorBase
     std::unique_ptr<TRandom3> m_prg;
     UHist_t<TH1F> m_res_mass;
     EstimationRecorder m_recorder; 
+    AggregationMode m_aggr_mode;
 
     virtual std::unique_ptr<TTree> MakeTree(TString const& tree_name) = 0;
 };

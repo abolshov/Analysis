@@ -8,7 +8,7 @@
 class EstimatorDoubleLep final : public EstimatorBase
 {
     public:
-    explicit EstimatorDoubleLep(TString const& pdf_file_name);
+    EstimatorDoubleLep(TString const& pdf_file_name, AggregationMode aggr_mode);
     ~EstimatorDoubleLep() override = default;
 
     ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) override;

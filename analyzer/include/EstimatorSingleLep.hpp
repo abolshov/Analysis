@@ -8,7 +8,7 @@
 class EstimatorSingleLep final : public EstimatorBase
 {
     public:
-    explicit EstimatorSingleLep(TString const& pdf_file_name);
+    EstimatorSingleLep(TString const& pdf_file_name, AggregationMode aggr_mode);
     ~EstimatorSingleLep() override = default;
 
     ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) override;

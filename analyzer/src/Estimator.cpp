@@ -1,8 +1,8 @@
 #include "Estimator.hpp"
 
-Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl)
-:   m_estimator_sl(pdf_file_name_sl)
-,   m_estimator_dl(pdf_file_name_dl)
+Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_name_dl, AggregationMode aggr_mode)
+:   m_estimator_sl(pdf_file_name_sl, aggr_mode)
+,   m_estimator_dl(pdf_file_name_dl, aggr_mode)
 {}
 
 OptArrF_t<ESTIM_OUT_SZ> Estimator::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id, Channel ch)
