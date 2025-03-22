@@ -3,6 +3,7 @@ import numpy as np
 import vector
 import awkward as ak
 import matplotlib.pyplot as plt
+import os
 
 
 sample_type_map = {1: "GluGluToRadion",
@@ -34,7 +35,7 @@ class CutTracker():
         last_cut = cut_lst[-1]
         print(f"{last_cut}: {self.cutflow[last_cut]}")
 
-    def PlotCutflow(self, show=False, percentages=False):
+    def PlotCutflow(self, show=False, percentages=False, save_path=None):
         cut_names = self.cutflow.keys()
         passed_evt_info = list(self.cutflow.values())
         if percentages:
@@ -44,15 +45,28 @@ class CutTracker():
         title = f"Cutflow {self.sample_type} M={self.masspoint}" if (self.sample_type and self.masspoint) else "Cutflow"
         ax.set(ylabel='Number of events passed', title=title)
         if percentages:
-            ax.bar_label(bar_container, fmt=lambda x: f"{x:.1f}%")
+            ax.bar_label(bar_container, fmt=lambda x: f"{x:.1f}%", fontsize=8)
         else:
-            ax.bar_label(bar_container, fmt=lambda x: int(x))
-        ax.set_xticklabels(cut_names, rotation=45, ha='right')
-        
+            ax.bar_label(bar_container, fmt=lambda x: int(x), fontsize=8)
+        plt.xticks(rotation=45, ha='right')
+
         if show:
             plt.show()
 
         if self.sample_type and self.masspoint:
-            plt.savefig(f"cutflow_{self.sample_type}_M{self.masspoint}.png")
+            if save_path:
+                plt.savefig(os.path.join(save_path, f"cutflow_{self.sample_type}_M{self.masspoint}.pdf"), format='pdf', bbox_inches='tight')
+            else:
+                plt.savefig(f"cutflow_{self.sample_type}_M{self.masspoint}.pdf", format='pdf', bbox_inches='tight')
         else:
-            plt.savefig(f"cutflow_{self.sample_key}.png")
+            if save_path:
+                plt.savefig(os.path.join(save_path, f"{save_path}cutflow_{self.sample_key}.pdf"), format='pdf', bbox_inches='tight')
+            else:
+                plt.savefig(f"cutflow_{self.sample_key}.pdf", format='pdf', bbox_inches='tight')
+        plt.close()
+
+    def GetSelectedEvents(self):
+        return self.branches
+
+    def NumEventsSelected(self):
+        return len(self.branches)
