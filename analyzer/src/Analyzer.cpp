@@ -48,7 +48,9 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
         average_duration += process_event_duration;
         if (evt % 5000 == 0 && evt > 0)
         {
-            std::cout << "===> Processed " << 100.0*evt/n_events << "%, average per event: " << std::chrono::duration<double, std::milli>(average_duration).count()/counter << " ms\n";
+            std::cout << "===> Processed " << 100.0*evt/n_events << "%, time elapsed " 
+                      << std::chrono::duration<double>(average_duration).count() << " s, average time per event: " 
+                      << std::chrono::duration<double, std::milli>(average_duration).count()/counter << " ms\n";
         }
     }
     std::cout << "counter=" << counter << "\n";

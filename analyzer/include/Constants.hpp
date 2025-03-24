@@ -50,7 +50,7 @@ inline constexpr Float_t HIGGS_MASS = 125.03;
 inline constexpr Float_t HIGGS_WIDTH = 0.004;
 inline constexpr Float_t TOL = 10e-7;
 inline constexpr int N_ATTEMPTS = 1;
-inline constexpr int N_ITER = 5000;
+inline constexpr int N_ITER = 10000;
 inline constexpr int CONTROL = 4;
 
 inline constexpr Float_t MAX_MASS = 4000.0;
@@ -73,7 +73,7 @@ inline static const std::unordered_map<PDF1_sl, TString> pdf1d_sl_names = { { PD
                                                                             { PDF1_sl::mww, "pdf_mww_narrow" },
                                                                             { PDF1_sl::hh_deta, "pdf_hh_deta" },
                                                                             { PDF1_sl::q1, "pdf_q1" },
-                                                                            { PDF1_sl::b1, "pdf_b1" },
+                                                                            { PDF1_sl::b1, "pdf_b1" }, 
                                                                             { PDF1_sl::mWonshell, "pdf_mWonshell" },
                                                                             { PDF1_sl::mWoffshell, "pdf_mWoffshell" } };
 

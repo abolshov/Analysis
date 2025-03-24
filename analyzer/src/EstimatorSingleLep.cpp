@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <numeric>
 #include <unordered_set>
+#include <ranges>
 
 #include "TVector2.h"
 #include "Math/GenVector/VectorUtil.h" // DeltaPhi
@@ -332,7 +333,18 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
                     }
 
                     TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
-                    ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
+                    // ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
+                    #ifdef EXPERIMENTAL 
+                        ArrF_t<ESTIM_OUT_SZ> comb_result = Experimental::SL::EstimateCombination(particles, 
+                                                                                                 m_pdf_1d,
+                                                                                                 m_pdf_2d,
+                                                                                                 m_res_mass,
+                                                                                                 m_prg,                                                                        
+                                                                                                 evt_id, 
+                                                                                                 comb_label);
+                    #else 
+                        ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
+                    #endif
 
                     if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
                     {
@@ -379,8 +391,12 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
             //     }
             // }
 
-            auto it = std::max_element(masses.begin(), masses.end());
-            size_t choice = it - masses.begin();
+            // auto it = std::max_element(masses.begin(), masses.end());
+            // size_t choice = it - masses.begin();
+
+            auto it = std::ranges::max_element(integrals);
+            size_t choice = it - integrals.begin();
+
             ResetHist(m_res_mass);
             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
         }

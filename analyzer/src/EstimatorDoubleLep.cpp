@@ -98,7 +98,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
         // lep1 comes from offshell W and lep2 comes from onshell W
         // when neutrino is computed in each case again two options are possible: delta_eta is added or subtracted to nu
         // in total: 4 combinations; they are encoded in this for loop
-        for (int control = 0; control < CONTROL; ++j)
+        for (int control = 0; control < CONTROL; ++control)
         {
             int is_onshell = control / 2;
             if (is_onshell == 0) 
@@ -163,7 +163,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
 
         if (m_recorder.ShouldRecord())
         {
-            for (int control = 0; control < CONTROL; ++i)
+            for (int control = 0; control < CONTROL; ++control)
             {
                 m_iter_data->offshellW_pt[control] = offshellW[control].Pt();
                 m_iter_data->offshellW_eta[control] = offshellW[control].Eta();
