@@ -29,7 +29,7 @@ void Storage::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("PuppiMET_pt", &reco_met_pt);
     tree->SetBranchAddress("PuppiMET_phi", &reco_met_phi);
 
-    #ifdef DEBUG
+    #ifdef DEV
         tree->SetBranchAddress("genV1prod1_pt", gen_lep_pt.data() + static_cast<size_t>(Lep::lep1));
         tree->SetBranchAddress("genV1prod1_eta", gen_lep_eta.data() + static_cast<size_t>(Lep::lep1));
         tree->SetBranchAddress("genV1prod1_phi", gen_lep_phi.data() + static_cast<size_t>(Lep::lep1));

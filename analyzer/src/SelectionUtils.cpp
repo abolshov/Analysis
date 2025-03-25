@@ -1,4 +1,4 @@
-#ifdef DEBUG
+#ifdef DEV
     #include "SelectionUtils.hpp"
     #include "MatchingTools.hpp"
 

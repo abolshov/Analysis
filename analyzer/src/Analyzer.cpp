@@ -2,7 +2,7 @@
 #include "Definitions.hpp"
 #include "EstimatorUtils.hpp"
 
-#ifdef DEBUG
+#ifdef DEV
     #include "MatchingTools.hpp"
     #include "SelectionUtils.hpp"
 #endif 
@@ -31,7 +31,7 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
     TFile* file = TFile::Open(name);
     TTree* tree = static_cast<TTree*>(file->Get<TTree>(m_tree_name));
 
-    #ifdef DEBUG
+    #ifdef DEV
         if (m_record_iterations)
         {
             TString dbg_file_name = ch == Channel::SL ? "hme_iter_sl.root" : "hme_iter_dl.root";
@@ -79,7 +79,7 @@ void Analyzer::ProcessEvent(ULong64_t evt, TTree* tree, Channel ch)
     VecLVF_t leptons = GetRecoLepP4(m_storage, ch);
     LorentzVectorF_t met = GetRecoMET(m_storage);
     
-    #ifdef DEBUG 
+    #ifdef DEV 
         if (!IsRecoverable(m_storage, ch))
         {
             return;

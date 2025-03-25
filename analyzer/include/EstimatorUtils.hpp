@@ -41,7 +41,7 @@ VecLVF_t GetRecoJetP4(Storage const& s);
 VecLVF_t GetRecoLepP4(Storage const& s, Channel ch);
 std::vector<Float_t> GetPNetRes(Storage const& s);
 
-#ifdef DEBUG
+#ifdef DEV
     // inline LorentzVectorF_t GetGenMET(Storage const& s) { return LorentzVectorF_t(s.gen_met_pt, 0.0, s.gen_met_phi, 0.0); }
     // VecLVF_t GetGenJetP4(Storage const& s);
     VecLVF_t GetGenLepP4(Storage const& s, Channel ch);

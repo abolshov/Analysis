@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <numeric>
 #include <unordered_set>
-#include <ranges>
 
 #include "TVector2.h"
 #include "Math/GenVector/VectorUtil.h" // DeltaPhi
@@ -394,7 +393,8 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
             // auto it = std::max_element(masses.begin(), masses.end());
             // size_t choice = it - masses.begin();
 
-            auto it = std::ranges::max_element(integrals);
+            // auto it = std::ranges::max_element(integrals);
+            auto it = std::max_element(integrals.begin(), integrals.end());
             size_t choice = it - integrals.begin();
 
             ResetHist(m_res_mass);

@@ -40,7 +40,7 @@ struct Storage
     // 4
     int n_reco_jet = 0;
 
-    #ifdef DEBUG 
+    #ifdef DEV 
         // gen objects
         // 4x4x4 = 64
         std::array<Float_t, MAX_GEN_QUARK> gen_quark_pt = {};

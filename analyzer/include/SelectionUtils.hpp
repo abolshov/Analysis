@@ -1,7 +1,7 @@
 #ifndef SELEC_UTILS_HPP
 #define SELEC_UTILS_HPP
 
-#ifdef DEBUG
+#ifdef DEV
     #include "Storage.hpp"
 
     // true if event is passing a selection, false otherwise

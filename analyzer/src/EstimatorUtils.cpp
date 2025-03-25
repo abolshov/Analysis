@@ -95,7 +95,7 @@ Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)
     return static_cast<Float_t>(yq[r - 1] - yq[l - 1]);
 }
 
-#ifdef DEBUG
+#ifdef DEV
     // VecLVF_t GetGenJetP4(Storage const& s)
     // {
     //     VecLVF_t res;
