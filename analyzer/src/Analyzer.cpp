@@ -32,8 +32,11 @@ void Analyzer::ProcessFile(TString const& name, Channel ch)
     TTree* tree = static_cast<TTree*>(file->Get<TTree>(m_tree_name));
 
     #ifdef DEBUG
-        TString dbg_file_name = ch == Channel::SL ? "hme_iter_sl.root" : "hme_iter_dl.root";
-        m_estimator.OpenDbgFile(dbg_file_name, ch);
+        if (m_record_iterations)
+        {
+            TString dbg_file_name = ch == Channel::SL ? "hme_iter_sl.root" : "hme_iter_dl.root";
+            m_estimator.OpenDbgFile(dbg_file_name, ch);
+        }
     #endif
 
     m_storage.ConnectTree(tree, ch);

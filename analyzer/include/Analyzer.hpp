@@ -23,6 +23,7 @@ class Analyzer
     TString m_tree_name;
     Estimator m_estimator;
     HistManager m_hm;
+    bool m_record_iterations = false;
 
     inline static int counter = 0;
 
