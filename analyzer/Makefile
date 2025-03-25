@@ -1,4 +1,4 @@
-CXX      := g++
+CXX      := clang++
 CXXFLAGS := -pedantic-errors -Wall -Wextra `root-config --cflags `
 LDFLAGS	 := `root-config --glibs `
 BUILD    := ./build
@@ -23,7 +23,7 @@ $(APP_DIR)/$(TARGET): $(OBJECTS)
 
 -include $(DEPENDENCIES)
 
-.PHONY: all experimental build clean debug release info
+.PHONY: all build clean debug dev release info all
 
 build:
 	@mkdir -p $(APP_DIR)
@@ -32,11 +32,14 @@ build:
 debug: CXXFLAGS += -DDEBUG -g -fsanitize=address,undefined,leak
 debug: all
 
-release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt
-release: all
+dev: CXXFLAGS += -O2 -DDEV
+dev: all
 
-experimental: CXXFLAGS += -O2 -DEXPERIMENTAL -DDEBUG
+experimental: CXXFLAGS += -O2 -DDEV -DEXPERIMENTAL
 experimental: all
+
+release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt -ffast-math
+release: all
 
 clean:
 	-@rm -rvf $(OBJ_DIR)/*
