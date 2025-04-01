@@ -15,8 +15,8 @@ class EstimatorSingleLep final : public EstimatorBase
     EstimatorSingleLep(TString const& pdf_file_name, AggregationMode aggr_mode);
     ~EstimatorSingleLep() override = default;
 
-    ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label) override;
-    OptArrF_t<ESTIM_OUT_SZ> EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) override;
+    ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, TString const& comb_label) override;
+    OptArrF_t<ESTIM_OUT_SZ> EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) override;
 
     private: 
     struct IterData;
@@ -91,8 +91,8 @@ struct EstimatorSingleLep::IterData
     Float_t mh{0.0};
     Float_t mw1{0.0};
     Float_t mw2{0.0};
-    Float_t smear_dpx{0.0};
-    Float_t smear_dpy{0.0};
+    Float_t unclust_dpx{0.0};
+    Float_t unclust_dpy{0.0};
     Float_t bjet_resc_dpx{0.0};
     Float_t bjet_resc_dpy{0.0};
     Float_t weight{0.0};
