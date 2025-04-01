@@ -52,7 +52,7 @@ void Analyzer::ProcessSample(Sample const& sample)
         }
         else
         {
-            output_file_name = ch == Channel::SL ? Form("hme_sl_%s.root", type.Data()) : Form("hme_dl_M%s.root", type.Data());
+            output_file_name = ch == Channel::SL ? Form("hme_sl_%s.root", type.Data()) : Form("hme_dl_%s.root", type.Data());
         }
         std::cout << "Output data will be recorded to " << output_file_name << "\n";
         m_recorder.OpenFile(output_file_name);
