@@ -13,6 +13,34 @@ LorentzVectorF_t SamplePNetResCorr(LorentzVectorF_t const& jet, std::unique_ptr<
     return LorentzVectorF_t(pt + dpt, jet.Eta(), jet.Phi(), jet.M());
 }
 
+std::pair<Float_t, Float_t> GenerateTotJetCorr(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, std::pair<size_t, size_t>&& cur_jets, std::unique_ptr<TRandom3>& prg)
+{
+    auto&& [sel_jet1_idx, sel_jet2_idx] = cur_jets;
+    Float_t dpx = 0.0f;
+    Float_t dpy = 0.0f;
+    for (size_t i = 0; i < jets.size(); ++i)
+    {
+        if (i == sel_jet1_idx || i == sel_jet2_idx)
+        {
+            continue;
+        }
+
+        Float_t pt = jets[i].Pt();
+        Float_t phi = jets[i].Phi();
+        Float_t dpt = prg->Gaus(0.0, resolutions[i]);
+
+        while (pt + dpt < 0.0)
+        {
+            dpt = prg->Gaus(0.0, resolutions[i]);
+        }
+        
+        pt += dpt;
+        dpx += pt*std::cos(phi);
+        dpy += pt*std::sin(phi);
+    }
+    return {dpx, dpy};
+}
+
 OptPairF_t ComputeJetResc(LorentzVectorF_t const& p1, LorentzVectorF_t const& p2, UHist_t<TH1F>& pdf, Float_t mass)
 {
     Float_t c1 = pdf->GetRandom();

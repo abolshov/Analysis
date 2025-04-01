@@ -5,15 +5,15 @@ Estimator::Estimator(TString const& pdf_file_name_sl, TString const& pdf_file_na
 ,   m_estimator_dl(pdf_file_name_dl, aggr_mode)
 {}
 
-OptArrF_t<ESTIM_OUT_SZ> Estimator::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id, Channel ch)
+OptArrF_t<ESTIM_OUT_SZ> Estimator::EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id, Channel ch)
 {
     if (ch == Channel::SL)
     {
-        return m_estimator_sl.EstimateMass(jets, leptons, met, evt_id);
+        return m_estimator_sl.EstimateMass(jets, resolutions, leptons, met, evt_id);
     }
     else if (ch == Channel::DL)
     {
-        return m_estimator_dl.EstimateMass(jets, leptons, met, evt_id);
+        return m_estimator_dl.EstimateMass(jets, resolutions, leptons, met, evt_id);
     }
     else 
     {

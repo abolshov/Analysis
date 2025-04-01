@@ -24,7 +24,7 @@ EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name, Aggregation
     pf->Close();
 }
 
-ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
+ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, TString const& comb_label)
 {
     ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
@@ -55,8 +55,8 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
         Float_t phi_gen = m_prg->Uniform(-3.1415926, 3.1415926);
         Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
         Float_t mw = pdf_mw_onshell->GetRandom(m_prg.get());
-        Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
-        Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t unclust_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t unclust_dpy = m_prg->Gaus(0.0, MET_SIGMA);
 
         auto bresc = ComputeJetResc(bj1, bj2, pdf_b1, mh);
         if (!bresc.has_value())
@@ -73,8 +73,8 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
         Float_t bjet_resc_dpx = -1.0*(c1 - 1)*bj1.Px() - (c2 - 1)*bj2.Px();
         Float_t bjet_resc_dpy = -1.0*(c1 - 1)*bj1.Py() - (c2 - 1)*bj2.Py();
 
-        Float_t met_corr_px = met.Px() + bjet_resc_dpx + smear_dpx;
-        Float_t met_corr_py = met.Py() + bjet_resc_dpy + smear_dpy;
+        Float_t met_corr_px = met.Px() + bjet_resc_dpx + unclust_dpx;
+        Float_t met_corr_py = met.Py() + bjet_resc_dpy + unclust_dpy;
 
         Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
         Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
@@ -228,8 +228,8 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
             m_iter_data->bjet_resc_fact_2 = c2;
             m_iter_data->mh = mh;
             m_iter_data->mw = mw;
-            m_iter_data->smear_dpx = smear_dpx;
-            m_iter_data->smear_dpy = smear_dpy;
+            m_iter_data->unclust_dpx = unclust_dpx;
+            m_iter_data->unclust_dpy = unclust_dpy;
             m_iter_data->bjet_resc_dpx = bjet_resc_dpx;
             m_iter_data->bjet_resc_dpy = bjet_resc_dpy;
             m_iter_data->weight = weight;
@@ -258,7 +258,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
     return res;
 }
 
-OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
+OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
 {
     VecLVF_t particles(static_cast<size_t>(ObjDL::count));
     particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
@@ -290,7 +290,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, V
             }
 
             TString comb_label = Form("b%zub%zu", bj1_idx, bj2_idx);
-            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
+            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, resolutions, evt_id, comb_label);
 
             // success: mass > 0
             if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
@@ -399,8 +399,8 @@ std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
     tree->Branch("bjet_resc_fact_2", &m_iter_data->bjet_resc_fact_2, "bjet_resc_fact_2/F");
     tree->Branch("mh", &m_iter_data->mh, "mh/F");
     tree->Branch("mw", &m_iter_data->mw, "mw/F");
-    tree->Branch("smear_dpx", &m_iter_data->smear_dpx, "smear_dpx/F");
-    tree->Branch("smear_dpy", &m_iter_data->smear_dpy, "smear_dpy/F");
+    tree->Branch("unclust_dpx", &m_iter_data->unclust_dpx, "unclust_dpx/F");
+    tree->Branch("unclust_dpy", &m_iter_data->unclust_dpy, "unclust_dpy/F");
     tree->Branch("bjet_resc_dpx", &m_iter_data->bjet_resc_dpx, "bjet_resc_dpx/F");
     tree->Branch("bjet_resc_dpy", &m_iter_data->bjet_resc_dpy, "bjet_resc_dpy/F");
     tree->Branch("mass", m_iter_data->mass, "mass[4]/F");

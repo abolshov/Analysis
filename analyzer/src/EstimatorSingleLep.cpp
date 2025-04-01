@@ -24,7 +24,7 @@ EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name, Aggregation
     pf->Close();
 }
 
-ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, ULong64_t evt_id, TString const& comb_label)
+ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, TString const& comb_label)
 {
     ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
@@ -56,8 +56,8 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
     [[maybe_unused]] int failed_iter = 0;
     for (int i = 0; i < N_ITER; ++i)
     {
-        Float_t smear_dpx = m_prg->Gaus(0.0, MET_SIGMA);
-        Float_t smear_dpy = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t unclust_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t unclust_dpy = m_prg->Gaus(0.0, MET_SIGMA);
 
         auto bresc = ComputeJetResc(bj1, bj2, pdf_b1, mh);
         if (!bresc.has_value())
@@ -120,8 +120,8 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
             ljet_resc_dpx[control] = -1.0*(c3[control] - 1)*lj1.Px() - (c4[control] - 1)*lj2.Px();
             ljet_resc_dpy[control] = -1.0*(c3[control] - 1)*lj1.Py() - (c4[control] - 1)*lj2.Py();
 
-            Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx[control] + smear_dpx;
-            Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy[control] + smear_dpy;
+            Float_t met_corr_px = met.Px() + bjet_resc_dpx + ljet_resc_dpx[control] + unclust_dpx;
+            Float_t met_corr_py = met.Py() + bjet_resc_dpy + ljet_resc_dpy[control] + unclust_dpy;
 
             Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
             Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
@@ -237,8 +237,8 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
             m_iter_data->mh = mh;
             m_iter_data->mw1 = mw1;
             m_iter_data->mw2 = mw2;
-            m_iter_data->smear_dpx = smear_dpx;
-            m_iter_data->smear_dpy = smear_dpy;
+            m_iter_data->unclust_dpx = unclust_dpx;
+            m_iter_data->unclust_dpy = unclust_dpy;
             m_iter_data->bjet_resc_dpx = bjet_resc_dpx;
             m_iter_data->bjet_resc_dpy = bjet_resc_dpy;
             m_iter_data->weight = weight;
@@ -269,7 +269,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
     return res;
 }
 
-OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
+OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
 {
     VecLVF_t particles(static_cast<size_t>(ObjSL::count));
     particles[static_cast<size_t>(ObjSL::lep)] = leptons[static_cast<size_t>(Lep::lep1)];
@@ -332,7 +332,6 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
                     }
 
                     TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
-                    // ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
                     #ifdef EXPERIMENTAL 
                         ArrF_t<ESTIM_OUT_SZ> comb_result = Experimental::SL::EstimateCombination(particles, 
                                                                                                  m_pdf_1d,
@@ -342,7 +341,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
                                                                                                  evt_id, 
                                                                                                  comb_label);
                     #else 
-                        ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, evt_id, comb_label);
+                        ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, resolutions, evt_id, comb_label);
                     #endif
 
                     if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
@@ -390,12 +389,15 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, V
             //     }
             // }
 
-            // auto it = std::max_element(masses.begin(), masses.end());
-            // size_t choice = it - masses.begin();
+            auto it = std::max_element(masses.begin(), masses.end());
+            size_t choice = it - masses.begin();
 
             // auto it = std::ranges::max_element(integrals);
-            auto it = std::max_element(integrals.begin(), integrals.end());
-            size_t choice = it - integrals.begin();
+            // auto it = std::max_element(integrals.begin(), integrals.end());
+            // size_t choice = it - integrals.begin();
+
+            // auto it = std::max_element(peaks.begin(), peaks.end());
+            // size_t choice = it - peaks.begin();            
 
             ResetHist(m_res_mass);
             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
@@ -482,8 +484,8 @@ std::unique_ptr<TTree> EstimatorSingleLep::MakeTree(TString const& tree_name)
     tree->Branch("bjet_resc_fact_2", &m_iter_data->bjet_resc_fact_2, "bjet_resc_fact_2/F");
     tree->Branch("mw1", &m_iter_data->mw1, "mw1/F");
     tree->Branch("mw2", &m_iter_data->mw2, "mw2/F");
-    tree->Branch("smear_dpx", &m_iter_data->smear_dpx, "smear_dpx/F");
-    tree->Branch("smear_dpy", &m_iter_data->smear_dpy, "smear_dpy/F");
+    tree->Branch("unclust_dpx", &m_iter_data->unclust_dpx, "unclust_dpx/F");
+    tree->Branch("unclust_dpy", &m_iter_data->unclust_dpy, "unclust_dpy/F");
     tree->Branch("bjet_resc_dpx", &m_iter_data->bjet_resc_dpx, "bjet_resc_dpx/F");
     tree->Branch("bjet_resc_dpy", &m_iter_data->bjet_resc_dpy, "bjet_resc_dpy/F");
     tree->Branch("ljet_resc_fact_1", m_iter_data->ljet_resc_fact_1, "ljet_resc_fact_1[4]/F");
