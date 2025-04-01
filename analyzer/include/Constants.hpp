@@ -50,7 +50,7 @@ inline constexpr Float_t HIGGS_MASS = 125.03;
 inline constexpr Float_t HIGGS_WIDTH = 0.004;
 inline constexpr Float_t TOL = 10e-7;
 inline constexpr int N_ATTEMPTS = 1;
-inline constexpr int N_ITER = 50000;
+inline constexpr int N_ITER = 30000;
 inline constexpr int CONTROL = 4;
 
 inline constexpr Float_t MAX_MASS = 4000.0;
@@ -88,5 +88,7 @@ inline static const std::unordered_map<PDF1_dl, TString> pdf1d_dl_names = { { PD
                                                                             { PDF1_dl::mw_onshell, "pdf_mw_onshell" }};
                                                                         
 inline static const std::unordered_map<PDF2_dl, TString> pdf2d_dl_names = {};
+
+inline static const TString OUT_TREE_NAME = "hme_tree";
 
 #endif

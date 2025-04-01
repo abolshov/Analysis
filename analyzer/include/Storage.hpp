@@ -11,6 +11,7 @@
 
 struct Storage
 {   
+    void ConnectTree(UTree_t& tree, Channel ch);
     void ConnectTree(TTree* tree, Channel ch);
 
     //reco objects

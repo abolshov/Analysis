@@ -14,24 +14,30 @@
 #include "Storage.hpp"
 #include "Estimator.hpp"
 #include "HistManager.hpp"
+#include "Recorder.hpp"
+#include "EstimatorData.hpp"
 
 class Analyzer
 {
     private:
     Storage m_storage;
-    std::map<TString, Channel> m_file_map;
-    TString m_tree_name;
     Estimator m_estimator;
-    HistManager m_hm;
+    // HistManager m_hm; // eliminate ?
+    Recorder m_recorder;
+    std::unique_ptr<EstimatorData> m_estimator_data;
     bool m_record_iterations = false;
+    bool m_record_output = true;
 
     inline static int counter = 0;
 
+    UTree_t MakeTree();
+
     public:
-    Analyzer(TString const& tree_name, std::map<TString, Channel> const& input_file_map, std::map<Channel, TString> const& pdf_file_map);
+    Analyzer(std::map<Channel, TString> const& pdf_file_map);
     
-    void ProcessFile(TString const& name, Channel ch);
-    void ProcessEvent(ULong64_t evt, TTree* tree, Channel ch);
+    void ProcessDataset(Dataset_t const& dataset); // new interface
+    void ProcessSample(Sample const& sample); // new interface
+    void ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree, Channel ch, bool is_bkg); // new interface
 };
 
 

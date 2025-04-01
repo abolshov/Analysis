@@ -7,11 +7,15 @@
 
 #include "Math/GenVector/LorentzVector.h"
 #include "Math/Vector4D.h"
+#include "TTree.h"
 
 #include "TH1.h"
 #include "TH2.h"
 
 #include "Constants.hpp"
+#include "Sample.hpp"
+
+using UTree_t = std::unique_ptr<TTree>;
 
 template <typename T> 
 using UHist_t = std::unique_ptr<T>;
@@ -31,5 +35,7 @@ using OptArrF_t = std::optional<ArrF_t<N>>;
 using OptPairF_t = std::optional<std::pair<Float_t, Float_t>>;
 using OptLVecF_t = std::optional<LorentzVectorF_t>;
 using OptLVecFPair_t = std::optional<std::pair<LorentzVectorF_t, LorentzVectorF_t>>;
+
+using Dataset_t = std::vector<Sample>;
 
 #endif

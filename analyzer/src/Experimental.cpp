@@ -37,7 +37,6 @@ namespace Experimental
                                                  HistVec_t<TH1F>& pdfs_1d,
                                                  HistVec_t<TH2F>& pdfs_2d, 
                                                  UHist_t<TH1F>& res_mass,
-                                                //  std::unique_ptr<TTree>& dbg_tree,
                                                  std::unique_ptr<TRandom3>& prg,
                                                  ULong64_t evt_id, 
                                                  TString const& comb_label)
@@ -61,10 +60,14 @@ namespace Experimental
             TString name = Form("Xhh_mass_%llu_%s", evt_id, comb_label.Data());
             TString title = Form("X->HH mass: event %llu, comb %s", evt_id, comb_label.Data());
             res_mass->SetNameTitle(name, title);
-            // auto res_mass = std::make_unique<TH1F>("X_mass", title, N_BINS, MIN_MASS, MAX_MASS);
-
             Float_t mh = prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
 
+            // create tree for dumping local variables here
+            // move all required variables from the loop here
+            // do SetBranchAddress
+            // in the end of successful iteration write tree to file
+            // pass pointer to file as argument
+            
             for (int i = 0; i < N_ITER; ++i)
             {
                 Float_t smear_dpx = prg->Gaus(0.0, MET_SIGMA);
@@ -173,5 +176,5 @@ namespace Experimental
             }
             return res;
         }
-    }
-}
+    } // namespace SL
+} // namespace Experimental

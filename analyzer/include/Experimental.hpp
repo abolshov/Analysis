@@ -23,7 +23,6 @@ namespace Experimental
                                                  HistVec_t<TH1F>& pdfs_1d,
                                                  HistVec_t<TH2F>& pdfs_2d, 
                                                  UHist_t<TH1F>& res_mass,
-                                                //  std::unique_ptr<TTree>& dbg_tree,
                                                  std::unique_ptr<TRandom3>& prg,
                                                  ULong64_t evt_id, 
                                                  TString const& comb_label);
