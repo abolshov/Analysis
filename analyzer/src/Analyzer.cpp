@@ -52,7 +52,7 @@ void Analyzer::ProcessSample(Sample const& sample)
         }
         else
         {
-            output_file_name = ch == Channel::SL ? Form("hme_sl_%s.root", type.Data()) : Form("hme_dl_%s.root", type.Data());
+            output_file_name = ch == Channel::SL ? Form("hme_sl_%s.root", type.Data()) : Form("hme_dl_M%s.root", type.Data());
         }
         std::cout << "Output data will be recorded to " << output_file_name << "\n";
         m_recorder.OpenFile(output_file_name);
@@ -178,4 +178,28 @@ UTree_t Analyzer::MakeTree()
     output_tree->Branch("event_id", &m_estimator_data->event_id, "event_id/l");
 
     return output_tree;
+}
+
+void Analyzer::ProcessEventSlice(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree)
+{
+    input_tree->GetEntry(evt);
+
+    VecLVF_t jets = GetRecoJetP4(m_storage);
+    VecLVF_t leptons = GetRecoLepP4(m_storage, ch);
+    LorentzVectorF_t met = GetRecoMET(m_storage);
+    
+    if (!IsRecoverable(m_storage, ch))
+    {
+        return;
+    }
+
+    if (!IsFiducial(m_storage, jets, ch))
+    {
+        return;
+    }
+
+    ++counter;
+    m_estimator_data->event_id = m_storage.event_id;
+
+    std::vector<Float_t> resolutions = GetPNetRes(m_storage);
 }

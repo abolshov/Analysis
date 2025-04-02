@@ -38,6 +38,7 @@ class Analyzer
     void ProcessDataset(Dataset_t const& dataset); // new interface
     void ProcessSample(Sample const& sample); // new interface
     void ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree, Channel ch, bool is_bkg); // new interface
+    void ProcessEventSlice(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree); // estimate mass of the true combination if it exists
 };
 
 
