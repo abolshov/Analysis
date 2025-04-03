@@ -27,6 +27,9 @@ class Analyzer
     std::unique_ptr<EstimatorData> m_estimator_data;
     bool m_record_iterations = false;
     bool m_record_output = true;
+    #ifdef DEV
+        bool m_process_matched_slice = true;
+    #endif
 
     inline static int counter = 0;
 
@@ -38,7 +41,10 @@ class Analyzer
     void ProcessDataset(Dataset_t const& dataset); // new interface
     void ProcessSample(Sample const& sample); // new interface
     void ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree, Channel ch, bool is_bkg); // new interface
-    void ProcessEventSlice(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree); // estimate mass of the true combination if it exists
+    
+    #ifdef DEV
+        void ProcessEventSlice(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree, Channel ch); // estimate mass of the true combination if it exists
+    #endif 
 };
 
 
