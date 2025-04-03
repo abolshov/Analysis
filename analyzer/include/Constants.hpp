@@ -20,6 +20,8 @@ inline constexpr size_t MAX_GEN_LEP = static_cast<size_t>(Lep::count);
 inline constexpr size_t MAX_GEN_QUARK = static_cast<size_t>(Quark::count);
 inline constexpr size_t MAX_GEN_NU = static_cast<size_t>(Nu::count);
 
+constexpr size_t QuarkCount(Channel ch) { return ch == Channel::DL ? 2 : 4; }
+
 // PDFs in SL channel resolved topology
 enum class PDF1_sl { b1, q1, numet_pt, numet_dphi, nulep_deta, hh_dphi, mbb, mww, hh_deta, mWonshell, mWoffshell, count };
 enum class PDF2_sl { b1b2, q1q2, mw1mw2, hh_dEtadPhi, hh_pt_e, c3mWhad, count };
