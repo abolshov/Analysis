@@ -3,6 +3,8 @@
 
 #include "TString.h"
 
+#include "Constants.hpp"
+
 struct JetComb
 {
     int b1 = -1;
@@ -10,10 +12,14 @@ struct JetComb
     int q1 = -1;
     int q2 = -1;
 
-    inline TString ToTString()
+    inline TString ToString(Channel ch) const
     {
-        return q1 < 0 ? Form("b%db%d", b1, b2) : Form("b%db%dq%dq%d", b1, b2, q1, q2);
+        return ch == Channel::DL ? Form("b%db%d", b1, b2) : Form("b%db%dq%dq%d", b1, b2, q1, q2);
     }
+
+    #ifdef DEV
+        bool HasUniqueJets(Channel ch) const;
+    #endif
 };
 
 #endif
