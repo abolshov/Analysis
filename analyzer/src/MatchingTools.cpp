@@ -49,3 +49,16 @@ TString MakeTrueLabel(VecLVF_t const& gen, VecLVF_t const& reco)
 
     return {};
 }
+
+JetComb FindMatch(VecLVF_t const& quarks, VecLVF_t const& jets,  Channel ch)
+{
+    JetComb res{};
+    res.b1 = MatchIdx(quarks[static_cast<size_t>(Quark::b1)], jets);
+    res.b2 = MatchIdx(quarks[static_cast<size_t>(Quark::b2)], jets);
+    if (ch == Channel::SL)
+    {
+        res.q1 = MatchIdx(quarks[static_cast<size_t>(Quark::q1)], jets);
+        res.q2 = MatchIdx(quarks[static_cast<size_t>(Quark::q2)], jets);
+    }
+    return res;
+}
