@@ -233,7 +233,7 @@ UTree_t Analyzer::MakeTree()
         }
 
         ArrF_t<ESTIM_OUT_SZ> comb_result = m_estimator.GetEstimator(ch).EstimateCombination(particles, resolutions, event_id, match);
-        if (comb_result[static_cast<size_t>(EstimOut::mass) > 0.0])
+        if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
         {
             m_estimator_data->mass = comb_result[static_cast<size_t>(EstimOut::mass)];
             m_estimator_data->integral = comb_result[static_cast<size_t>(EstimOut::integral)];
