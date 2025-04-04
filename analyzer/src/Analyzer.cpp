@@ -92,8 +92,11 @@ void Analyzer::ProcessSample(Sample const& sample)
     }
     std::cout << "counter=" << counter << "\n";
 
-    m_recorder.WriteTree(OUT_TREE_NAME);
-    
+    if (m_record_output)
+    {
+        m_recorder.WriteTree(OUT_TREE_NAME);
+    }
+
     // is needed to avoid double free 
     // if done immediately after getting tree, root delets tree cache and nothing is written to tree
     input_tree->SetDirectory(nullptr); 
