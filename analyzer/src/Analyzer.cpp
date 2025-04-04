@@ -45,15 +45,7 @@ void Analyzer::ProcessSample(Sample const& sample)
 
     if (m_record_output)
     {
-        TString output_file_name;
-        if (!is_bkg) 
-        {
-            output_file_name = ch == Channel::SL ? Form("hme_sl_M%d.root", masspoint) : Form("hme_dl_M%d.root", masspoint);
-        }
-        else
-        {
-            output_file_name = ch == Channel::SL ? Form("hme_sl_%s.root", type.Data()) : Form("hme_dl_M%s.root", type.Data());
-        }
+        TString output_file_name = FormFileName(ch, is_bkg, masspoint, type, "out");
         std::cout << "Output data will be recorded to " << output_file_name << "\n";
         m_recorder.OpenFile(output_file_name);
         m_recorder.ResetTree(MakeTree());
@@ -64,17 +56,9 @@ void Analyzer::ProcessSample(Sample const& sample)
     #ifdef DEV
         if (m_record_iterations)
         {
-            TString dbg_file_name;
-            if (!is_bkg) 
-            {
-                dbg_file_name = ch == Channel::SL ? Form("hme_iter_sl_M%d.root", masspoint) : Form("hme_iter_dl_M%d.root", masspoint);
-            }
-            else
-            {
-                dbg_file_name = ch == Channel::SL ? Form("hme_iter_sl_%s.root", type.Data()) : Form("hme_iter_dl_%s.root", type.Data());
-            }
-            std::cout << "Iteration data will be recorded to " << dbg_file_name << "\n";
-            m_estimator.OpenDbgFile(dbg_file_name, ch);
+            TString iter_file_name = FormFileName(ch, is_bkg, masspoint, type, "iter");
+            std::cout << "Iteration data will be recorded to " << iter_file_name << "\n";
+            m_estimator.OpenDbgFile(iter_file_name, ch);
         }
     #endif
 
@@ -248,7 +232,7 @@ UTree_t Analyzer::MakeTree()
             throw std::runtime_error("Unknown channel");
         }
 
-        ArrF_t<ESTIM_OUT_SZ> comb_result = m_estimator.GetEstimator(ch).EstimateCombination(particles, resolutions, event_id, match.ToString(ch));
+        ArrF_t<ESTIM_OUT_SZ> comb_result = m_estimator.GetEstimator(ch).EstimateCombination(particles, resolutions, event_id, match);
         if (comb_result[static_cast<size_t>(EstimOut::mass) > 0.0])
         {
             m_estimator_data->mass = comb_result[static_cast<size_t>(EstimOut::mass)];
@@ -270,3 +254,24 @@ UTree_t Analyzer::MakeTree()
         }
     }
 #endif
+
+TString Analyzer::FormFileName(Channel ch, bool is_bkg, Int_t mp, TString const& sample_type, TString const& file_type) const
+{
+    TString file_name;
+    if (!is_bkg) 
+    {
+        if (m_process_matched_slice)
+        {
+            file_name = ch == Channel::SL ? Form("hme_%s_true_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_true_dl_M%d.root", file_type.Data(), mp);
+        }
+        else 
+        {
+            file_name = ch == Channel::SL ? Form("hme_%s_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_dl_M%d.root", file_type.Data(), mp);
+        }
+    }
+    else
+    {
+        file_name = ch == Channel::SL ? Form("hme_%s_sl_%s.root", file_type.Data(), sample_type.Data()) : Form("hme_%s_dl_%s.root", file_type.Data(), sample_type.Data());
+    }
+    return file_name;
+}

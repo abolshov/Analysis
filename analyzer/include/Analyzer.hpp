@@ -34,6 +34,7 @@ class Analyzer
     inline static int counter = 0;
 
     UTree_t MakeTree();
+    TString FormFileName(Channel ch, bool is_bkg, Int_t mp, TString const& sample_type, TString const& file_type) const;
 
     public:
     Analyzer(std::map<Channel, TString> const& pdf_file_map);
