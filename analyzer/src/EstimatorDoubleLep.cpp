@@ -24,7 +24,7 @@ EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name, Aggregation
     pf->Close();
 }
 
-ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, TString const& comb_label)
+ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb)
 {
     ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
@@ -38,12 +38,14 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
     UHist_t<TH1F>& pdf_b1 = m_pdf_1d[static_cast<size_t>(PDF1_dl::b1)];
     UHist_t<TH1F>& pdf_mw_onshell = m_pdf_1d[static_cast<size_t>(PDF1_dl::mw_onshell)];
 
+    TString label = comb.ToString(Channel::DL);
+
     if (m_aggr_mode == AggregationMode::Combination)
     {
-        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt_id, comb_label.Data()));
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt_id, label.Data()));
     }
 
-    [[maybe_unused]] TString tree_name = Form("evt_%llu_%s", evt_id, comb_label.Data());
+    [[maybe_unused]] TString tree_name = Form("evt_%llu_%s", evt_id, label.Data());
     if (m_recorder.ShouldRecord())
     {
         m_recorder.ResetTree(MakeTree(tree_name));
@@ -289,8 +291,10 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, s
                 particles[static_cast<size_t>(ObjDL::bj2)] = jets[bj1_idx];
             }
 
-            TString comb_label = Form("b%zub%zu", bj1_idx, bj2_idx);
-            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, resolutions, evt_id, comb_label);
+            JetComb comb{};
+            comb.b1 = bj1_idx;
+            comb.b2 = bj2_idx;
+            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, resolutions, evt_id, comb);
 
             // success: mass > 0
             if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)

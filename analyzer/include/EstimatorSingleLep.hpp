@@ -15,7 +15,7 @@ class EstimatorSingleLep final : public EstimatorBase
     EstimatorSingleLep(TString const& pdf_file_name, AggregationMode aggr_mode);
     ~EstimatorSingleLep() override = default;
 
-    ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, TString const& comb_label) override;
+    ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb) override;
     OptArrF_t<ESTIM_OUT_SZ> EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) override;
 
     private: 

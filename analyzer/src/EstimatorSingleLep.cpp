@@ -24,7 +24,7 @@ EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name, Aggregation
     pf->Close();
 }
 
-ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, TString const& comb_label)
+ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb)
 {
     ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
@@ -40,14 +40,16 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
     UHist_t<TH1F>& pdf_q1 = m_pdf_1d[static_cast<size_t>(PDF1_sl::q1)];
     UHist_t<TH2F>& pdf_mw1mw2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::mw1mw2)];
 
+    TString label = comb.ToString(Channel::SL);
+
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
 
     if (m_aggr_mode == AggregationMode::Combination)
     {
-        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt_id, comb_label.Data()));
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt_id, label.Data()));
     }
     
-    [[maybe_unused]] TString tree_name = Form("evt_%llu_%s", evt_id, comb_label.Data());
+    [[maybe_unused]] TString tree_name = Form("evt_%llu_%s", evt_id, label.Data());
     if (m_recorder.ShouldRecord())
     {
         m_recorder.ResetTree(MakeTree(tree_name));
@@ -331,7 +333,11 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, s
                         particles[static_cast<size_t>(ObjSL::lj2)] = jets[lj1_idx];
                     }
 
-                    TString comb_label = Form("b%zub%zuq%zuq%zu", bj1_idx, bj2_idx, lj1_idx, lj2_idx);
+                    JetComb comb{};
+                    comb.b1 = bj1_idx;
+                    comb.b2 = bj2_idx;
+                    comb.q1 = lj1_idx;
+                    comb.q2 = lj2_idx;
                     #ifdef EXPERIMENTAL 
                         ArrF_t<ESTIM_OUT_SZ> comb_result = Experimental::SL::EstimateCombination(particles, 
                                                                                                  m_pdf_1d,
@@ -339,9 +345,9 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, s
                                                                                                  m_res_mass,
                                                                                                  m_prg,                                                                        
                                                                                                  evt_id, 
-                                                                                                 comb_label);
+                                                                                                 comb.ToString(Channel::SL));
                     #else 
-                        ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, resolutions, evt_id, comb_label);
+                        ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, resolutions, evt_id, comb);
                     #endif
 
                     if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
