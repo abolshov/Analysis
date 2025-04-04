@@ -260,14 +260,18 @@ TString Analyzer::FormFileName(Channel ch, bool is_bkg, Int_t mp, TString const&
     TString file_name;
     if (!is_bkg) 
     {
-        if (m_process_matched_slice)
-        {
-            file_name = ch == Channel::SL ? Form("hme_%s_true_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_true_dl_M%d.root", file_type.Data(), mp);
-        }
-        else 
-        {
+        #ifdef DEV
+            if (m_process_matched_slice)
+            {
+                file_name = ch == Channel::SL ? Form("hme_%s_true_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_true_dl_M%d.root", file_type.Data(), mp);
+            }
+            else 
+            {
+                file_name = ch == Channel::SL ? Form("hme_%s_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_dl_M%d.root", file_type.Data(), mp);
+            }
+        #else 
             file_name = ch == Channel::SL ? Form("hme_%s_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_dl_M%d.root", file_type.Data(), mp);
-        }
+        #endif
     }
     else
     {
