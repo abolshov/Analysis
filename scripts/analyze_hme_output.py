@@ -37,6 +37,19 @@ def ExtractJetIndices(tree_name):
     return sorted([int(c) for c in re.findall(r'\d+', jet_comb[0])])
 
 
+def ComputePeakValue(data, weights=None):
+    """
+    peak value from computing histogram of the input array and extracting bin with max count
+    parameters: 1d array with data and optional 1d array of weights
+    returns: x-position of the center of the bin with maximal count
+    """
+    counts, bin_edges = np.histogram(data, bins=1800, range=(200, 2000), weights=weights)
+    peak_index = np.argmax(counts)
+    peak_bin_edge_left = bin_edges[peak_index]
+    peak_bin_edge_right = bin_edges[peak_index + 1]
+    return (peak_bin_edge_right + peak_bin_edge_left)/2
+
+
 def main():
     hme_out_true_name = "hme_out_true_dl_M800.root" # hme output for reco data matched to partons
     hme_out_name = "hme_out_dl_M800.root" # hme ran on everything
@@ -84,7 +97,6 @@ def main():
         for tree_idx, tree_name in enumerate(tree_name_list):
             jet_indices = ExtractJetIndices(tree_name)
             label = tree_name.split('_')[-1][:-2]
-            print(label)
             if jet_indices == true_jets:
                 label += ": true"
 
@@ -106,18 +118,15 @@ def main():
             cumulative_mass.extend(mass)
             cumulative_weights.extend(weights)
 
+            estimated_mass = ComputePeakValue(mass, weights=weights)
+            if jet_indices == true_jets:
+                label += f", m={estimated_mass:.2f}"
+            else :
+                label += f": m={estimated_mass:.2f}"
             plt.hist(mass, weights=weights, bins=20, range=(200, 2000), histtype='step', label=label)
-
-            # counts, bin_edges = np.histogram(mass, bins=200, range=(0, 2000), weights=weights)
-            # print(counts)
-            # peak_value = np.max(counts)
-            # peak_index = np.argmax(counts)
-            # peak_bin_edge_left = bin_edges[peak_index]
-            # peak_bin_edge_right = bin_edges[peak_index + 1]
-            # peak_mass = np.random.uniform(peak_bin_edge_left, peak_bin_edge_right)
-            # print(f"Peak Bin Edges: [{peak_bin_edge_left}, {peak_bin_edge_right}], mass={peak_mass}")
-            # hist = np.histogram(mass, bins=200, range=(0, 2000), weights=weights)
-        plt.hist(cumulative_mass, weights=cumulative_weights, bins=20, range=(200, 2000), histtype='step', label="cumulative", linestyle='--')
+            
+        estimated_mass = ComputePeakValue(cumulative_mass, weights=cumulative_weights)
+        plt.hist(cumulative_mass, weights=cumulative_weights, bins=20, range=(200, 2000), histtype='step', label=f"cumulative, m={estimated_mass:.2f}", linestyle='--')
         
         plt.legend(loc='upper right')
         plt.title(f"Event {event_id} likelihoods")
