@@ -83,9 +83,9 @@ def MatchedJetIdx(branches, gen_branch_name):
     return match1_idx, match2_idx
 
 def main():
-    file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M-800/nano_0.root"
-    # file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2JLNu_M-800/nano_0.root"
-    channel = "DL"
+    # file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M-800/nano_0.root"
+    file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2JLNu_M-800/nano_0.root"
+    channel = "SL"
     plotting_dir = f"jet_btag_study/{channel}"
     os.makedirs(plotting_dir, exist_ok=True)
 
@@ -160,6 +160,8 @@ def main():
     elif channel == "SL":
         print("this is SL channel")
 
+        exclude_bjets = True
+
         tracker.Apply(lambda branches: branches['genV2prod1_pt'] > 20, "q1 pt")
         tracker.Apply(lambda branches: np.abs(branches['genV2prod1_eta']) < 5.0, "q1 eta")
         tracker.Apply(lambda branches: branches['genV2prod2_pt'] > 20, "q2 pt")
@@ -170,13 +172,23 @@ def main():
         tracker.PlotCutflow(percentages=True)
         
         selected_branches = tracker.GetSelectedEvents()
-        m1, m2 = MatchedJetIdx(selected_branches, "genV2prod")
+        l1, l2 = MatchedJetIdx(selected_branches, "genV2prod")
+        matched_jet_indices = None
+        if exclude_bjets:
+            b1, b2 = MatchedJetIdx(selected_branches, "genb")
+            matched_jet_indices = ak.concatenate([ak.unflatten(b1, 1), 
+                                                  ak.unflatten(b2, 1),
+                                                  ak.unflatten(l1, 1), 
+                                                  ak.unflatten(l2, 1)], axis=1)
+        else:
+            matched_jet_indices = ak.concatenate([ak.unflatten(l1, 1), ak.unflatten(l2, 1)], axis=1)
+        matched_jet_indices_mask = MaskIndices(matched_jet_indices, selected_branches["centralJet_pt"])
 
         for tagger_name in tagger_names:
             tagger_variable_names = tagger_variables[tagger_name]
             for tagger_variable_name in tagger_variable_names:
                 score_array = selected_branches[f"centralJet_btag{tagger_name}{tagger_variable_name}"]
-                for num, match_jet_idx in enumerate([m1, m2]):    
+                for num, match_jet_idx in enumerate([l1, l2]):    
                     plt.hist(ak.flatten(score_array[ak.unflatten(match_jet_idx, 1)]), bins=20, range=(0, 1), histtype='step')
                     plt.title(f"light jet #{num + 1} {tagger_name}{tagger_variable_name} score")
                     plt.xlabel(f"btag{tagger_name}{tagger_variable_name} score")
@@ -185,13 +197,11 @@ def main():
                     plt.savefig(os.path.join(plotting_dir, f"btag{tagger_name}{tagger_variable_name}_q{num + 1}.pdf"), format='pdf', bbox_inches='tight')
                     plt.close()
 
-                light_jet_indices = ak.concatenate([ak.unflatten(m1, 1), ak.unflatten(m2, 1)], axis=1)
-                light_jet_indices_mask = MaskIndices(light_jet_indices, score_array)
+                max_other_jets_score = ak.max(score_array[~matched_jet_indices_mask], axis=1, mask_identity=False)
+                min_other_jets_score = ak.max(score_array[~matched_jet_indices_mask], axis=1, mask_identity=False)
 
-                max_other_jets_score = ak.max(score_array[~light_jet_indices_mask], axis=1)
-
-                first_jet_score = ak.flatten(score_array[ak.unflatten(m1, 1)])
-                second_jet_score = ak.flatten(score_array[ak.unflatten(m2, 1)])
+                first_jet_score = ak.flatten(score_array[ak.unflatten(l1, 1)])
+                second_jet_score = ak.flatten(score_array[ak.unflatten(l2, 1)])
                 max_score = np.maximum(first_jet_score, second_jet_score)
                 min_score = np.minimum(first_jet_score, second_jet_score)
 
@@ -221,12 +231,30 @@ def main():
                 plt.savefig(os.path.join(plotting_dir, f"max_btag{tagger_name}{tagger_variable_name}_light_vs_other.pdf"), format='pdf', bbox_inches='tight')
                 plt.close()
 
+                plt.hist(min_score, bins=20, range=(0, 1), histtype='step', label="min light")
+                plt.hist(min_other_jets_score, bins=20, range=(0, 1), histtype='step', label="min other")
+                plt.title(f"Min {tagger_name}{tagger_variable_name} score comparison")
+                plt.xlabel(f"btag{tagger_name}{tagger_variable_name} score")
+                plt.ylabel("Count")
+                plt.legend(loc="best")
+                plt.grid(True)
+                plt.savefig(os.path.join(plotting_dir, f"min_btag{tagger_name}{tagger_variable_name}_light_vs_other.pdf"), format='pdf', bbox_inches='tight')
+                plt.close()
+
                 plt.hist2d(max_score.to_numpy(), max_other_jets_score.to_numpy(), bins=(20, 20), cmap=plt.cm.viridis, range=[[0, 1], [0, 1]])
                 plt.title(f"Max {tagger_name}{tagger_variable_name} score")
                 plt.xlabel(f"Max light jet {tagger_name}{tagger_variable_name} score")
                 plt.ylabel(f"Max other jet {tagger_name}{tagger_variable_name} score")
                 plt.colorbar()
                 plt.savefig(os.path.join(plotting_dir, f"max_btag{tagger_name}{tagger_variable_name}_light_vs_other_2D.pdf"), format='pdf', bbox_inches='tight')
+                plt.close()
+
+                plt.hist2d(min_score.to_numpy(), min_other_jets_score.to_numpy(), bins=(20, 20), cmap=plt.cm.viridis, range=[[0, 1], [0, 1]])
+                plt.title(f"Min {tagger_name}{tagger_variable_name} score")
+                plt.xlabel(f"Min light jet {tagger_name}{tagger_variable_name} score")
+                plt.ylabel(f"Min other jet {tagger_name}{tagger_variable_name} score")
+                plt.colorbar()
+                plt.savefig(os.path.join(plotting_dir, f"min_btag{tagger_name}{tagger_variable_name}_light_vs_other_2D.pdf"), format='pdf', bbox_inches='tight')
                 plt.close()
 
 
