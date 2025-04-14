@@ -1,6 +1,6 @@
 #include "EstimatorUtils.hpp"
 
-VecLVF_t GetRecoJetP4(Storage const& s)
+VecLVF_t GetRecoJetP4(Event const& s)
 {
     VecLVF_t res;
     for (int i = 0; i < s.n_reco_jet; ++i)
@@ -10,7 +10,7 @@ VecLVF_t GetRecoJetP4(Storage const& s)
     return res;
 }
 
-VecLVF_t GetRecoLepP4(Storage const& s, Channel ch)
+VecLVF_t GetRecoLepP4(Event const& s, Channel ch)
 {
     VecLVF_t res;
     res.emplace_back(s.reco_lep_pt[static_cast<size_t>(Lep::lep1)], 
@@ -27,7 +27,7 @@ VecLVF_t GetRecoLepP4(Storage const& s, Channel ch)
     return res;
 }
 
-std::vector<Float_t> GetPNetRes(Storage const& s)
+std::vector<Float_t> GetPNetRes(Event const& s)
 {
     std::vector<Float_t> res;
     for (int i = 0; i < s.n_reco_jet; ++i)
@@ -96,7 +96,7 @@ Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)
 }
 
 #ifdef DEV
-    // VecLVF_t GetGenJetP4(Storage const& s)
+    // VecLVF_t GetGenJetP4(Event const& s)
     // {
     //     VecLVF_t res;
     //     for (int i = 0; i < s.n_gen_jet; ++i)
@@ -106,7 +106,7 @@ Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)
     //     return res;
     // }
 
-    VecLVF_t GetGenLepP4(Storage const& s, Channel ch)
+    VecLVF_t GetGenLepP4(Event const& s, Channel ch)
     {
         VecLVF_t res;
         res.emplace_back(s.gen_lep_pt[static_cast<size_t>(Lep::lep1)], 
@@ -123,7 +123,7 @@ Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)
         return res;
     }
 
-    VecLVF_t GetGenQuarksP4(Storage const& s, Channel ch)
+    VecLVF_t GetGenQuarksP4(Event const& s, Channel ch)
     {
         VecLVF_t res;
         res.emplace_back(s.gen_quark_pt[static_cast<size_t>(Quark::b1)], 
@@ -148,7 +148,7 @@ Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r)
         return res;
     }
 
-    VecLVF_t GetGenNuP4(Storage const& s, Channel ch)
+    VecLVF_t GetGenNuP4(Event const& s, Channel ch)
     {
         VecLVF_t res;
         res.emplace_back(s.gen_nu_pt[static_cast<size_t>(Nu::nu1)], 

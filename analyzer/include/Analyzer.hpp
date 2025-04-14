@@ -11,7 +11,7 @@
 
 #include "Constants.hpp"
 #include "Definitions.hpp"
-#include "Storage.hpp"
+#include "Event.hpp"
 #include "Estimator.hpp"
 #include "HistManager.hpp"
 #include "Recorder.hpp"
@@ -20,7 +20,7 @@
 class Analyzer
 {
     private:
-    Storage m_storage;
+    Event m_event;
     Estimator m_estimator;
     // HistManager m_hm; // eliminate ?
     Recorder m_recorder;
@@ -28,7 +28,7 @@ class Analyzer
     bool m_record_iterations = false;
     bool m_record_output = true;
     #ifdef DEV
-        bool m_process_matched_slice = true;
+        bool m_process_matched_slice = false;
     #endif
 
     inline static int counter = 0;

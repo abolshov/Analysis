@@ -13,7 +13,7 @@
 #include "TH1.h"
 
 Analyzer::Analyzer(std::map<Channel, TString> const& pdf_file_map)
-:   m_estimator(pdf_file_map.at(Channel::SL), pdf_file_map.at(Channel::DL), AggregationMode::Event)
+:   m_estimator(pdf_file_map.at(Channel::SL), pdf_file_map.at(Channel::DL), AggregationMode::Combination)
 ,   m_estimator_data(std::make_unique<EstimatorData>())
 {
     TH1::AddDirectory(false);
@@ -62,7 +62,7 @@ void Analyzer::ProcessSample(Sample const& sample)
         }
     #endif
 
-    m_storage.ConnectTree(input_tree, ch);
+    m_event.ConnectTree(input_tree, ch);
     ULong64_t n_events = input_tree->GetEntries();
     std::chrono::duration<double> average_duration{};
     for (ULong64_t evt = 0; evt < n_events; ++evt)
@@ -112,25 +112,25 @@ void Analyzer::ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_
 {
     input_tree->GetEntry(evt);
 
-    ULong64_t evt_id = m_storage.event_id;
+    ULong64_t evt_id = m_event.event_id;
     if (evt_id % 2 != 1)
     {
         return;
     }
 
-    VecLVF_t jets = GetRecoJetP4(m_storage);
-    VecLVF_t leptons = GetRecoLepP4(m_storage, ch);
-    LorentzVectorF_t met = GetRecoMET(m_storage);
+    VecLVF_t jets = GetRecoJetP4(m_event);
+    VecLVF_t leptons = GetRecoLepP4(m_event, ch);
+    LorentzVectorF_t met = GetRecoMET(m_event);
     
     #ifdef DEV 
         if (!is_bkg)
         {
-            if (!IsRecoverable(m_storage, ch))
+            if (!IsRecoverable(m_event, ch))
             {
                 return;
             }
 
-            if (!IsFiducial(m_storage, jets, ch))
+            if (!IsFiducial(m_event, jets, ch))
             {
                 return;
             }
@@ -140,7 +140,7 @@ void Analyzer::ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_
     ++counter;
     m_estimator_data->event_id = evt_id;
 
-    std::vector<Float_t> resolutions = GetPNetRes(m_storage);
+    std::vector<Float_t> resolutions = GetPNetRes(m_event);
     auto hme = m_estimator.EstimateMass(jets, resolutions, leptons, met, evt_id, ch);
     if (hme)
     {
@@ -183,19 +183,23 @@ UTree_t Analyzer::MakeTree()
     {
         input_tree->GetEntry(evt);
 
-        VecLVF_t jets = GetRecoJetP4(m_storage);
-        VecLVF_t quarks = GetGenQuarksP4(m_storage, ch);
-        VecLVF_t leptons = GetRecoLepP4(m_storage, ch);
-        LorentzVectorF_t met = GetRecoMET(m_storage);
+        VecLVF_t jets = GetRecoJetP4(m_event);
+        VecLVF_t quarks = GetGenQuarksP4(m_event, ch);
+        VecLVF_t leptons = GetRecoLepP4(m_event, ch);
+        LorentzVectorF_t met = GetRecoMET(m_event);
 
-        ULong64_t event_id = m_storage.event_id;
-
-        if (!IsRecoverable(m_storage, ch))
+        ULong64_t event_id = m_event.event_id;
+        if (event_id % 2 != 1)
         {
             return;
         }
 
-        if (!IsFiducial(m_storage, jets, ch))
+        if (!IsRecoverable(m_event, ch))
+        {
+            return;
+        }
+
+        if (!IsFiducial(m_event, jets, ch))
         {
             return;
         }
@@ -208,7 +212,7 @@ UTree_t Analyzer::MakeTree()
 
         ++counter;
         m_estimator_data->event_id = event_id;
-        std::vector<Float_t> resolutions = GetPNetRes(m_storage);
+        std::vector<Float_t> resolutions = GetPNetRes(m_event);
         
         VecLVF_t particles;
         if (ch == Channel::SL)
@@ -216,10 +220,28 @@ UTree_t Analyzer::MakeTree()
             particles.resize(static_cast<size_t>(ObjSL::count));
             particles[static_cast<size_t>(ObjSL::lep)] = leptons[static_cast<size_t>(Lep::lep1)];
             particles[static_cast<size_t>(ObjSL::met)] = met;    
-            particles[static_cast<size_t>(ObjSL::bj1)] = jets[match.b1].Pt() > jets[match.b2].Pt() ? jets[match.b1] : jets[match.b2];
-            particles[static_cast<size_t>(ObjSL::bj2)] = jets[match.b2].Pt() > jets[match.b1].Pt() ? jets[match.b1] : jets[match.b2];
-            particles[static_cast<size_t>(ObjSL::lj1)] = jets[match.q1].Pt() > jets[match.q2].Pt() ? jets[match.q1] : jets[match.q2];
-            particles[static_cast<size_t>(ObjSL::lj2)] = jets[match.q2].Pt() > jets[match.q1].Pt() ? jets[match.q1] : jets[match.q2];
+            
+            if (jets[match.b1].Pt() > jets[match.b2].Pt())
+            {
+                particles[static_cast<size_t>(ObjSL::bj1)] = jets[match.b1];
+                particles[static_cast<size_t>(ObjSL::bj2)] = jets[match.b2];
+            }
+            else 
+            {
+                particles[static_cast<size_t>(ObjSL::bj2)] = jets[match.b1];
+                particles[static_cast<size_t>(ObjSL::bj1)] = jets[match.b2];
+            }
+
+            if (jets[match.q1].Pt() > jets[match.q2].Pt())
+            {
+                particles[static_cast<size_t>(ObjSL::lj1)] = jets[match.q1];
+                particles[static_cast<size_t>(ObjSL::lj2)] = jets[match.q2];
+            }
+            else 
+            {
+                particles[static_cast<size_t>(ObjSL::lj2)] = jets[match.q1];
+                particles[static_cast<size_t>(ObjSL::lj1)] = jets[match.q2];
+            }
         }
         else if (ch == Channel::DL)
         {
@@ -227,8 +249,16 @@ UTree_t Analyzer::MakeTree()
             particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
             particles[static_cast<size_t>(ObjDL::lep2)] = leptons[static_cast<size_t>(Lep::lep2)];
             particles[static_cast<size_t>(ObjDL::met)] = met;    
-            particles[static_cast<size_t>(ObjDL::bj1)] = jets[match.b1].Pt() > jets[match.b2].Pt() ? jets[match.b1] : jets[match.b2];
-            particles[static_cast<size_t>(ObjDL::bj2)] = jets[match.b2].Pt() > jets[match.b1].Pt() ? jets[match.b1] : jets[match.b2];
+            if (jets[match.b1].Pt() > jets[match.b2].Pt())
+            {
+                particles[static_cast<size_t>(ObjDL::bj1)] = jets[match.b1];
+                particles[static_cast<size_t>(ObjDL::bj2)] = jets[match.b2];
+            }
+            else 
+            {
+                particles[static_cast<size_t>(ObjDL::bj2)] = jets[match.b1];
+                particles[static_cast<size_t>(ObjDL::bj1)] = jets[match.b2];
+            }
         }
         else 
         {

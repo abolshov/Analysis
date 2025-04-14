@@ -10,6 +10,7 @@
 #include "Recorder.hpp"
 #include "Constants.hpp"
 #include "JetCombination.hpp"
+#include "Event.hpp"
 
 template <typename T, std::enable_if_t<std::is_default_constructible_v<T>, bool> = true>
 void ResetObject(T& object)
@@ -25,6 +26,7 @@ class EstimatorBase
     virtual ~EstimatorBase() = default;
 
     virtual ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb) = 0;
+    // virtual OptArrF_t<ESTIM_OUT_SZ> EstimateMass(Event const& event) = 0;
     virtual OptArrF_t<ESTIM_OUT_SZ> EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) = 0;
     inline void OpenDbgFile(TString const& dbg_file_name) { m_recorder.OpenFile(dbg_file_name); }
 

@@ -5,7 +5,7 @@
 #include <type_traits>
 
 #include "Definitions.hpp"
-#include "Storage.hpp"
+#include "Event.hpp"
 #include "Constants.hpp"
 
 #include "TFile.h"
@@ -36,17 +36,17 @@ void ResetHist(UHist_t<T>& hist)
 void Get1dPDFs(TFile* fptr, HistVec_t<TH1F>& pdfs, Channel ch);
 void Get2dPDFs(TFile* fptr, HistVec_t<TH2F>& pdfs, Channel ch);
 
-inline LorentzVectorF_t GetRecoMET(Storage const& s) { return LorentzVectorF_t(s.reco_met_pt, 0.0, s.reco_met_phi, 0.0); }
-VecLVF_t GetRecoJetP4(Storage const& s);
-VecLVF_t GetRecoLepP4(Storage const& s, Channel ch);
-std::vector<Float_t> GetPNetRes(Storage const& s);
+inline LorentzVectorF_t GetRecoMET(Event const& s) { return LorentzVectorF_t(s.reco_met_pt, 0.0, s.reco_met_phi, 0.0); }
+VecLVF_t GetRecoJetP4(Event const& s);
+VecLVF_t GetRecoLepP4(Event const& s, Channel ch);
+std::vector<Float_t> GetPNetRes(Event const& s);
 
 #ifdef DEV
-    // inline LorentzVectorF_t GetGenMET(Storage const& s) { return LorentzVectorF_t(s.gen_met_pt, 0.0, s.gen_met_phi, 0.0); }
-    // VecLVF_t GetGenJetP4(Storage const& s);
-    VecLVF_t GetGenLepP4(Storage const& s, Channel ch);
-    VecLVF_t GetGenQuarksP4(Storage const& s, Channel ch);
-    VecLVF_t GetGenNuP4(Storage const& s, Channel ch);
+    // inline LorentzVectorF_t GetGenMET(Event const& s) { return LorentzVectorF_t(s.gen_met_pt, 0.0, s.gen_met_phi, 0.0); }
+    // VecLVF_t GetGenJetP4(Event const& s);
+    VecLVF_t GetGenLepP4(Event const& s, Channel ch);
+    VecLVF_t GetGenQuarksP4(Event const& s, Channel ch);
+    VecLVF_t GetGenNuP4(Event const& s, Channel ch);
 #endif
 
 Float_t ComputeWidth(UHist_t<TH1F> const& h, unsigned l, unsigned r);

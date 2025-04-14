@@ -139,10 +139,10 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
                 Xhh[control] = Hww[control] + Hbb;
                 mass[control] = Xhh[control].M();
                 correct_hww_mass[control] = (std::abs(mh - Hww[control].M()) < 1.0);
-                if (!correct_hww_mass[control])
-                {
-                    continue;
-                }
+                // if (!correct_hww_mass[control])
+                // {
+                //     continue;
+                // }
                 masses.push_back(mass[control]);
             } 
             else 
@@ -265,9 +265,19 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
         res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
         res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
         res[static_cast<size_t>(EstimOut::integral)] = integral;
+
+        if (m_aggr_mode == AggregationMode::Combination)
+        {
+            ResetHist(m_res_mass);
+        }
+
         return res;
     }
-    
+
+    if (m_aggr_mode == AggregationMode::Combination)
+    {
+        ResetHist(m_res_mass);
+    }
     return res;
 }
 
@@ -358,13 +368,6 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, s
                         peaks.push_back(comb_result[static_cast<size_t>(EstimOut::peak_value)]);
                         integrals.push_back(comb_result[static_cast<size_t>(EstimOut::integral)]);
                     }
-
-                    // reset m_res_mass and use "clean" hist to build distribution for each combination
-                    // else keep filling histogram and only reset it when moving to another event
-                    if (m_aggr_mode == AggregationMode::Combination)
-                    {
-                        ResetHist(m_res_mass);
-                    }
                     used.erase(lj2_idx);
                 }
                 used.erase(lj1_idx);
@@ -378,34 +381,9 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, s
     {
         if (m_aggr_mode == AggregationMode::Combination)
         {
-            // MinMaxTransform(integrals.begin(), integrals.end());
-            // MinMaxTransform(inv_widths.begin(), inv_widths.end());
-            // MinMaxTransform(peaks.begin(), peaks.end());
-            // MinMaxTransform(masses.begin(), masses.end());
-
-            // Float_t max_metric = 0.0f;
-            // for (size_t c = 0; c < results.size(); ++c)
-            // {
-            //     // Float_t metric = (integrals[c] + inv_widths[c] + peaks[c] + masses[c])/4.0;
-            //     Float_t metric = (integrals[c] + inv_widths[c] + peaks[c])/3.0;
-            //     if (metric > max_metric)
-            //     {
-            //         max_metric = metric;
-            //         choice = c;
-            //     }
-            // }
-
-            auto it = std::max_element(masses.begin(), masses.end());
-            size_t choice = it - masses.begin();
-
             // auto it = std::ranges::max_element(integrals);
-            // auto it = std::max_element(integrals.begin(), integrals.end());
-            // size_t choice = it - integrals.begin();
-
-            // auto it = std::max_element(peaks.begin(), peaks.end());
-            // size_t choice = it - peaks.begin();            
-
-            ResetHist(m_res_mass);
+            auto it = std::max_element(integrals.begin(), integrals.end());
+            size_t choice = it - integrals.begin();       
             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(results[choice]);
         }
         else if (m_aggr_mode == AggregationMode::Event)

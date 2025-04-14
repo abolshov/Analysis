@@ -255,7 +255,18 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
         res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
         res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
         res[static_cast<size_t>(EstimOut::integral)] = integral;
+
+        if (m_aggr_mode == AggregationMode::Combination)
+        {
+            ResetHist(m_res_mass);
+        }
+
         return res;
+    }
+
+    if (m_aggr_mode == AggregationMode::Combination)
+    {
+        ResetHist(m_res_mass);
     }
     return res;
 }
@@ -301,12 +312,6 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, s
             {
                 estimations.push_back(comb_result);
             }
-
-            // clear the histogram to be reused 
-            if (m_aggr_mode == AggregationMode::Combination)
-            {
-                ResetHist(m_res_mass);
-            }
         }
     }
 
@@ -315,7 +320,6 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, s
     {
         if (m_aggr_mode == AggregationMode::Combination)
         {
-            ResetHist(m_res_mass);
             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[0]);
         }
         else if (m_aggr_mode == AggregationMode::Event)

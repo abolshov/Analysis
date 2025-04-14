@@ -17,7 +17,7 @@
         return corr_lep_reco;
     }
 
-    bool IsRecoverable(Storage const& s, Channel ch, bool top_sel)
+    bool IsRecoverable(Event const& s, Channel ch, bool top_sel)
     {
         // check all quarks
         int n_quarks = ch == Channel::DL ? 2 : 4;
@@ -79,7 +79,7 @@
         return true;
     }
 
-    bool IsFiducial(Storage const& s, VecLVF_t const& jets, Channel ch)
+    bool IsFiducial(Event const& s, VecLVF_t const& jets, Channel ch)
     {
         // check quark to reco jet matching
         int n_quarks = ch == Channel::DL ? 2 : 4;
