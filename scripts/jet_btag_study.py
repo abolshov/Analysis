@@ -198,7 +198,7 @@ def main():
                     plt.close()
 
                 max_other_jets_score = ak.max(score_array[~matched_jet_indices_mask], axis=1, mask_identity=False)
-                min_other_jets_score = ak.max(score_array[~matched_jet_indices_mask], axis=1, mask_identity=False)
+                min_other_jets_score = ak.min(score_array[~matched_jet_indices_mask], axis=1, mask_identity=False)
 
                 first_jet_score = ak.flatten(score_array[ak.unflatten(l1, 1)])
                 second_jet_score = ak.flatten(score_array[ak.unflatten(l2, 1)])
