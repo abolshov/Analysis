@@ -173,15 +173,12 @@ def main():
         
         selected_branches = tracker.GetSelectedEvents()
         l1, l2 = MatchedJetIdx(selected_branches, "genV2prod")
-        matched_jet_indices = None
+        matched_jet_indices = ak.concatenate([ak.unflatten(l1, 1), ak.unflatten(l2, 1)], axis=1)
         if exclude_bjets:
             b1, b2 = MatchedJetIdx(selected_branches, "genb")
-            matched_jet_indices = ak.concatenate([ak.unflatten(b1, 1), 
-                                                  ak.unflatten(b2, 1),
-                                                  ak.unflatten(l1, 1), 
-                                                  ak.unflatten(l2, 1)], axis=1)
-        else:
-            matched_jet_indices = ak.concatenate([ak.unflatten(l1, 1), ak.unflatten(l2, 1)], axis=1)
+            matched_jet_indices = ak.concatenate([matched_jet_indices, 
+                                                  ak.unflatten(b1, 1), 
+                                                  ak.unflatten(b2, 1)], axis=1)
         matched_jet_indices_mask = MaskIndices(matched_jet_indices, selected_branches["centralJet_pt"])
 
         for tagger_name in tagger_names:
