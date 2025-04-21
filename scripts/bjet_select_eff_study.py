@@ -87,16 +87,17 @@ def main():
         tracker.Apply(lambda branches: JetNIsMatch(branches, "genb", 0), "jet 0 is true")
         jet0_true = tracker.cutflow["jet 0 is true"]
 
-        all_jet0_true.append(100*jet0_true/have_1to1_matching)
+        all_jet0_true.append(jet0_true/have_1to1_matching)
 
+        selected_branches = tracker.GetSelectedEvents()
         m1, m2 = MatchedJetIdx(selected_branches, "genb")
         jet1_true = ak.count_nonzero(np.logical_or(m1 == 1, m2 == 1))
         jet2_true = ak.count_nonzero(np.logical_or(m1 == 2, m2 == 2))
         jet_greater2_true = ak.count_nonzero(np.maximum(m1, m2) > 2)
 
-        all_jet1_true.append(100*jet1_true/jet0_true)
-        all_jet2_true.append(100*jet2_true/jet0_true)
-        all_jet_greater2_true.append(100*jet_greater2_true/jet0_true)
+        all_jet1_true.append(jet1_true/jet0_true)
+        all_jet2_true.append(jet2_true/jet0_true)
+        all_jet_greater2_true.append(jet_greater2_true/jet0_true)
         
 
     all_efficiencies = np.array(all_efficiencies)
@@ -122,9 +123,11 @@ def main():
     plt.close()
 
     true_jet_label = {0: "1", 1: "2", 2: ">2"}
+    sums = [all_jet1_true[i] + all_jet2_true[i] + all_jet_greater2_true[i] for i in range(len(masspoints))]
     for i, values in enumerate([np.array(all_jet1_true), np.array(all_jet2_true), np.array(all_jet_greater2_true)]):
         plt.plot(masspoints, values, 's', color=colors[i], label=true_jet_label[i])
 
+    plt.plot(masspoints, sums, 's', color=colors[4], label="sum")
     plt.title("Match index distribuion")
     plt.xlabel("mX, [GeV]")
     plt.ylabel("Fraction")
