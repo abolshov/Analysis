@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from CutTracker import CutTracker
 import os
 import itertools
+from MatchingUtils import *
 
 
 def MaskIndices(indices, array_to_slice):
@@ -16,76 +17,10 @@ def MaskIndices(indices, array_to_slice):
     return ak.any(whole_set == in_set, axis=-1)
 
 
-def MinDeltaRs(branches, gen_branch_name):
-    parton1_p4 = vector.zip({'pt': branches[f'{gen_branch_name}1_pt'],
-                             'eta': branches[f'{gen_branch_name}1_eta'],
-                             'phi': branches[f'{gen_branch_name}1_phi'],
-                             'mass': branches[f'{gen_branch_name}1_mass']})
-
-    parton2_p4 = vector.zip({'pt': branches[f'{gen_branch_name}2_pt'],
-                             'eta': branches[f'{gen_branch_name}2_eta'],
-                             'phi': branches[f'{gen_branch_name}2_phi'],
-                             'mass': branches[f'{gen_branch_name}2_mass']})
-
-    pt = branches['centralJet_pt']
-    eta = branches['centralJet_eta']
-    phi = branches['centralJet_phi']
-    mass = branches['centralJet_mass']
-    jets = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
-
-    dr1 = ak.min(parton1_p4.deltaR(jets), axis=1)
-    dr2 = ak.min(parton2_p4.deltaR(jets), axis=1)
-    return dr1, dr2
-
-def HasMatching(branches, gen_branch_name):
-    dr1, dr2 = MinDeltaRs(branches, gen_branch_name)
-    return np.logical_and(dr1 < 0.4, dr2 < 0.4)
-
-def HasOneToOneMatching(branches, gen_branch_name):
-    match1_idx, match_idx2 = MatchedJetIdx(branches, gen_branch_name)
-    return match1_idx != match_idx2
-
-def MaxMatchIdx(branches, gen_branch_name):
-    return np.maximum(*MatchedJetIdx(branches, gen_branch_name))
-
-def DeltaRBetweenQuarks(branches, gen_branch_name):
-    parton1_p4 = vector.zip({'pt': branches[f'{gen_branch_name}1_pt'],
-                             'eta': branches[f'{gen_branch_name}1_eta'],
-                             'phi': branches[f'{gen_branch_name}1_phi'],
-                             'mass': branches[f'{gen_branch_name}1_mass']})
-
-    parton2_p4 = vector.zip({'pt': branches[f'{gen_branch_name}2_pt'],
-                             'eta': branches[f'{gen_branch_name}2_eta'],
-                             'phi': branches[f'{gen_branch_name}2_phi'],
-                             'mass': branches[f'{gen_branch_name}2_mass']})
-
-    return parton1_p4.deltaR(parton2_p4)
-
-def MatchedJetIdx(branches, gen_branch_name):
-    parton1_p4 = vector.zip({'pt': branches[f'{gen_branch_name}1_pt'],
-                             'eta': branches[f'{gen_branch_name}1_eta'],
-                             'phi': branches[f'{gen_branch_name}1_phi'],
-                             'mass': branches[f'{gen_branch_name}1_mass']})
-
-    parton2_p4 = vector.zip({'pt': branches[f'{gen_branch_name}2_pt'],
-                             'eta': branches[f'{gen_branch_name}2_eta'],
-                             'phi': branches[f'{gen_branch_name}2_phi'],
-                             'mass': branches[f'{gen_branch_name}2_mass']})
-
-    pt = branches['centralJet_pt']
-    eta = branches['centralJet_eta']
-    phi = branches['centralJet_phi']
-    mass = branches['centralJet_mass']
-    jets = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
-
-    match1_idx = ak.argmin(parton1_p4.deltaR(jets), axis=1)
-    match2_idx = ak.argmin(parton2_p4.deltaR(jets), axis=1)
-    return match1_idx, match2_idx
-
 def main():
-    # file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M-800/nano_0.root"
-    file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2JLNu_M-800/nano_0.root"
-    channel = "SL"
+    file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M-800/nano_0.root"
+    # file_name = "/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2JLNu_M-800/nano_0.root"
+    channel = "DL"
     plotting_dir = f"jet_btag_study/{channel}"
     os.makedirs(plotting_dir, exist_ok=True)
 
@@ -109,7 +44,7 @@ def main():
     # tracker.Apply(lambda branches: MaxMatchIdx(branches, "genb") < 2, "jets < #3 are matches")
     
     tagger_names = ["PNet", "DeepFlav"]
-    tagger_variables = {"PNet": ["B", "QvG", "CvL", "CvB"],
+    tagger_variables = {"PNet": ["B", "QvG", "CvL", "CvB", "CvNotB"],
                         "DeepFlav": ["B", "QG", "CvL", "CvB"]}
 
     if channel == "DL":
@@ -119,6 +54,39 @@ def main():
         selected_branches = tracker.GetSelectedEvents()
 
         m1, m2 = MatchedJetIdx(selected_branches, "genb")
+
+        min_idx = np.minimum(m1, m2)
+        jet0_true = min_idx == 0
+        highest_btag_is_true = ak.count_nonzero(jet0_true)/len(min_idx)
+        print(f"Fraction when jet with highest btag is true: {highest_btag_is_true:.2f}")
+
+        jet1_true = np.logical_or(m1 == 1, m2 == 1)
+        jets01_true = ak.count_nonzero(np.logical_and(jet1_true, jet0_true))/len(m1)
+        print(f"Fraction when jets 0 and 1 are true: {jets01_true:.2f}")
+
+        jet2_true = np.logical_or(m1 == 2, m2 == 2)
+        jets02_true = ak.count_nonzero(np.logical_and(jet2_true, jet0_true))/len(m1)
+        print(f"Fraction when jets 0 and 2 are true: {jets02_true:.2f}")
+
+        jets12_true = ak.count_nonzero(np.logical_and(jet2_true, jet1_true))/len(m1)
+        print(f"Fraction when jets 1 and 2 are true: {jets12_true:.2f}")
+
+        max_idx = np.maximum(m1, m2)
+        second_match_btag = selected_branches["centralJet_btagPNetB"][ak.unflatten(max_idx, 1)]
+        jet0_true_and_second_match_btag_greater_05 = ak.count_nonzero(np.logical_and(jet0_true, second_match_btag > 0.5))/len(m1)
+        print(f"Fraction when jet 0 is true and btag of second match > 0.5: {jet0_true_and_second_match_btag_greater_05:.2f}")
+
+        jet0_not_true_and_second_match_btag_greater_05 = ak.count_nonzero(np.logical_and(~jet0_true, second_match_btag > 0.5))/len(m1)
+        print(f"Fraction when jet 0 is not true and btag of second match > 0.5: {jet0_not_true_and_second_match_btag_greater_05:.2f}")
+
+        # third_highest_btag_is_true = ak.count_nonzero(np.logical_or(m1 == 2, m2 == 2))/len(m1)
+        # print(f"Fraction when jet third with highest btag is true: {third_highest_btag_is_true:.2f}")
+
+        btagged_jet_3 = ak.count_nonzero(selected_branches["centralJet_btagPNetB"][:, 2] > 0.5)/len(selected_branches)
+        print(f"Fraction with btagged jet 3: {btagged_jet_3:.2f}")
+
+        at_least_3_btagged_jets = ak.count_nonzero(ak.count_nonzero(selected_branches["centralJet_btagPNetB"] > 0.5, axis=1) >= 3)/len(selected_branches)
+        print(f"Fraction with more than 3 btagged jets: {at_least_3_btagged_jets:.2f}")
 
         for tagger_name in tagger_names:
             tagger_variable_names = tagger_variables[tagger_name]

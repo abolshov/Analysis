@@ -35,6 +35,10 @@ class CutTracker():
         last_cut = cut_lst[-1]
         print(f"{last_cut}: {self.cutflow[last_cut]}")
 
+    def GetLastCutDescription(self):
+        cut_lst = list(self.cutflow.keys())
+        return cut_lst[-1]
+
     def PlotCutflow(self, show=False, percentages=False, save_path=None):
         cut_names = self.cutflow.keys()
         passed_evt_info = list(self.cutflow.values())

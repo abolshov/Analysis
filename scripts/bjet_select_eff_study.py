@@ -4,137 +4,9 @@ import vector
 import awkward as ak
 import matplotlib.pyplot as plt
 from CutTracker import CutTracker
+from MatchingUtils import *
 import argparse
 import os
-
-
-def MissingTrueJetFraction(branches):
-    true_jet_tag = branches['centralJet_TrueBjetTag']
-
-    b1_p4 = vector.zip({'pt': branches['genb1_pt'],
-                       'eta': branches['genb1_eta'],
-                       'phi': branches['genb1_phi'],
-                       'mass': branches['genb1_mass']})
-
-    b2_p4 = vector.zip({'pt': branches['genb2_pt'],
-                        'eta': branches['genb2_eta'],
-                        'phi': branches['genb2_phi'],
-                        'mass': branches['genb2_mass']})
-
-    resolved = b1_p4.deltaR(b2_p4) >= 0.4
-    pt_cut = np.logical_and(b1_p4.pt > 20, b2_p4.pt > 20)
-    eta_cut = np.logical_and(np.abs(b1_p4.eta) < 2.5, np.abs(b2_p4.eta) < 2.5)
-    acceptance = np.logical_and(pt_cut, eta_cut)
-    recoverable = np.logical_and(acceptance, resolved)
-    true_jet_tag = true_jet_tag[recoverable]
-    
-    max_jet = ak.max(ak.count(true_jet_tag, axis=1))
-    true_jet_tag = ak.fill_none(ak.pad_none(true_jet_tag, max_jet), False)
-    n_events = len(true_jet_tag)
-    
-    return ak.count_nonzero(ak.all(~true_jet_tag, axis=1))/n_events
-
-
-def MinDeltaRs(branches):
-    b1_p4 = vector.zip({'pt': branches['genb1_pt'],
-                       'eta': branches['genb1_eta'],
-                       'phi': branches['genb1_phi'],
-                       'mass': branches['genb1_mass']})
-
-    b2_p4 = vector.zip({'pt': branches['genb2_pt'],
-                        'eta': branches['genb2_eta'],
-                        'phi': branches['genb2_phi'],
-                        'mass': branches['genb2_mass']})
-
-    pt = branches['centralJet_pt']
-    eta = branches['centralJet_eta']
-    phi = branches['centralJet_phi']
-    mass = branches['centralJet_mass']
-    jets = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
-
-    dr_b1 = ak.min(b1_p4.deltaR(jets), axis=1)
-    dr_b2 = ak.min(b2_p4.deltaR(jets), axis=1)
-    return dr_b1, dr_b2
-
-
-def HasMatching(branches):
-    dr_b1, dr_b2 = MinDeltaRs(branches)
-    return np.logical_and(dr_b1 < 0.4, dr_b2 < 0.4)
-
-
-def HasOneToOneMatching(branches):
-    b1_match_idx, b2_match_idx = MatchedJetIdx(branches)
-    return b1_match_idx != b2_match_idx
-
-
-def MaxMatchIdx(branches):
-    return np.maximum(*MatchedJetIdx(branches))
-
-
-def DeltaRBetweenBQuarks(branches):
-    b1_p4 = vector.zip({'pt': branches['genb1_pt'],
-                       'eta': branches['genb1_eta'],
-                       'phi': branches['genb1_phi'],
-                       'mass': branches['genb1_mass']})
-
-    b2_p4 = vector.zip({'pt': branches['genb2_pt'],
-                        'eta': branches['genb2_eta'],
-                        'phi': branches['genb2_phi'],
-                        'mass': branches['genb2_mass']})
-    return b1_p4.deltaR(b2_p4)
-
-
-def MatchedJetIdx(branches):
-    b1_p4 = vector.zip({'pt': branches['genb1_pt'],
-                       'eta': branches['genb1_eta'],
-                       'phi': branches['genb1_phi'],
-                       'mass': branches['genb1_mass']})
-
-    b2_p4 = vector.zip({'pt': branches['genb2_pt'],
-                        'eta': branches['genb2_eta'],
-                        'phi': branches['genb2_phi'],
-                        'mass': branches['genb2_mass']})
-
-    pt = branches['centralJet_pt']
-    eta = branches['centralJet_eta']
-    phi = branches['centralJet_phi']
-    mass = branches['centralJet_mass']
-    jets = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
-
-    b1_match_idx = ak.argmin(b1_p4.deltaR(jets), axis=1)
-    b2_match_idx = ak.argmin(b2_p4.deltaR(jets), axis=1)
-    return b1_match_idx, b2_match_idx
-
-
-def FirstNContainTrue(branches, n):
-    true_jet_tag = branches['centralJet_TrueBjetTag']
-
-    b1_p4 = vector.zip({'pt': branches['genb1_pt'],
-                       'eta': branches['genb1_eta'],
-                       'phi': branches['genb1_phi'],
-                       'mass': branches['genb1_mass']})
-
-    b2_p4 = vector.zip({'pt': branches['genb2_pt'],
-                        'eta': branches['genb2_eta'],
-                        'phi': branches['genb2_phi'],
-                        'mass': branches['genb2_mass']})
-
-    resolved = b1_p4.deltaR(b2_p4) >= 0.4
-    pt_cut = np.logical_and(b1_p4.pt > 20, b2_p4.pt > 20)
-    eta_cut = np.logical_and(np.abs(b1_p4.eta) < 2.5, np.abs(b2_p4.eta) < 2.5)
-    acceptance = np.logical_and(pt_cut, eta_cut)
-    recoverable = np.logical_and(acceptance, resolved)
-    true_jet_tag = true_jet_tag[recoverable]
-    
-    max_jet = ak.max(ak.count(true_jet_tag, axis=1))
-    true_jet_tag = ak.fill_none(ak.pad_none(true_jet_tag, max_jet), False)
-    n_events = len(true_jet_tag)
-    
-    first_n = true_jet_tag[:, 0]
-    for i in range(n):
-        first_n = np.logical_or(first_n, true_jet_tag[:, i])
-        
-    return ak.count_nonzero(first_n)/n_events
 
 
 def MakePlot(x, y, plot_params):
@@ -160,30 +32,49 @@ def main():
     file_list = []
     with open("dl_files.txt", 'r') as input_files:
         file_list = [name for name in input_files if "Radion" in name]    
+    
     all_efficiencies = []
     masspoints = []
     num_jets = [2, 3, 4]
 
-    plotting_dir = "cutflow_radion/"
+    all_jet0_true = []
+    all_jet1_true = []
+    all_jet2_true = []
+    all_jet_greater2_true = []
+
+    channel = "DL"
+    plotting_dir = f"bjet_select_eff_study/{channel}"
     os.makedirs(plotting_dir, exist_ok=True)
+    os.makedirs(os.path.join(plotting_dir, "cutflow_radion"), exist_ok=True)
 
     for file_name in file_list:
         print(f"processing {file_name}")
+
         tracker = CutTracker(file_name)
         tracker.Apply(lambda branches: branches['genb1_pt'] > 20, "b1 quark pt")
         tracker.Apply(lambda branches: np.abs(branches['genb1_eta']) < 2.5, "b1 quark eta")
         tracker.Apply(lambda branches: branches['genb2_pt'] > 20, "b2 quark pt")
         tracker.Apply(lambda branches: np.abs(branches['genb2_eta']) < 2.5, "b2 quark eta")
-        tracker.Apply(lambda branches: branches['nJet'] >= 2, "jet multiplicity")
+        if channel == "DL":
+            tracker.Apply(lambda branches: branches['ncentralJet'] >= 3, "jet multiplicity")
+        elif channel == "SL":
+            tracker.Apply(lambda branches: branches['ncentralJet'] >= 4, "jet multiplicity")
         tracker.Apply(lambda branches: branches['lep1_pt'] > 0, "has reco lep1")
-        tracker.Apply(lambda branches: branches['lep2_pt'] > 0, "has reco lep2")
-        tracker.Apply(lambda branches: DeltaRBetweenBQuarks(branches) > 0.4, "quarks dR")
-        tracker.Apply(lambda branches: HasMatching(branches), "matching")
-        tracker.Apply(lambda branches: HasOneToOneMatching(branches), "1 to 1 matching")
-        tracker.PlotCutflow(percentages=True, save_path=plotting_dir)
+        if channel == "DL":
+            tracker.Apply(lambda branches: branches['lep2_pt'] > 0, "has reco lep2")
+        tracker.Apply(lambda branches: DeltaRBetweenQuarks(branches, "genb") > 0.4, "b quarks dR")
+        tracker.Apply(lambda branches: HasMatching(branches, "genb"), "b matching")
+        tracker.Apply(lambda branches: HasOneToOneMatching(branches, "genb"), "1 to 1 b matching")
+        # tracker.Apply(lambda branches: MaxMatchIdx(branches, "genb") == 2, "jet == 3 is match")
+        # tracker.Apply(lambda branches: MaxMatchIdx(branches, "genb") >= 2, "jet >= 3 is match")
+        # tracker.Apply(lambda branches: MaxMatchIdx(branches, "genb") < 2, "jets < #3 are matches")
+        tracker.PlotCutflow(percentages=True, save_path=os.path.join(plotting_dir, "cutflow_radion"))
+
+        selected_branches = tracker.GetSelectedEvents()
+        m1, m2 = MatchedJetIdx(selected_branches, "genb")
+        max_match_idx = np.maximum(m1, m2)
 
         denom = tracker.NumEventsSelected()
-        max_match_idx = MaxMatchIdx(tracker.branches)
         efficiencies_for_sample = []
         for n in num_jets:    
             numer = ak.count_nonzero(max_match_idx < n)
@@ -192,18 +83,55 @@ def main():
         all_efficiencies.append(efficiencies_for_sample)
         masspoints.append(tracker.masspoint)
 
+        have_1to1_matching = tracker.cutflow["1 to 1 b matching"]
+        tracker.Apply(lambda branches: JetNIsMatch(branches, "genb", 0), "jet 0 is true")
+        jet0_true = tracker.cutflow["jet 0 is true"]
+
+        all_jet0_true.append(100*jet0_true/have_1to1_matching)
+
+        m1, m2 = MatchedJetIdx(selected_branches, "genb")
+        jet1_true = ak.count_nonzero(np.logical_or(m1 == 1, m2 == 1))
+        jet2_true = ak.count_nonzero(np.logical_or(m1 == 2, m2 == 2))
+        jet_greater2_true = ak.count_nonzero(np.maximum(m1, m2) > 2)
+
+        all_jet1_true.append(100*jet1_true/jet0_true)
+        all_jet2_true.append(100*jet2_true/jet0_true)
+        all_jet_greater2_true.append(100*jet_greater2_true/jet0_true)
+        
+
     all_efficiencies = np.array(all_efficiencies)
     for n in num_jets:
-            plt.plot(masspoints, all_efficiencies[:, n - 2], 's', color=colors[n], label=f"{n}")
+        plt.plot(masspoints, all_efficiencies[:, n - 2], 's', color=colors[n], label=f"{n}")
 
     plt.title("B jet selection efficiency for different number of jets")
     plt.xlabel("mX, [GeV]")
     plt.ylabel("Efficiency")
-    # plt.legend(loc='upper right')
     plt.legend(loc='best')
     plt.xscale('log')
     plt.grid(True)
-    plt.savefig("eff_log.pdf", format='pdf', bbox_inches='tight')
+    plt.savefig(os.path.join(plotting_dir, "eff_log.pdf"), format='pdf', bbox_inches='tight')
+    plt.close()
+
+    plt.plot(masspoints, np.array(all_jet0_true), 's', color=colors[1])
+    plt.title("Fraction of events where jet with highest btag is true")
+    plt.xlabel("mX, [GeV]")
+    plt.ylabel("Fraction")
+    # plt.xscale('log')
+    plt.grid(True)
+    plt.savefig(os.path.join(plotting_dir, "highest_btag_true.pdf"), format='pdf', bbox_inches='tight')
+    plt.close()
+
+    true_jet_label = {0: "1", 1: "2", 2: ">2"}
+    for i, values in enumerate([np.array(all_jet1_true), np.array(all_jet2_true), np.array(all_jet_greater2_true)]):
+        plt.plot(masspoints, values, 's', color=colors[i], label=true_jet_label[i])
+
+    plt.title("Match index distribuion")
+    plt.xlabel("mX, [GeV]")
+    plt.ylabel("Fraction")
+    plt.legend(loc='best')
+    plt.xscale('log')
+    plt.grid(True)
+    plt.savefig(os.path.join(plotting_dir, "match_idx_dsit.pdf"), format='pdf', bbox_inches='tight')
     plt.close()
 
 
