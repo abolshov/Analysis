@@ -21,6 +21,22 @@ OptArrF_t<ESTIM_OUT_SZ> Estimator::EstimateMass(VecLVF_t const& jets, std::vecto
     }
 }
 
+OptArrF_t<ESTIM_OUT_SZ> Estimator::EstimateMass(Event const& event, Channel ch)
+{
+    if (ch == Channel::SL)
+    {
+        return m_estimator_sl.EstimateMass(event);
+    }
+    else if (ch == Channel::DL)
+    {
+        return m_estimator_dl.EstimateMass(event);
+    }
+    else 
+    {
+        throw std::runtime_error("Attempting to process data in unknown channel");
+    }
+}
+
 void Estimator::OpenDbgFile(TString const& dbg_file_name, Channel ch)
 {
     if (ch == Channel::SL)
