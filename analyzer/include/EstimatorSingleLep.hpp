@@ -17,6 +17,7 @@ class EstimatorSingleLep final : public EstimatorBase
 
     ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb) override;
     OptArrF_t<ESTIM_OUT_SZ> EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id) override;
+    OptArrF_t<ESTIM_OUT_SZ> EstimateMass(Event const& event) override;
 
     private: 
     struct IterData;

@@ -281,6 +281,11 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
     return res;
 }
 
+OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(Event const& event)
+{
+    throw std::runtime_error("Not implemented");
+}
+
 OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
 {
     VecLVF_t particles(static_cast<size_t>(ObjSL::count));
