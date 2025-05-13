@@ -12,7 +12,10 @@
 
 int main()
 {
-    gROOT->ProcessLine("gErrorIgnoreLevel = 6001;");
+    #if (!defined(DEV) && !defined(DEBUG))
+        std::cout << "Release mode: ignoring all ROOT warnings\n";
+        gROOT->ProcessLine("gErrorIgnoreLevel = 6001;");
+    #endif
     std::cout << std::setprecision(3);
 
     std::map<Channel, TString> pdf_file_map = { { Channel::SL, "pdf_sl.root" },
