@@ -15,13 +15,15 @@ struct Event
     void ConnectTree(TTree* tree, Channel ch);
 
     //reco objects
-    // 6x4x20 = 480
+    // 8x4x20 = 640
     std::array<Float_t, MAX_RECO_JET> reco_jet_pt = {};
     std::array<Float_t, MAX_RECO_JET> reco_jet_eta = {};
     std::array<Float_t, MAX_RECO_JET> reco_jet_phi = {};
     std::array<Float_t, MAX_RECO_JET> reco_jet_mass = {};
     std::array<Float_t, MAX_RECO_JET> reco_jet_corr = {};
     std::array<Float_t, MAX_RECO_JET> reco_jet_res = {};
+    std::array<Float_t, MAX_RECO_JET> reco_jet_btag = {};
+    std::array<Float_t, MAX_RECO_JET> reco_jet_qvg = {};
 
     // 6x4x2 = 48
     std::array<Float_t, MAX_RECO_LEP> reco_lep_pt = {};
