@@ -273,6 +273,49 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
 
 OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
 {
+    std::vector<LorentzVectorF_t> particles(static_cast<size_t>(ObjDL::count));
+    particles[static_cast<size_t>(ObjDL::lep1)] = LorentzVectorF_t(event.reco_lep_pt[static_cast<size_t>(Lep::lep1)], 
+                                                                   event.reco_lep_eta[static_cast<size_t>(Lep::lep1)],
+                                                                   event.reco_lep_phi[static_cast<size_t>(Lep::lep1)], 
+                                                                   event.reco_lep_mass[static_cast<size_t>(Lep::lep1)]);
+    particles[static_cast<size_t>(ObjDL::lep2)] = LorentzVectorF_t(event.reco_lep_pt[static_cast<size_t>(Lep::lep2)], 
+                                                                   event.reco_lep_eta[static_cast<size_t>(Lep::lep2)],
+                                                                   event.reco_lep_phi[static_cast<size_t>(Lep::lep2)], 
+                                                                   event.reco_lep_mass[static_cast<size_t>(Lep::lep2)]);
+    particles[static_cast<size_t>(ObjDL::met)] = LorentzVectorF_t(event.reco_met_pt, 0.0f, event.reco_met_phi, 0.0f);
+    
+    if (m_aggr_mode == AggregationMode::Event)
+    {
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", event.evt_id));
+    }
+
+    // selection of b jets
+    std::vector<std::pair<size_t, size_t>> bjet_pair_indices;
+    bjet_pair_indices.emplace_back(0, 1); // jet 0 is always a tight
+
+    // if jet 1 is tight no need to consider combinations: just pick [0, 1]
+    if (event.reco_jet_btag[1] < TIGHT_BTAG_WP)
+    {
+        // if jet 1 is not medium, than jet 2 is also not medium (they're sorted by btag)
+        // in that case look at [0, 1] and [0, 2] only because both jets 1 and 2 are garbage
+        // not looking at [1, 2] in this case because [1, 2] is ultra-garbage!
+        if (event.reco_jet_btag[1] < MEDIUM_BTAG_WP)
+        {
+            bjet_pair_indices.emplace_back(0, 2);
+        }
+        else 
+        {
+            // if jet 1 is medium and jet 2 is medium too, can look at [1, 2]
+            if (event.reco_jet_btag[2] > MEDIUM_BTAG_WP)
+            {
+                bjet_pair_indices.emplace_back(0, 2);
+                bjet_pair_indices.emplace_back(1, 2);
+            }
+        }
+    }
+
+    
+
     return std::nullopt;
 }
 
