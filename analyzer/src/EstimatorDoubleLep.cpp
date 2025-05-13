@@ -286,7 +286,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
     
     if (m_aggr_mode == AggregationMode::Event)
     {
-        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", event.evt_id));
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", event.event_id));
     }
 
     // selection of b jets
@@ -314,8 +314,83 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
         }
     }
 
-    
+    // now loop over all saved jet pairs
+    // construct their p4 and push back it to particles
+    // and estimate each combination
+    std::vector<ArrF_t<ESTIM_OUT_SZ>> estimations;
+    for (auto const& [bj1_idx, bj2_idx]: bjet_pair_indices)
+    {
+        // PNet resolutions of all jets but currently selected b jets
+        // will be needed in fututre when I add contributions to met corrections from other jets
+        // right now just a placeholder
+        std::vector<Float_t> other_jet_resolutions{};
 
+        // order jets such that first b jet has bigger pt and save their p4
+        if (event.reco_jet_pt[bj1_idx] > event.reco_jet_pt[bj2_idx])
+        {
+            particles[static_cast<size_t>(ObjDL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
+                                                                          event.reco_jet_eta[bj1_idx],
+                                                                          event.reco_jet_phi[bj1_idx], 
+                                                                          event.reco_jet_mass[bj1_idx]);
+            particles[static_cast<size_t>(ObjDL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
+                                                                          event.reco_jet_eta[bj2_idx],
+                                                                          event.reco_jet_phi[bj2_idx], 
+                                                                          event.reco_jet_mass[bj2_idx]);
+        }
+        else 
+        {
+            particles[static_cast<size_t>(ObjDL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
+                                                                          event.reco_jet_eta[bj2_idx],
+                                                                          event.reco_jet_phi[bj2_idx], 
+                                                                          event.reco_jet_mass[bj2_idx]);
+            particles[static_cast<size_t>(ObjDL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
+                                                                          event.reco_jet_eta[bj1_idx],
+                                                                          event.reco_jet_phi[bj1_idx], 
+                                                                          event.reco_jet_mass[bj1_idx]);
+        }
+
+        JetComb comb{};
+        comb.b1 = bj1_idx;
+        comb.b2 = bj2_idx;
+        ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, other_jet_resolutions, event.event_id, comb);
+
+        // success: mass > 0
+        if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
+        {
+            estimations.push_back(comb_result);
+        }
+    }
+
+    if (!estimations.empty())
+    {
+        if (m_aggr_mode == AggregationMode::Combination)
+        {
+            // pick combination with largest integral
+            auto IntegralComparator = [](ArrF_t<ESTIM_OUT_SZ> const& c1, ArrF_t<ESTIM_OUT_SZ> const& c2)
+            {
+                return c1[static_cast<size_t>(EstimOut::integral)] < c2[static_cast<size_t>(EstimOut::integral)];
+            };
+            auto it = std::max_element(estimations.begin(), estimations.end(), IntegralComparator);
+            size_t best_est_idx = it - estimations.begin();
+            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[best_est_idx]);
+        }
+        else if (m_aggr_mode == AggregationMode::Event)
+        {
+            ArrF_t<ESTIM_OUT_SZ> res{};
+            int binmax = m_res_mass->GetMaximumBin(); 
+            res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+            res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
+            res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+            res[static_cast<size_t>(EstimOut::integral)] = m_res_mass->Integral();
+            ResetHist(m_res_mass);
+            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(res);
+        }
+        else 
+        {
+            throw std::runtime_error("Unknown strategy to aggregate combination data to estimate event mass");
+        }
+    }
+    ResetHist(m_res_mass);
     return std::nullopt;
 }
 
