@@ -38,7 +38,7 @@ dev: all
 experimental: CXXFLAGS += -O2 -DDEV -DEXPERIMENTAL
 experimental: all
 
-release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt -ffast-math
+release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt
 release: all
 
 clean:
