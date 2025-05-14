@@ -315,6 +315,15 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
                 }
             }
         }
+        else 
+        {
+            // if jet 1 is tight and jet 2 is tight - also can look at everything
+            if (event.reco_jet_btag[2] > TIGHT_BTAG_WP)
+            {
+                bjet_pair_indices.emplace_back(0, 2);
+                bjet_pair_indices.emplace_back(1, 2);
+            }
+        }
     }
 
     // now loop over all saved jet pairs
