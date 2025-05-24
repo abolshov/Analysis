@@ -39,6 +39,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
     UHist_t<TH1F>& pdf_mw_onshell = m_pdf_1d[static_cast<size_t>(PDF1_dl::mw_onshell)];
 
     TString label = comb.ToString(Channel::DL);
+    Float_t proba = comb.GetProbability();
 
     if (m_aggr_mode == AggregationMode::Combination)
     {
@@ -160,7 +161,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombination(VecLVF_t const& par
         Float_t weight = estimates.empty() ? 0.0 : 1.0/estimates.size();
         for (auto est: estimates)
         {
-            m_res_mass->Fill(est, weight);
+            m_res_mass->Fill(est, proba*weight);
         }
 
         if (m_recorder.ShouldRecord())
@@ -291,39 +292,48 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
 
     // selection of b jets
     std::vector<std::pair<size_t, size_t>> bjet_pair_indices;
-    bjet_pair_indices.emplace_back(0, 1); // jet 0 is always a tight
+    // bjet_pair_indices.emplace_back(0, 1); // jet 0 is always a tight
 
-    if (NUM_BEST_BTAG > 2)
+    // if (NUM_BEST_BTAG > 2)
+    // {
+    //     // if jet 1 is tight no need to consider combinations: just pick [0, 1]
+    //     if (event.reco_jet_btag[1] < TIGHT_BTAG_WP)
+    //     {
+    //         // if jet 1 is not medium, than jet 2 is also not medium (they're sorted by btag)
+    //         // in that case look at [0, 1] and [0, 2] only because both jets 1 and 2 are garbage
+    //         // not looking at [1, 2] in this case because [1, 2] is ultra-garbage!
+    //         if (event.reco_jet_btag[1] < MEDIUM_BTAG_WP)
+    //         {
+    //             bjet_pair_indices.emplace_back(0, 2);
+    //         }
+    //         else 
+    //         {
+    //             // if jet 1 is medium and jet 2 is medium too, can look at [1, 2]
+    //             if (event.reco_jet_btag[2] > MEDIUM_BTAG_WP)
+    //             {
+    //                 bjet_pair_indices.emplace_back(0, 2);
+    //                 bjet_pair_indices.emplace_back(1, 2);
+    //             }
+    //         }
+    //     }
+    //     else 
+    //     {
+    //         // if jet 1 is tight and jet 2 is tight - also can look at everything
+    //         if (event.reco_jet_btag[2] > TIGHT_BTAG_WP)
+    //         {
+    //             bjet_pair_indices.emplace_back(0, 2);
+    //             bjet_pair_indices.emplace_back(1, 2);
+    //         }
+    //     }
+    // }
+
+    size_t num_bjets = static_cast<size_t>(event.n_reco_jet) < NUM_BEST_BTAG ? static_cast<size_t>(event.n_reco_jet) : NUM_BEST_BTAG;
+    for (size_t i = 0; i < num_bjets; ++i)
     {
-        // if jet 1 is tight no need to consider combinations: just pick [0, 1]
-        if (event.reco_jet_btag[1] < TIGHT_BTAG_WP)
+        for (size_t j = i + 1; j < num_bjets; ++j)
         {
-            // if jet 1 is not medium, than jet 2 is also not medium (they're sorted by btag)
-            // in that case look at [0, 1] and [0, 2] only because both jets 1 and 2 are garbage
-            // not looking at [1, 2] in this case because [1, 2] is ultra-garbage!
-            if (event.reco_jet_btag[1] < MEDIUM_BTAG_WP)
-            {
-                bjet_pair_indices.emplace_back(0, 2);
-            }
-            else 
-            {
-                // if jet 1 is medium and jet 2 is medium too, can look at [1, 2]
-                if (event.reco_jet_btag[2] > MEDIUM_BTAG_WP)
-                {
-                    bjet_pair_indices.emplace_back(0, 2);
-                    bjet_pair_indices.emplace_back(1, 2);
-                }
-            }
-        }
-        else 
-        {
-            // if jet 1 is tight and jet 2 is tight - also can look at everything
-            if (event.reco_jet_btag[2] > TIGHT_BTAG_WP)
-            {
-                bjet_pair_indices.emplace_back(0, 2);
-                bjet_pair_indices.emplace_back(1, 2);
-            }
-        }
+            bjet_pair_indices.emplace_back(i, j);
+        }   
     }
 
     // now loop over all saved jet pairs
@@ -360,10 +370,8 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
                                                                           event.reco_jet_phi[bj1_idx], 
                                                                           event.reco_jet_mass[bj1_idx]);
         }
-
-        JetComb comb{};
-        comb.b1 = bj1_idx;
-        comb.b2 = bj2_idx;
+        
+        JetComb comb(bj1_idx, bj2_idx, event.reco_jet_btag);
         ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, other_jet_resolutions, event.event_id, comb);
 
         // success: mass > 0
