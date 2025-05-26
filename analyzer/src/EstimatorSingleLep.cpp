@@ -139,10 +139,10 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
                 Xhh[control] = Hww[control] + Hbb;
                 mass[control] = Xhh[control].M();
                 correct_hww_mass[control] = (std::abs(mh - Hww[control].M()) < 1.0);
-                // if (!correct_hww_mass[control])
-                // {
-                //     continue;
-                // }
+                if (!correct_hww_mass[control])
+                {
+                    continue;
+                }
                 masses.push_back(mass[control]);
             } 
             else 
@@ -283,7 +283,69 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
 
 OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(Event const& event)
 {
-    throw std::runtime_error("Not implemented");
+    using JetIdxPair_t = std::pair<size_t, size_t>; 
+
+    std::vector<LorentzVectorF_t> particles(static_cast<size_t>(ObjSL::count));
+    particles[static_cast<size_t>(ObjSL::lep)] = LorentzVectorF_t(event.reco_lep_pt[static_cast<size_t>(Lep::lep1)], 
+                                                                  event.reco_lep_eta[static_cast<size_t>(Lep::lep1)],
+                                                                  event.reco_lep_phi[static_cast<size_t>(Lep::lep1)], 
+                                                                  event.reco_lep_mass[static_cast<size_t>(Lep::lep1)]);
+    particles[static_cast<size_t>(ObjSL::met)] = LorentzVectorF_t(event.reco_met_pt, 0.0f, event.reco_met_phi, 0.0f);
+    
+    if (m_aggr_mode == AggregationMode::Event)
+    {
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", event.event_id));
+    }
+
+    size_t n_jets = static_cast<size_t>(event.n_reco_jet);
+    size_t num_bjets = n_jets < NUM_BEST_BTAG ? n_jets : NUM_BEST_BTAG;
+    std::map<JetIdxPair_t, std::vector<JetIdxPair_t>> jet_comb_candidates;
+    for (size_t i = 0; i < num_bjets; ++i)
+    {
+        for (size_t j = i + 1; j < num_bjets; ++j)
+        {
+            jet_comb_candidates.insert({{i, j}, std::vector<JetIdxPair_t>()});
+        }   
+    }
+
+    // fill possible light jet indices
+    // 2 jets are used to form a bjet pair => n - 2 jets can be light jet candidates
+    size_t num_light_jets = USE_QVG_SELECTION ? std::min(n_jets - 2, NUM_BEST_QVG) : n_jets - 2;
+    for (auto& [bjet_pair, light_jet_idx_pairs]: jet_comb_candidates)
+    {
+        auto [bj1_idx, bj2_idx] = bjet_pair;
+        std::vector<size_t> light_jet_indices;
+        for (size_t lj_idx = 0; lj_idx < n_jets; ++lj_idx)
+        {
+            if (lj_idx == bj1_idx || lj_idx == bj2_idx)
+            {
+                continue;
+            }
+            light_jet_indices.push_back(lj_idx);
+        }
+        
+        // sort light jet indices by btagPNetQvG to easily select n best
+        if (USE_QVG_SELECTION)
+        {
+            std::array<Float_t, MAX_RECO_JET> const& qvg_scores = event.reco_jet_qvg;
+            auto ScoreCmp = [&qvg_scores](size_t i, size_t j)
+            {
+                return qvg_scores[i] < qvg_scores[j];
+            };
+            std::sort(light_jet_indices.begin(), light_jet_indices.end(), ScoreCmp);
+        }
+
+        // form all possible pairs of light jets
+        for (size_t lj1_idx = 0; lj1_idx < num_light_jets; ++lj1_idx)
+        {
+            for (size_t lj2_idx = lj1_idx + 1; lj2_idx < num_light_jets; ++lj2_idx)
+            {
+                light_jet_idx_pairs.emplace_back(lj1_idx, lj2_idx);
+            }   
+        }
+    }
+
+    return std::nullopt;
 }
 
 OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
