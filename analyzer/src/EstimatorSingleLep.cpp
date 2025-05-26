@@ -41,7 +41,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
     UHist_t<TH2F>& pdf_mw1mw2 = m_pdf_2d[static_cast<size_t>(PDF2_sl::mw1mw2)];
 
     TString label = comb.ToString(Channel::SL);
-
+    Float_t proba = comb.GetProbability();
     Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
 
     if (m_aggr_mode == AggregationMode::Combination)
@@ -161,7 +161,7 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& par
         Float_t weight = 1.0/num_sol;
         for (auto mass: masses)
         {
-            m_res_mass->Fill(mass, weight);
+            m_res_mass->Fill(mass, proba*weight);
         }
         
         if (m_recorder.ShouldRecord())
@@ -330,21 +330,117 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(Event const& event)
             std::array<Float_t, MAX_RECO_JET> const& qvg_scores = event.reco_jet_qvg;
             auto ScoreCmp = [&qvg_scores](size_t i, size_t j)
             {
-                return qvg_scores[i] < qvg_scores[j];
+                return qvg_scores[i] > qvg_scores[j];
             };
             std::sort(light_jet_indices.begin(), light_jet_indices.end(), ScoreCmp);
         }
 
         // form all possible pairs of light jets
-        for (size_t lj1_idx = 0; lj1_idx < num_light_jets; ++lj1_idx)
+        for (size_t i = 0; i < num_light_jets; ++i)
         {
-            for (size_t lj2_idx = lj1_idx + 1; lj2_idx < num_light_jets; ++lj2_idx)
+            for (size_t j = i + 1; j < num_light_jets; ++j)
             {
-                light_jet_idx_pairs.emplace_back(lj1_idx, lj2_idx);
+                light_jet_idx_pairs.emplace_back(light_jet_indices[i], light_jet_indices[j]);
             }   
         }
     }
 
+    // loop over combination and estimate mass for each
+    std::vector<ArrF_t<ESTIM_OUT_SZ>> estimations;
+    for (auto const& [bjet_idx_pair, light_jet_idx_pairs]: jet_comb_candidates)
+    {
+        auto [bj1_idx, bj2_idx] = bjet_idx_pair;
+        if (event.reco_jet_pt[bj1_idx] > event.reco_jet_pt[bj2_idx])
+        {
+            particles[static_cast<size_t>(ObjSL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
+                                                                          event.reco_jet_eta[bj1_idx],
+                                                                          event.reco_jet_phi[bj1_idx], 
+                                                                          event.reco_jet_mass[bj1_idx]);
+            particles[static_cast<size_t>(ObjSL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
+                                                                          event.reco_jet_eta[bj2_idx],
+                                                                          event.reco_jet_phi[bj2_idx], 
+                                                                          event.reco_jet_mass[bj2_idx]);
+        }
+        else 
+        {
+            particles[static_cast<size_t>(ObjSL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
+                                                                          event.reco_jet_eta[bj2_idx],
+                                                                          event.reco_jet_phi[bj2_idx], 
+                                                                          event.reco_jet_mass[bj2_idx]);
+            particles[static_cast<size_t>(ObjSL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
+                                                                          event.reco_jet_eta[bj1_idx],
+                                                                          event.reco_jet_phi[bj1_idx], 
+                                                                          event.reco_jet_mass[bj1_idx]);
+        }
+
+        for (auto const& [lj1_idx, lj2_idx]: light_jet_idx_pairs)
+        {
+            std::vector<Float_t> other_jet_resolutions{}; // dummy for now
+
+            if (event.reco_jet_pt[lj1_idx] > event.reco_jet_pt[lj2_idx])
+            {
+                particles[static_cast<size_t>(ObjSL::lj1)] = LorentzVectorF_t(event.reco_jet_pt[lj1_idx], 
+                                                                              event.reco_jet_eta[lj1_idx],
+                                                                              event.reco_jet_phi[lj1_idx], 
+                                                                              event.reco_jet_mass[lj1_idx]);
+                particles[static_cast<size_t>(ObjSL::lj2)] = LorentzVectorF_t(event.reco_jet_pt[lj2_idx], 
+                                                                              event.reco_jet_eta[lj2_idx],
+                                                                              event.reco_jet_phi[lj2_idx], 
+                                                                              event.reco_jet_mass[lj2_idx]);
+            }
+            else 
+            {
+                particles[static_cast<size_t>(ObjSL::lj1)] = LorentzVectorF_t(event.reco_jet_pt[lj2_idx], 
+                                                                              event.reco_jet_eta[lj2_idx],
+                                                                              event.reco_jet_phi[lj2_idx], 
+                                                                              event.reco_jet_mass[lj2_idx]);
+                particles[static_cast<size_t>(ObjSL::lj2)] = LorentzVectorF_t(event.reco_jet_pt[lj1_idx], 
+                                                                              event.reco_jet_eta[lj1_idx],
+                                                                              event.reco_jet_phi[lj1_idx], 
+                                                                              event.reco_jet_mass[lj1_idx]);
+            }
+
+            JetComb comb(bj1_idx, bj2_idx, lj1_idx, lj2_idx, event.reco_jet_btag, event.reco_jet_qvg);
+            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, other_jet_resolutions, event.event_id, comb);
+
+            // success: mass > 0
+            if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
+            {
+                estimations.push_back(comb_result);
+            }
+        }
+    }
+
+    if (!estimations.empty())
+    {
+        if (m_aggr_mode == AggregationMode::Combination)
+        {
+            // pick combination with largest peak_value
+            auto PeakComparator = [](ArrF_t<ESTIM_OUT_SZ> const& c1, ArrF_t<ESTIM_OUT_SZ> const& c2)
+            {
+                return c1[static_cast<size_t>(EstimOut::peak_value)] < c2[static_cast<size_t>(EstimOut::peak_value)];
+            };
+            auto it = std::max_element(estimations.begin(), estimations.end(), PeakComparator);
+            size_t best_est_idx = it - estimations.begin();
+            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[best_est_idx]);
+        }
+        else if (m_aggr_mode == AggregationMode::Event)
+        {
+            ArrF_t<ESTIM_OUT_SZ> res{};
+            int binmax = m_res_mass->GetMaximumBin(); 
+            res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+            res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
+            res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+            res[static_cast<size_t>(EstimOut::integral)] = m_res_mass->Integral();
+            ResetHist(m_res_mass);
+            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(res);
+        }
+        else 
+        {
+            throw std::runtime_error("Unknown strategy to aggregate combination data to estimate event mass");
+        }
+    }
+    ResetHist(m_res_mass);
     return std::nullopt;
 }
 
