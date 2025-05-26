@@ -65,7 +65,9 @@ inline constexpr Float_t DEFAULT_JET_RES = 0.1;
 inline constexpr unsigned Q16 = 16;
 inline constexpr unsigned Q84 = 84;
 
-inline constexpr size_t NUM_BEST_BTAG = 2;
+inline constexpr size_t NUM_BEST_BTAG = 3;
+inline constexpr size_t NUM_BEST_QVG = 3;
+inline constexpr bool USE_QVG_SELECTION = true;
 // btag working points corresponding to Run3_2022
 inline constexpr Float_t LOOSE_BTAG_WP = 0.047;
 inline constexpr Float_t MEDIUM_BTAG_WP = 0.245;
