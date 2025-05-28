@@ -15,9 +15,7 @@
 Analyzer::Analyzer(std::map<Channel, TString> const& pdf_file_map)
 :   m_estimator(pdf_file_map.at(Channel::SL), pdf_file_map.at(Channel::DL), AggregationMode::Event)
 ,   m_estimator_data(std::make_unique<EstimatorData>())
-{
-    TH1::AddDirectory(false);
-}
+{}
 
 void Analyzer::ProcessDataset(Dataset_t const& dataset)
 {
@@ -119,8 +117,6 @@ void Analyzer::ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_
     }
 
     VecLVF_t jets = GetRecoJetP4(m_event);
-    // VecLVF_t leptons = GetRecoLepP4(m_event, ch);
-    // LorentzVectorF_t met = GetRecoMET(m_event);
     
     #ifdef DEV 
         if (!is_bkg)
@@ -139,9 +135,7 @@ void Analyzer::ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_
 
     ++counter;
     m_estimator_data->event_id = evt_id;
-
-    // std::vector<Float_t> resolutions = GetPNetRes(m_event);
-    // auto hme = m_estimator.EstimateMass(jets, resolutions, leptons, met, evt_id, ch);
+    
     auto hme = m_estimator.EstimateMass(m_event, ch);
     if (hme)
     {
