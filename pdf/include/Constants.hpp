@@ -44,6 +44,7 @@ enum class ObjDL { bj1, bj2, lep1, lep2, met, count };
 
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 20;
+inline constexpr size_t MAX_RECO_FAT_JET = 5;
 inline constexpr size_t MAX_RECO_LEP = 2;
 inline constexpr size_t NUM_BQ = 2;
 inline constexpr size_t NUM_LQ = 2;

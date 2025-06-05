@@ -29,6 +29,34 @@ struct Buffer
     std::array<Int_t, MAX_RECO_LEP> reco_lep_type = {};
     std::array<Int_t, MAX_RECO_LEP> reco_lep_gen_kind = {};
 
+    // reco fatjets
+    // 6x4x2 = 48
+    std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_pt = {};
+    std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_eta = {};
+    std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_phi = {};
+    std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_mass = {};
+    std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_btag_HbbvsQCD = {};
+
+    // gen objects
+    // 4x4x4 = 64
+    std::array<Float_t, MAX_GEN_QUARK> gen_quark_pt = {};
+    std::array<Float_t, MAX_GEN_QUARK> gen_quark_eta = {};
+    std::array<Float_t, MAX_GEN_QUARK> gen_quark_phi = {};
+    std::array<Float_t, MAX_GEN_QUARK> gen_quark_mass = {};
+
+    // 4x4x4 = 64
+    std::array<Float_t, MAX_GEN_LEP> gen_lep_pt = {};
+    std::array<Float_t, MAX_GEN_LEP> gen_lep_eta = {};
+    std::array<Float_t, MAX_GEN_LEP> gen_lep_phi = {};
+    std::array<Float_t, MAX_GEN_LEP> gen_lep_mass = {};
+
+    // 4x4x4 = 64
+    std::array<Float_t, MAX_GEN_NU> gen_nu_pt = {};
+    std::array<Float_t, MAX_GEN_NU> gen_nu_eta = {};
+    std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {};
+    std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {};
+
+
     // 2x4 = 8
     Float_t reco_met_pt = 0.0;
     Float_t reco_met_phi = 0.0;
@@ -38,30 +66,7 @@ struct Buffer
 
     // 4
     int n_reco_jet = 0;
-
-    #ifdef DEV 
-        // gen objects
-        // 4x4x4 = 64
-        std::array<Float_t, MAX_GEN_QUARK> gen_quark_pt = {};
-        std::array<Float_t, MAX_GEN_QUARK> gen_quark_eta = {};
-        std::array<Float_t, MAX_GEN_QUARK> gen_quark_phi = {};
-        std::array<Float_t, MAX_GEN_QUARK> gen_quark_mass = {};
-
-        // 4x4x4 = 64
-        std::array<Float_t, MAX_GEN_LEP> gen_lep_pt = {};
-        std::array<Float_t, MAX_GEN_LEP> gen_lep_eta = {};
-        std::array<Float_t, MAX_GEN_LEP> gen_lep_phi = {};
-        std::array<Float_t, MAX_GEN_LEP> gen_lep_mass = {};
-
-        // 4x4x4 = 64
-        std::array<Float_t, MAX_GEN_NU> gen_nu_pt = {};
-        std::array<Float_t, MAX_GEN_NU> gen_nu_eta = {};
-        std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {};
-        std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {};
-
-        // 4
-        int n_gen_jet = 0;
-    #endif 
+    int n_reco_fatjet = 0;
 }; 
 
 #endif
