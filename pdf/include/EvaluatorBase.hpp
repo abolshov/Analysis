@@ -9,6 +9,7 @@
 
 #include "TTree.h"
 #include "TChain.h"
+#include "TFile.h"
 
 class EvaluatorBase
 {
@@ -21,6 +22,7 @@ class EvaluatorBase
     protected:
     std::unique_ptr<TChain> m_chain;
     std::unique_ptr<Buffer> m_buf;
+    std::unique_ptr<TFile> m_out_file;
 };
 
 #endif

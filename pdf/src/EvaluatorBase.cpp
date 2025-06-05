@@ -5,6 +5,7 @@
 EvaluatorBase::EvaluatorBase(std::ifstream& file_stream, Channel ch)
 :   m_chain(std::make_unique<TChain>("Events"))
 ,   m_buf(std::make_unique<Buffer>())
+,   m_out_file(std::make_unique<TFile>(ch == Channel::DL ? "pdfs_dl.root" : "pdfs_sl.root", "RECREATE"))
 {
     std::string file_name;
     std::vector<std::string> file_names;
