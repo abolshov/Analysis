@@ -30,7 +30,7 @@ struct Buffer
     std::array<Int_t, MAX_RECO_LEP> reco_lep_gen_kind = {};
 
     // reco fatjets
-    // 6x4x2 = 48
+    // 5x4x5 = 100
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_pt = {};
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_eta = {};
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_phi = {};
@@ -56,10 +56,15 @@ struct Buffer
     std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {};
     std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {};
 
+    // 4x4 = 16
+    Float_t hbb_pt = 0.0f;
+    Float_t hbb_eta = 0.0f;
+    Float_t hbb_phi = 0.0f;
+    Float_t hbb_mass = 0.0f;
 
     // 2x4 = 8
-    Float_t reco_met_pt = 0.0;
-    Float_t reco_met_phi = 0.0;
+    Float_t reco_met_pt = 0.0f;
+    Float_t reco_met_phi = 0.0f;
 
     // 8
     ULong64_t event_id = 0;

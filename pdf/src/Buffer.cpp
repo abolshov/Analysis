@@ -80,4 +80,9 @@ void Buffer::ConnectTree(TTree* tree, Channel ch)
         tree->SetBranchAddress("genV2prod2_phi", gen_quark_phi.data() + static_cast<size_t>(Quark::q2));
         tree->SetBranchAddress("genV2prod2_mass", gen_quark_mass.data() + static_cast<size_t>(Quark::q2));
     }
+
+    tree->SetBranchAddress("genHbb_pt", &hbb_pt);
+    tree->SetBranchAddress("genHbb_eta", &hbb_eta);
+    tree->SetBranchAddress("genHbb_phi", &hbb_phi);
+    tree->SetBranchAddress("genHbb_mass", &hbb_mass);
 }
