@@ -216,10 +216,15 @@ int main()
     auto pdf_mww_wide = std::make_unique<TH1F>("pdf_mww_wide", "1d PDF of H->WW mass", N_BINS, 0, 200);
     auto pdf_mjj_off = std::make_unique<TH1F>("pdf_mjj_off", "1d PDF of invariant mass of light jets when gen W->qq is offshell", N_BINS, 0, 200);
     auto pdf_mjj_on = std::make_unique<TH1F>("pdf_mjj_on", "1d PDF of invariant mass of light jets when gen W->qq is onshell", N_BINS, 0, 200);
-    // auto pdf_mw_had = std::make_unique<TH1F>("pdf_mw_had", "1d PDF of hadronic W mass with best corrections applied", N_BINS, 0, 200);
-    // auto pdf_mw_lep = std::make_unique<TH1F>("pdf_mw_lep", "1d PDF of leptonic W mass with reco lep and true nu", N_BINS, 0, 200);
+    auto pdf_mWoffshell = std::make_unique<TH1F>("pdf_mWoffshell", "1d PDF of onshell W mass", N_BINS, 0, 100);
+    auto pdf_mWonshell = std::make_unique<TH1F>("pdf_mWonshell", "1d PDF of offshell W mass", N_BINS, 0, 100);
     auto pdf_hbb_pt_e = std::make_unique<TH1F>("pdf_hbb_pt_e", "1d PDF of pt to E ratio for H->bb", N_BINS, 0, 1);
     auto pdf_hww_pt_e = std::make_unique<TH1F>("pdf_hww_pt_e", "1d PDF of pt to E ratio for H->WW", N_BINS, 0, 1);
+
+    auto pdf_lepPtmWlep = std::make_unique<TH2F>("pdf_lepPtmWlep", "2d PDF lepton pt and mWlep", N_BINS, 0, 500, N_BINS, 0, 100);
+    auto pdf_c3mWhad = std::make_unique<TH2F>("pdf_c3mWhad", "2d PDF leading light jet pt ratio and mWhad", N_BINS, 0, 8, N_BINS, 0, 100);
+    auto pdf_c3mWlep = std::make_unique<TH2F>("pdf_c3mWlep", "2d PDF leading light jet pt ratio and mWlep", N_BINS, 0, 8, N_BINS, 0, 100);
+    // auto pdf_quark1PtmWhad = std::make_unique<TH2F>("pdf_quark1PtmWhad", "2d PDF leading light quark pt and mWhad", N_BINS, 0, 500, N_BINS, 0, 90);
 
     TRandom3 rg;
     rg.SetSeed(42);
@@ -290,10 +295,17 @@ int main()
         TLorentzVector reco_lep_p4;
         reco_lep_p4.SetPtEtaPhiM(lep1_pt, lep1_eta, lep1_phi, lep1_mass);
 
+        pdf_lepPtmWlep->Fill(lep1_pt, genV1_mass);
+
         TLorentzVector const& reco_bj1_p4 = jets[b1_match];
         TLorentzVector const& reco_bj2_p4 = jets[b2_match];
         TLorentzVector const& reco_lj1_p4 = jets[q1_match];
         TLorentzVector const& reco_lj2_p4 = jets[q2_match];
+
+        // double lead_light_jet_pt = reco_lj1_p4.Pt() > reco_lj2_p4.Pt() ? reco_lj1_p4.Pt() : reco_lj2_p4.Pt();
+        // double lead_light_quark_pt = genq1_p4.Pt() > genq2_p4.Pt() ? genq1_p4.Pt() : genq2_p4.Pt();
+        // pdf_c3mWhad->Fill(lead_light_jet_pt, genV2_mass);
+        // pdf_quark1PtmWhad->Fill(lead_light_quark_pt, genV2_mass);
 
         TLorentzVector Hbb_p4, Hww_p4;
         Hbb_p4.SetPtEtaPhiM(genHbb_pt, genHbb_eta, genHbb_phi, genHbb_mass);
@@ -317,6 +329,10 @@ int main()
 
         double c3 = genq1_p4.Pt()/reco_lj1_p4.Pt();
         double c4 = genq2_p4.Pt()/reco_lj2_p4.Pt();
+
+        pdf_c3mWhad->Fill(c3, genV2_mass);
+        pdf_c3mWlep->Fill(c3, genV1_mass);
+        // pdf_quark1PtmWhad->Fill(lead_light_quark_pt, genV2_mass);
 
         double dpx_b_resc = -(c1 - 1)*reco_bj1_p4.Px() - (c2 - 1)*reco_bj2_p4.Px();
         double dpy_b_resc = -(c1 - 1)*reco_bj1_p4.Py() - (c2 - 1)*reco_bj2_p4.Py();
@@ -409,6 +425,8 @@ int main()
         pdf_mbb->Fill((c1*reco_bj1_p4 + c2*reco_bj2_p4).M());
         pdf_nulep_deta->Fill(nu.Eta() - reco_lep_p4.Eta());
         pdf_mw1mw2->Fill(std::max(genV1_mass, genV2_mass), std::min(genV1_mass, genV2_mass));
+        pdf_mWoffshell->Fill(std::min(genV1_mass, genV2_mass));
+        pdf_mWonshell->Fill(std::max(genV1_mass, genV2_mass));
     }
 
     pdf_b1->Scale(1.0/GetPDFScaleFactor(pdf_b1));
@@ -425,7 +443,8 @@ int main()
     pdf_nulep_deta->Scale(1.0/GetPDFScaleFactor(pdf_nulep_deta));
     pdf_mww_narrow->Scale(1.0/GetPDFScaleFactor(pdf_mww_narrow));
     pdf_mww_wide->Scale(1.0/GetPDFScaleFactor(pdf_mww_wide));
-    // pdf_mw_had->Scale(1.0/GetPDFScaleFactor(pdf_mw_had));
+    pdf_mWoffshell->Scale(1.0/GetPDFScaleFactor(pdf_mWoffshell));
+    pdf_mWonshell->Scale(1.0/GetPDFScaleFactor(pdf_mWonshell));
     pdf_mjj_off->Scale(1.0/GetPDFScaleFactor(pdf_mjj_off));
     pdf_mjj_on->Scale(1.0/GetPDFScaleFactor(pdf_mjj_on));
     pdf_b1b2->Scale(1.0/GetPDFScaleFactor(pdf_b1b2));
@@ -459,7 +478,12 @@ int main()
     pdf_hbb_pt_e->Write();
     pdf_hww_pt_e->Write();
     pdf_mw1mw2->Write();
-    // pdf_mw_had->Write();
+    pdf_lepPtmWlep->Write();
+    pdf_c3mWhad->Write();
+    pdf_c3mWlep->Write();
+    // pdf_quark1PtmWhad->Write();
+    pdf_mWoffshell->Write();
+    pdf_mWonshell->Write();
 	output->Write();
 	output->Close();
 
