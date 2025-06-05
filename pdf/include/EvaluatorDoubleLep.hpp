@@ -10,8 +10,6 @@ class EvaluatorDoubleLep : public EvaluatorBase
     ~EvaluatorDoubleLep() = default;
     
     void Evaluate() override;
-
-    private:
 };
 
 #endif
