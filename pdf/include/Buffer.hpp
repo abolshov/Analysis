@@ -35,7 +35,7 @@ struct Buffer
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_eta = {};
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_phi = {};
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_mass = {};
-    std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_btag_HbbvsQCD = {};
+    // std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_btag_HbbvsQCD = {};
 
     // gen objects
     // 4x4x4 = 64

@@ -59,6 +59,7 @@ inline constexpr int CONTROL = 4;
 inline constexpr Float_t MAX_MASS = 4000.0;
 inline constexpr Float_t MIN_MASS = 200.0;
 inline constexpr int N_BINS = 3800;
+inline constexpr size_t NUM_PDF_BINS = 100;
 
 inline constexpr Float_t MET_SIGMA = 25.2;
 inline constexpr Float_t DEFAULT_JET_RES = 0.1;
