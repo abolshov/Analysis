@@ -49,6 +49,7 @@ struct Event
 
     // 4
     int n_reco_jet = 0;
+    int n_reco_fatjet = 0;
 
     #ifdef DEV 
         // gen objects
