@@ -13,6 +13,12 @@ void Event::ConnectTree(UTree_t& tree, Channel ch)
     tree->SetBranchAddress("centralJet_btagPNetB", reco_jet_btag.data());
     tree->SetBranchAddress("centralJet_btagPNetQvG", reco_jet_qvg.data());
 
+    tree->SetBranchAddress("nSelectedFatJet", &n_reco_fatjet);
+    tree->SetBranchAddress("SelectedFatJet_pt", reco_fatjet_pt.data());
+    tree->SetBranchAddress("SelectedFatJet_eta", reco_fatjet_eta.data());
+    tree->SetBranchAddress("SelectedFatJet_phi", reco_fatjet_phi.data());
+    tree->SetBranchAddress("SelectedFatJet_mass", reco_fatjet_mass.data());
+
     tree->SetBranchAddress("lep1_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_phi", reco_lep_phi.data() + static_cast<size_t>(Lep::lep1));
@@ -85,6 +91,12 @@ void Event::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("centralJet_PNetRegPtRawRes", reco_jet_res.data());
     tree->SetBranchAddress("centralJet_btagPNetB", reco_jet_btag.data());
     tree->SetBranchAddress("centralJet_btagPNetQvG", reco_jet_qvg.data());
+
+    tree->SetBranchAddress("nSelectedFatJet", &n_reco_fatjet);
+    tree->SetBranchAddress("SelectedFatJet_pt", reco_fatjet_pt.data());
+    tree->SetBranchAddress("SelectedFatJet_eta", reco_fatjet_eta.data());
+    tree->SetBranchAddress("SelectedFatJet_phi", reco_fatjet_phi.data());
+    tree->SetBranchAddress("SelectedFatJet_mass", reco_fatjet_mass.data());
 
     tree->SetBranchAddress("lep1_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep1));
