@@ -66,18 +66,7 @@ void Analyzer::ProcessSample(Sample const& sample)
     for (ULong64_t evt = 0; evt < n_events; ++evt)
     {
         auto process_event_start{std::chrono::steady_clock::now()};
-        #ifdef DEV 
-            if (m_process_matched_slice && !is_bkg)
-            {
-                ProcessEventSlice(evt, input_tree, output_tree, ch);
-            }
-            else 
-            {
-                ProcessEvent(evt, input_tree, output_tree, ch, is_bkg);
-            }
-        #else
-            ProcessEvent(evt, input_tree, output_tree, ch, is_bkg);
-        #endif
+        ProcessEvent(evt, input_tree, output_tree, ch, is_bkg);
         auto process_event_end{std::chrono::steady_clock::now()};
         std::chrono::duration<double> process_event_duration{process_event_end - process_event_start};
         average_duration += process_event_duration;
@@ -173,133 +162,12 @@ UTree_t Analyzer::MakeTree()
     return output_tree;
 }
 
-#ifdef DEV 
-    void Analyzer::ProcessEventSlice(ULong64_t evt, UTree_t& input_tree, UTree_t& output_tree, Channel ch)
-    {
-        input_tree->GetEntry(evt);
-
-        VecLVF_t jets = GetRecoJetP4(m_event);
-        VecLVF_t quarks = GetGenQuarksP4(m_event, ch);
-        VecLVF_t leptons = GetRecoLepP4(m_event, ch);
-        LorentzVectorF_t met = GetRecoMET(m_event);
-
-        ULong64_t event_id = m_event.event_id;
-        if (event_id % 2 != 1)
-        {
-            return;
-        }
-
-        if (!IsRecoverable(m_event, ch))
-        {
-            return;
-        }
-
-        if (!IsFiducial(m_event, jets, ch))
-        {
-            return;
-        }
-
-        JetComb match = FindMatch(quarks, jets, ch);
-        if (!match.HasUniqueJets(ch))
-        {
-            return;
-        }
-
-        ++counter;
-        m_estimator_data->event_id = event_id;
-        std::vector<Float_t> resolutions = GetPNetRes(m_event);
-        
-        VecLVF_t particles;
-        if (ch == Channel::SL)
-        {
-            particles.resize(static_cast<size_t>(ObjSL::count));
-            particles[static_cast<size_t>(ObjSL::lep)] = leptons[static_cast<size_t>(Lep::lep1)];
-            particles[static_cast<size_t>(ObjSL::met)] = met;    
-            
-            if (jets[match.b1].Pt() > jets[match.b2].Pt())
-            {
-                particles[static_cast<size_t>(ObjSL::bj1)] = jets[match.b1];
-                particles[static_cast<size_t>(ObjSL::bj2)] = jets[match.b2];
-            }
-            else 
-            {
-                particles[static_cast<size_t>(ObjSL::bj2)] = jets[match.b1];
-                particles[static_cast<size_t>(ObjSL::bj1)] = jets[match.b2];
-            }
-
-            if (jets[match.q1].Pt() > jets[match.q2].Pt())
-            {
-                particles[static_cast<size_t>(ObjSL::lj1)] = jets[match.q1];
-                particles[static_cast<size_t>(ObjSL::lj2)] = jets[match.q2];
-            }
-            else 
-            {
-                particles[static_cast<size_t>(ObjSL::lj2)] = jets[match.q1];
-                particles[static_cast<size_t>(ObjSL::lj1)] = jets[match.q2];
-            }
-        }
-        else if (ch == Channel::DL)
-        {
-            particles.resize(static_cast<size_t>(ObjDL::count));
-            particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
-            particles[static_cast<size_t>(ObjDL::lep2)] = leptons[static_cast<size_t>(Lep::lep2)];
-            particles[static_cast<size_t>(ObjDL::met)] = met;    
-            if (jets[match.b1].Pt() > jets[match.b2].Pt())
-            {
-                particles[static_cast<size_t>(ObjDL::bj1)] = jets[match.b1];
-                particles[static_cast<size_t>(ObjDL::bj2)] = jets[match.b2];
-            }
-            else 
-            {
-                particles[static_cast<size_t>(ObjDL::bj2)] = jets[match.b1];
-                particles[static_cast<size_t>(ObjDL::bj1)] = jets[match.b2];
-            }
-        }
-        else 
-        {
-            throw std::runtime_error("Unknown channel");
-        }
-
-        ArrF_t<ESTIM_OUT_SZ> comb_result = m_estimator.GetEstimator(ch).EstimateCombination(particles, resolutions, event_id, match);
-        if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
-        {
-            m_estimator_data->mass = comb_result[static_cast<size_t>(EstimOut::mass)];
-            m_estimator_data->integral = comb_result[static_cast<size_t>(EstimOut::integral)];
-            m_estimator_data->peak_value = comb_result[static_cast<size_t>(EstimOut::peak_value)];
-            m_estimator_data->width = comb_result[static_cast<size_t>(EstimOut::width)];
-        }
-        else 
-        {
-            m_estimator_data->mass = -1.0f;
-            m_estimator_data->integral = -1.0f;
-            m_estimator_data->peak_value = -1.0f;
-            m_estimator_data->width = -1.0f;
-        }
-
-        if (m_record_output && output_tree != nullptr)
-        {
-            m_recorder.FillTree();
-        }
-    }
-#endif
-
 TString Analyzer::FormFileName(Channel ch, bool is_bkg, Int_t mp, TString const& sample_type, TString const& file_type) const
 {
     TString file_name;
     if (!is_bkg) 
     {
-        #ifdef DEV
-            if (m_process_matched_slice)
-            {
-                file_name = ch == Channel::SL ? Form("hme_%s_true_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_true_dl_M%d.root", file_type.Data(), mp);
-            }
-            else 
-            {
-                file_name = ch == Channel::SL ? Form("hme_%s_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_dl_M%d.root", file_type.Data(), mp);
-            }
-        #else 
-            file_name = ch == Channel::SL ? Form("hme_%s_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_dl_M%d.root", file_type.Data(), mp);
-        #endif
+        file_name = ch == Channel::SL ? Form("hme_%s_sl_M%d.root", file_type.Data(), mp) : Form("hme_%s_dl_M%d.root", file_type.Data(), mp);
     }
     else
     {
