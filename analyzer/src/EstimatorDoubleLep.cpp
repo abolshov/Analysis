@@ -292,41 +292,6 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
 
     // selection of b jets
     std::vector<std::pair<size_t, size_t>> bjet_pair_indices;
-    // bjet_pair_indices.emplace_back(0, 1); // jet 0 is always a tight
-
-    // if (NUM_BEST_BTAG > 2)
-    // {
-    //     // if jet 1 is tight no need to consider combinations: just pick [0, 1]
-    //     if (event.reco_jet_btag[1] < TIGHT_BTAG_WP)
-    //     {
-    //         // if jet 1 is not medium, than jet 2 is also not medium (they're sorted by btag)
-    //         // in that case look at [0, 1] and [0, 2] only because both jets 1 and 2 are garbage
-    //         // not looking at [1, 2] in this case because [1, 2] is ultra-garbage!
-    //         if (event.reco_jet_btag[1] < MEDIUM_BTAG_WP)
-    //         {
-    //             bjet_pair_indices.emplace_back(0, 2);
-    //         }
-    //         else 
-    //         {
-    //             // if jet 1 is medium and jet 2 is medium too, can look at [1, 2]
-    //             if (event.reco_jet_btag[2] > MEDIUM_BTAG_WP)
-    //             {
-    //                 bjet_pair_indices.emplace_back(0, 2);
-    //                 bjet_pair_indices.emplace_back(1, 2);
-    //             }
-    //         }
-    //     }
-    //     else 
-    //     {
-    //         // if jet 1 is tight and jet 2 is tight - also can look at everything
-    //         if (event.reco_jet_btag[2] > TIGHT_BTAG_WP)
-    //         {
-    //             bjet_pair_indices.emplace_back(0, 2);
-    //             bjet_pair_indices.emplace_back(1, 2);
-    //         }
-    //     }
-    // }
-
     size_t num_bjets = static_cast<size_t>(event.n_reco_jet) < NUM_BEST_BTAG ? static_cast<size_t>(event.n_reco_jet) : NUM_BEST_BTAG;
     for (size_t i = 0; i < num_bjets; ++i)
     {
@@ -393,77 +358,6 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
             auto it = std::max_element(estimations.begin(), estimations.end(), IntegralComparator);
             size_t best_est_idx = it - estimations.begin();
             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[best_est_idx]);
-        }
-        else if (m_aggr_mode == AggregationMode::Event)
-        {
-            ArrF_t<ESTIM_OUT_SZ> res{};
-            int binmax = m_res_mass->GetMaximumBin(); 
-            res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
-            res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
-            res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
-            res[static_cast<size_t>(EstimOut::integral)] = m_res_mass->Integral();
-            ResetHist(m_res_mass);
-            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(res);
-        }
-        else 
-        {
-            throw std::runtime_error("Unknown strategy to aggregate combination data to estimate event mass");
-        }
-    }
-    ResetHist(m_res_mass);
-    return std::nullopt;
-}
-
-OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(VecLVF_t const& jets, std::vector<Float_t> const& resolutions, VecLVF_t const& leptons, LorentzVectorF_t const& met, ULong64_t evt_id)
-{
-    VecLVF_t particles(static_cast<size_t>(ObjDL::count));
-    particles[static_cast<size_t>(ObjDL::lep1)] = leptons[static_cast<size_t>(Lep::lep1)];
-    particles[static_cast<size_t>(ObjDL::lep2)] = leptons[static_cast<size_t>(Lep::lep2)];
-    particles[static_cast<size_t>(ObjDL::met)] = met;
-
-    std::vector<ArrF_t<ESTIM_OUT_SZ>> estimations;
-    size_t num_bjets = jets.size() < NUM_BEST_BTAG ? jets.size() : NUM_BEST_BTAG;
-
-    if (m_aggr_mode == AggregationMode::Event)
-    {
-        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", evt_id));
-    }
-    
-    for (size_t bj1_idx = 0; bj1_idx < num_bjets; ++bj1_idx)
-    {
-        for (size_t bj2_idx = bj1_idx + 1; bj2_idx < num_bjets; ++bj2_idx)
-        {
-            // order jets such that first b jet has bigger pt and save their p4
-            if (jets[bj1_idx].Pt() > jets[bj2_idx].Pt())
-            {
-                particles[static_cast<size_t>(ObjDL::bj1)] = jets[bj1_idx];
-                particles[static_cast<size_t>(ObjDL::bj2)] = jets[bj2_idx];
-            }
-            else 
-            {
-                particles[static_cast<size_t>(ObjDL::bj1)] = jets[bj2_idx];
-                particles[static_cast<size_t>(ObjDL::bj2)] = jets[bj1_idx];
-            }
-
-            JetComb comb{};
-            comb.b1 = bj1_idx;
-            comb.b2 = bj2_idx;
-            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, resolutions, evt_id, comb);
-
-            // success: mass > 0
-            if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
-            {
-                estimations.push_back(comb_result);
-            }
-        }
-    }
-
-    // success: at least one combination produced an estimate of X->HH mass
-    if (!estimations.empty())
-    {
-        if (m_aggr_mode == AggregationMode::Combination)
-        {
-            return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[0]);
         }
         else if (m_aggr_mode == AggregationMode::Event)
         {
