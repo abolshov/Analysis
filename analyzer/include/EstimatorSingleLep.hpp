@@ -22,10 +22,10 @@ class EstimatorSingleLep final : public EstimatorBase
     std::unique_ptr<IterData> m_iter_data;
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 
-    ArrF_t<ESTIM_OUT_SZ> EstimateCombination(VecLVF_t const& particles, 
-                                             std::vector<Float_t> const& jet_res, 
-                                             ULong64_t evt_id, 
-                                             JetComb const& comb);
+    ArrF_t<ESTIM_OUT_SZ> EstimateCombSlim(VecLVF_t const& particles, 
+                                          std::vector<Float_t> const& jet_res, 
+                                          ULong64_t evt_id, 
+                                          JetComb const& comb);
 };
 
 struct EstimatorSingleLep::IterData

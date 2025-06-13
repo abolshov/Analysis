@@ -24,7 +24,7 @@ EstimatorSingleLep::EstimatorSingleLep(TString const& pdf_file_name, Aggregation
     pf->Close();
 }
 
-ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombination(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb)
+ArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateCombSlim(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb)
 {
     ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
@@ -401,7 +401,7 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorSingleLep::EstimateMass(Event const& event)
             }
 
             JetComb comb(bj1_idx, bj2_idx, lj1_idx, lj2_idx, event.reco_jet_btag, event.reco_jet_qvg);
-            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombination(particles, other_jet_resolutions, event.event_id, comb);
+            ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombSlim(particles, other_jet_resolutions, event.event_id, comb);
 
             // success: mass > 0
             if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
