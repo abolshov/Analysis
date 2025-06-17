@@ -5,6 +5,13 @@
 
 #include "Constants.hpp"
 
+// redesign this struct to distinguish between:
+// - DL channel, slim jets
+// - DL channel, fat jet
+// - SL channel, slim H->bb, slim W->qq
+// - SL channel, slim H->bb, fat W->qq
+// - SL channel, fat H->bb, slim W->qq
+// - SL channel, fat H->bb, fat W->qq
 struct JetComb
 {
     JetComb() = default;
