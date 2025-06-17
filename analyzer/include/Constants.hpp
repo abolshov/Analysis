@@ -29,7 +29,7 @@ inline constexpr size_t NUM_PDF_1D_SL = static_cast<size_t>(PDF1_sl::count);
 inline constexpr size_t NUM_PDF_2D_SL = static_cast<size_t>(PDF2_sl::count);
 
 // PDFs in DL channel resolved topology
-enum class PDF1_dl { b1, mw_onshell, count };
+enum class PDF1_dl { b1, fatbb, mw_onshell, count };
 enum class PDF2_dl { count };
 inline constexpr size_t NUM_PDF_1D_DL = static_cast<size_t>(PDF1_dl::count);
 inline constexpr size_t NUM_PDF_2D_DL = static_cast<size_t>(PDF2_dl::count);
@@ -40,7 +40,7 @@ inline constexpr size_t ESTIM_OUT_SZ = static_cast<size_t>(EstimOut::count);
 
 // objects
 enum class ObjSL { bj1, bj2, lj1, lj2, lep, met, count };
-enum class ObjDL { bj1, bj2, lep1, lep2, met, count };
+enum class ObjDL { bj1, bj2, lep1, lep2, met, fatbb, count };
 
 inline constexpr size_t MAX_GEN_JET = 20;
 inline constexpr size_t MAX_RECO_JET = 20;
@@ -94,7 +94,7 @@ inline static const std::unordered_map<PDF2_sl, TString> pdf2d_sl_names = { { PD
                                                                             { PDF2_sl::c3mWhad, "pdf_c3mWhad" } };
 
 inline static const std::unordered_map<PDF1_dl, TString> pdf1d_dl_names = { { PDF1_dl::b1, "pdf_b1_run2" }, 
-                                                                            { PDF_dl::fatbb, "pdf_fatbb"},
+                                                                            { PDF1_dl::fatbb, "pdf_fatbb" },
                                                                             { PDF1_dl::mw_onshell, "pdf_mw_onshell" }};
                                                                         
 inline static const std::unordered_map<PDF2_dl, TString> pdf2d_dl_names = {};
