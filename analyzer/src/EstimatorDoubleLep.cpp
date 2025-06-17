@@ -438,6 +438,11 @@ std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
     tree->Branch("bjet_2_phi", &m_iter_data->b2_phi, "bjet_2_phi/F");
     tree->Branch("bjet_2_mass", &m_iter_data->b2_mass, "bjet_2_mass/F");
 
+    tree->Branch("fatjet_pt", &m_iter_data->fatjet_pt, "fatjet_pt/F");
+    tree->Branch("fatjet_eta", &m_iter_data->fatjet_eta, "fatjet_eta/F");
+    tree->Branch("fatjet_phi", &m_iter_data->fatjet_phi, "fatjet_phi/F");
+    tree->Branch("fatjet_mass", &m_iter_data->fatjet_mass, "fatjet_mass/F");
+
     tree->Branch("Hbb_pt", &m_iter_data->Hbb_pt, "Hbb_pt/F");
     tree->Branch("Hbb_eta", &m_iter_data->Hbb_eta, "Hbb_eta/F");
     tree->Branch("Hbb_phi", &m_iter_data->Hbb_phi, "Hbb_phi/F");
@@ -445,6 +450,7 @@ std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
     
     tree->Branch("bjet_resc_fact_1", &m_iter_data->bjet_resc_fact_1, "bjet_resc_fact_1/F");
     tree->Branch("bjet_resc_fact_2", &m_iter_data->bjet_resc_fact_2, "bjet_resc_fact_2/F");
+    tree->Branch("fatjet_resc_fact", &m_iter_data->fatjet_resc_fact, "fatjet_resc_fact/F");
     tree->Branch("mh", &m_iter_data->mh, "mh/F");
     tree->Branch("mw", &m_iter_data->mw, "mw/F");
     tree->Branch("unclust_dpx", &m_iter_data->unclust_dpx, "unclust_dpx/F");
@@ -473,6 +479,21 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombFat(VecLVF_t const& particl
     UHist_t<TH1F>& pdf_fatbb = m_pdf_1d[static_cast<size_t>(PDF1_dl::fatbb)];
     UHist_t<TH1F>& pdf_mw_onshell = m_pdf_1d[static_cast<size_t>(PDF1_dl::mw_onshell)];
 
+    TString label = comb.ToString(Channel::DL);
+    Float_t proba = comb.GetProbability();
+
+    // this has to be fixed: in case of fatjet JetComb is irrelevant
+    if (m_aggr_mode == AggregationMode::Combination)
+    {
+        m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu, comb %s", evt_id, label.Data()));
+    }
+
+    [[maybe_unused]] TString tree_name = Form("evt_%llu_%s", evt_id, label.Data());
+    if (m_recorder.ShouldRecord())
+    {
+        m_recorder.ResetTree(MakeTree(tree_name));
+    }
+
     for (int i = 0; i < N_ITER; ++i)
     {
         // iter loop
@@ -500,6 +521,183 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombFat(VecLVF_t const& particl
         Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
         Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
         LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+
+        std::vector<Float_t> estimates;
+        std::array<LorentzVectorF_t, CONTROL> onshellW{};
+        std::array<LorentzVectorF_t, CONTROL> offshellW{};
+        std::array<LorentzVectorF_t, CONTROL> l_offshell{};
+        std::array<LorentzVectorF_t, CONTROL> l_onshell{};
+        std::array<LorentzVectorF_t, CONTROL> Hww{};
+        std::array<LorentzVectorF_t, CONTROL> Xhh{};
+        std::array<LorentzVectorF_t, CONTROL> nu_offshell{};
+        std::array<LorentzVectorF_t, CONTROL> nu_onshell{};
+        std::array<Float_t, CONTROL> mass{};
+        // two options: 
+        // lep1 comes from onshell W and lep2 comes from offshell W
+        // lep1 comes from offshell W and lep2 comes from onshell W
+        // when neutrino is computed in each case again two options are possible: delta_eta is added or subtracted to nu
+        // in total: 4 combinations; they are encoded in this for loop
+        for (int control = 0; control < CONTROL; ++control)
+        {
+            int is_onshell = control / 2;
+            if (is_onshell == 0) 
+            {
+                l_onshell[control] = lep1;
+                l_offshell[control] = lep2;
+            } 
+            else 
+            {
+                l_onshell[control] = lep2;
+                l_offshell[control] = lep1;
+            }
+
+            auto opt_nu_onshell = NuFromOnshellW(eta_gen, phi_gen, mw, l_onshell[control]);  
+            if (!opt_nu_onshell)
+            {
+                continue;
+            }
+            nu_onshell[control] = opt_nu_onshell.value();
+
+            int is_offshell = control % 2;
+            auto opt_nu_offshell = NuFromOffshellW(lep1, lep2, nu_onshell[control], met_corr, is_offshell, mh);
+            if (!opt_nu_offshell)
+            {
+                continue;
+            }
+            nu_offshell[control] = opt_nu_offshell.value();
+
+            onshellW[control] = l_onshell[control] + nu_onshell[control];
+            offshellW[control] = l_offshell[control] + nu_offshell[control];
+            Hww[control] = onshellW[control] + offshellW[control];
+
+            if (offshellW[control].M() > mh/2)
+            {
+                continue;
+            }
+
+            if (std::abs(Hww[control].M() - mh) > 1.0)
+            {
+                continue;
+            }
+
+            Xhh[control] = Hbb + Hww[control];
+            mass[control] = Xhh[control].M();
+            if (mass[control] > 0.0)
+            {
+                estimates.push_back(mass[control]);
+            }
+        }
+
+        if (estimates.empty())
+        {
+            continue;
+        }
+
+        Int_t num_sol = estimates.size();
+        Float_t weight = estimates.empty() ? 0.0 : 1.0/estimates.size();
+        for (auto est: estimates)
+        {
+            m_res_mass->Fill(est, proba*weight);
+        }
+
+        if (m_recorder.ShouldRecord())
+        {
+            for (int control = 0; control < CONTROL; ++control)
+            {
+                m_iter_data->offshellW_pt[control] = offshellW[control].Pt();
+                m_iter_data->offshellW_eta[control] = offshellW[control].Eta();
+                m_iter_data->offshellW_phi[control] = offshellW[control].Phi();
+                m_iter_data->offshellW_mass[control] = offshellW[control].M();
+
+                m_iter_data->onshellW_pt[control] = onshellW[control].Pt();
+                m_iter_data->onshellW_eta[control] = onshellW[control].Eta();
+                m_iter_data->onshellW_phi[control] = onshellW[control].Phi();
+                m_iter_data->onshellW_mass[control] = onshellW[control].M();
+
+                m_iter_data->l_offshell_pt[control] = l_offshell[control].Pt();
+                m_iter_data->l_offshell_eta[control] = l_offshell[control].Eta();
+                m_iter_data->l_offshell_phi[control] = l_offshell[control].Phi();
+                m_iter_data->l_offshell_mass[control] = l_offshell[control].M();
+
+                m_iter_data->l_onshell_pt[control] = l_onshell[control].Pt();
+                m_iter_data->l_onshell_eta[control] = l_onshell[control].Eta();
+                m_iter_data->l_onshell_phi[control] = l_onshell[control].Phi();
+                m_iter_data->l_onshell_mass[control] = l_onshell[control].M();
+
+                m_iter_data->Hww_pt[control] = Hww[control].Pt();
+                m_iter_data->Hww_eta[control] = Hww[control].Eta();
+                m_iter_data->Hww_phi[control] = Hww[control].Phi();
+                m_iter_data->Hww_mass[control] = Hww[control].M();
+
+                m_iter_data->nu_offshell_pt[control] = nu_offshell[control].Pt();
+                m_iter_data->nu_offshell_eta[control] = nu_offshell[control].Eta();
+                m_iter_data->nu_offshell_phi[control] = nu_offshell[control].Phi();
+
+                m_iter_data->nu_onshell_pt[control] = nu_onshell[control].Pt();
+                m_iter_data->nu_onshell_eta[control] = nu_onshell[control].Eta();
+                m_iter_data->nu_onshell_phi[control] = nu_onshell[control].Phi();
+
+                m_iter_data->Xhh_pt[control] = Xhh[control].Pt();
+                m_iter_data->Xhh_eta[control] = Xhh[control].Eta();
+                m_iter_data->Xhh_phi[control] = Xhh[control].Phi();
+                m_iter_data->Xhh_mass[control] = Xhh[control].M();
+
+                m_iter_data->mass[control] = mass[control];
+            }
+
+            m_iter_data->met_corr_pt = met_corr.Pt();
+            m_iter_data->met_corr_phi = met_corr.Phi();
+
+            m_iter_data->fatjet_pt = fatjet.Pt();
+            m_iter_data->fatjet_eta = fatjet.Eta();
+            m_iter_data->fatjet_phi = fatjet.Phi();
+            m_iter_data->fatjet_mass = fatjet.M();
+
+            m_iter_data->Hbb_pt = Hbb.Pt();
+            m_iter_data->Hbb_eta = Hbb.Eta();
+            m_iter_data->Hbb_phi = Hbb.Phi();
+            m_iter_data->Hbb_mass = Hbb.M();
+
+            m_iter_data->fatjet_resc_fact = c_fat;
+            m_iter_data->mh = mh;
+            m_iter_data->mw = mw;
+            m_iter_data->unclust_dpx = unclust_dpx;
+            m_iter_data->unclust_dpy = unclust_dpy;
+            m_iter_data->bjet_resc_dpx = bjet_resc_dpx;
+            m_iter_data->bjet_resc_dpy = bjet_resc_dpy;
+            m_iter_data->weight = weight;
+            m_iter_data->num_sol = num_sol;
+
+            m_recorder.FillTree();
+            ResetObject(*m_iter_data);
+        }
+    }
+
+    Float_t integral = m_res_mass->Integral();
+    if (m_res_mass->GetEntries() && integral > 0.0)
+    {
+        if (m_recorder.ShouldRecord())
+        {
+            m_recorder.WriteTree(tree_name);
+        }
+
+        int binmax = m_res_mass->GetMaximumBin(); 
+        res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+        res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
+        res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+        res[static_cast<size_t>(EstimOut::integral)] = integral;
+
+        if (m_aggr_mode == AggregationMode::Combination)
+        {
+            ResetHist(m_res_mass);
+        }
+
+        return res;
+    }
+
+    if (m_aggr_mode == AggregationMode::Combination)
+    {
+        ResetHist(m_res_mass);
     }
 
     return res;

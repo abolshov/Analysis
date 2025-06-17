@@ -14,8 +14,9 @@ class EstimatorDoubleLep final : public EstimatorBase
     OptArrF_t<ESTIM_OUT_SZ> EstimateMass(Event const& event) override;
 
     private: 
+    // fix: write variables into this struct in EstimateCombSlim and EstimateCombFat directly instead of local vars
     struct IterData;
-    std::unique_ptr<IterData> m_iter_data;
+    std::unique_ptr<IterData> m_iter_data; 
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 
     ArrF_t<ESTIM_OUT_SZ> EstimateCombSlim(VecLVF_t const& particles, 
