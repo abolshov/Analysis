@@ -453,3 +453,11 @@ std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
     tree->Branch("num_sol", &m_iter_data->num_sol, "num_sol/I");
     return tree;
 }
+
+ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombFat()
+{
+    ArrF_t<ESTIM_OUT_SZ> res{};
+    std::fill(res.begin(), res.end(), -1.0f);
+
+    return res;
+}

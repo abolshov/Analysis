@@ -22,7 +22,9 @@ class EstimatorDoubleLep final : public EstimatorBase
                                           std::vector<Float_t> const& jet_res, 
                                           ULong64_t evt_id, 
                                           JetComb const& comb);
-                                        };
+
+    ArrF_t<ESTIM_OUT_SZ> EstimateCombFat();
+};
 
 struct EstimatorDoubleLep::IterData
 {
