@@ -19,11 +19,14 @@ class EstimatorDoubleLep final : public EstimatorBase
     std::unique_ptr<TTree> MakeTree(TString const& tree_name) override;
 
     ArrF_t<ESTIM_OUT_SZ> EstimateCombSlim(VecLVF_t const& particles, 
-                                          std::vector<Float_t> const& jet_res, 
+                                          [[maybe_unused]] std::vector<Float_t> const& jet_res, 
                                           ULong64_t evt_id, 
                                           JetComb const& comb);
 
-    ArrF_t<ESTIM_OUT_SZ> EstimateCombFat();
+    ArrF_t<ESTIM_OUT_SZ> EstimateCombFat(VecLVF_t const& particles, 
+                                         [[maybe_unused]] std::vector<Float_t> const& jet_res, 
+                                         ULong64_t evt_id, 
+                                         [[maybe_unused]] JetComb const& comb);
 };
 
 struct EstimatorDoubleLep::IterData
@@ -81,6 +84,11 @@ struct EstimatorDoubleLep::IterData
     Float_t b2_phi{0.0};
     Float_t b2_mass{0.0};
 
+    Float_t fatjet_pt{0.0};
+    Float_t fatjet_eta{0.0};
+    Float_t fatjet_phi{0.0};
+    Float_t fatjet_mass{0.0};
+
     Float_t Hbb_pt{0.0};
     Float_t Hbb_eta{0.0};
     Float_t Hbb_phi{0.0};
@@ -88,6 +96,7 @@ struct EstimatorDoubleLep::IterData
 
     Float_t bjet_resc_fact_1{0.0};
     Float_t bjet_resc_fact_2{0.0};
+    Float_t fatjet_resc_fact{0.0};
     Float_t mh{0.0};
     Float_t mw{0.0};
     Float_t unclust_dpx{0.0};

@@ -24,7 +24,10 @@ EstimatorDoubleLep::EstimatorDoubleLep(TString const& pdf_file_name, Aggregation
     pf->Close();
 }
 
-ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombSlim(VecLVF_t const& particles, std::vector<Float_t> const& jet_res, ULong64_t evt_id, JetComb const& comb)
+ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombSlim(VecLVF_t const& particles, 
+                                                          [[maybe_unused]] std::vector<Float_t> const& jet_res, 
+                                                          ULong64_t evt_id, 
+                                                          JetComb const& comb)
 {
     ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
@@ -454,10 +457,50 @@ std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
     return tree;
 }
 
-ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombFat()
+ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombFat(VecLVF_t const& particles, 
+                                                         [[maybe_unused]] std::vector<Float_t> const& jet_res,
+                                                         ULong64_t evt_id, 
+                                                         [[maybe_unused]] JetComb const& comb)
 {
     ArrF_t<ESTIM_OUT_SZ> res{};
     std::fill(res.begin(), res.end(), -1.0f);
+
+    LorentzVectorF_t const& fatjet = particles[static_cast<size_t>(ObjDL::fatbb)];
+    LorentzVectorF_t const& lep1 = particles[static_cast<size_t>(ObjDL::lep1)];
+    LorentzVectorF_t const& lep2 = particles[static_cast<size_t>(ObjDL::lep2)];
+    LorentzVectorF_t const& met = particles[static_cast<size_t>(ObjDL::met)];
+
+    UHist_t<TH1F>& pdf_fatbb = m_pdf_1d[static_cast<size_t>(PDF1_dl::fatbb)];
+    UHist_t<TH1F>& pdf_mw_onshell = m_pdf_1d[static_cast<size_t>(PDF1_dl::mw_onshell)];
+
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        // iter loop
+        Float_t c_fat = pdf_fatbb->GetRandom(m_prg.get());
+        LorentzVectorF_t Hbb = c_fat*fatjet;
+        Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
+        if (std::abs(Hbb.M() - mh) > 1.0)
+        {
+            continue;
+        }
+
+        // generate other random stuff after checking fatbb correction validity to save time in case it fails
+        Float_t eta_gen = m_prg->Uniform(-6, 6);
+        Float_t phi_gen = m_prg->Uniform(-3.1415926, 3.1415926);
+        Float_t mw = pdf_mw_onshell->GetRandom(m_prg.get());
+        Float_t unclust_dpx = m_prg->Gaus(0.0, MET_SIGMA);
+        Float_t unclust_dpy = m_prg->Gaus(0.0, MET_SIGMA);
+
+        Float_t bjet_resc_dpx = -1.0*(c_fat - 1)*fatjet.Px();
+        Float_t bjet_resc_dpy = -1.0*(c_fat - 1)*fatjet.Py();
+
+        Float_t met_corr_px = met.Px() + bjet_resc_dpx + unclust_dpx;
+        Float_t met_corr_py = met.Py() + bjet_resc_dpy + unclust_dpy;
+
+        Float_t met_corr_pt = std::sqrt(met_corr_px*met_corr_px + met_corr_py*met_corr_py);
+        Float_t met_corr_phi = std::atan2(met_corr_py, met_corr_px);
+        LorentzVectorF_t met_corr(met_corr_pt, 0.0, met_corr_phi, 0.0);
+    }
 
     return res;
 }
