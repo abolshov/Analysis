@@ -94,6 +94,7 @@ inline static const std::unordered_map<PDF2_sl, TString> pdf2d_sl_names = { { PD
                                                                             { PDF2_sl::c3mWhad, "pdf_c3mWhad" } };
 
 inline static const std::unordered_map<PDF1_dl, TString> pdf1d_dl_names = { { PDF1_dl::b1, "pdf_b1_run2" }, 
+                                                                            { PDF_dl::fatbb, "pdf_fatbb"},
                                                                             { PDF1_dl::mw_onshell, "pdf_mw_onshell" }};
                                                                         
 inline static const std::unordered_map<PDF2_dl, TString> pdf2d_dl_names = {};
