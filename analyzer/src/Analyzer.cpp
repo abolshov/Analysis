@@ -110,7 +110,8 @@ void Analyzer::ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_
     #ifdef DEV 
         if (!is_bkg)
         {
-            if (!IsRecoverable(m_event, ch))
+            Topology bb_top = Topology::Boosted;
+            if (!IsRecoverable(m_event, ch, bb_top))
             {
                 return;
             }
