@@ -3,9 +3,10 @@
 
 #ifdef DEV
     #include "Event.hpp"
+    #include "Constants.hpp"
 
     // true if event is passing a selection, false otherwise
-    bool IsRecoverable(Event const& s, Channel ch, bool top_sel = true);
+    bool IsRecoverable(Event const& s, Channel ch, Topology bb_top, Topology qq_top = Topology::Resolved);
     bool IsFiducial(Event const& s, VecLVF_t const& jets, Channel ch);
 
     bool CorrRecoLep(int lep_type, int lep_genLep_kind);

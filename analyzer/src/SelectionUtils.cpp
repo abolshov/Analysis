@@ -17,7 +17,7 @@
         return corr_lep_reco;
     }
 
-    bool IsRecoverable(Event const& s, Channel ch, bool top_sel)
+    bool IsRecoverable(Event const& s, Channel ch, Topology bb_top, Topology qq_top)
     {
         // check all quarks
         int n_quarks = ch == Channel::DL ? 2 : 4;
@@ -32,23 +32,43 @@
             quarks_p4.push_back(LorentzVectorF_t(s.gen_quark_pt[i], s.gen_quark_eta[i], s.gen_quark_phi[i], s.gen_quark_mass[i])); 
         }
 
-        if (top_sel)
+        Float_t bb_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::b1)], quarks_p4[static_cast<size_t>(Quark::b2)]);
+        if (ch == Channel::DL)
         {
-            Float_t bb_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::b1)], quarks_p4[static_cast<size_t>(Quark::b2)]);
-            if (bb_dr < 0.4)
+            return bb_top == Topology::Resolved ? bb_dr > 0.4 : bb_dr < 0.4;
+        }
+        else 
+        {
+            Float_t qq_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::q1)], quarks_p4[static_cast<size_t>(Quark::q2)]);
+            if (bb_top == Topology::Resolved)
             {
-                return false;
+                // bb resolved here
+                return qq_top == Topology::Resolved ? (bb_dr > 0.4 && qq_dr > 0.4) : (bb_dr > 0.4 && qq_dr < 0.4 );
             }
-
-            if (ch == Channel::SL)
+            else
             {
-                Float_t qq_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::q1)], quarks_p4[static_cast<size_t>(Quark::q2)]);
-                if (qq_dr < 0.4)
-                {
-                    return false;
-                }
+                // bb boosted here
+                return qq_top == Topology::Resolved ? (bb_dr < 0.4 && qq_dr > 0.4) : (bb_dr < 0.4 && qq_dr < 0.4 );
             }
         }
+
+        // if (top_sel)
+        // {
+        //     Float_t bb_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::b1)], quarks_p4[static_cast<size_t>(Quark::b2)]);
+        //     if (bb_dr < 0.4)
+        //     {
+        //         return false;
+        //     }
+
+        //     if (ch == Channel::SL)
+        //     {
+        //         Float_t qq_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::q1)], quarks_p4[static_cast<size_t>(Quark::q2)]);
+        //         if (qq_dr < 0.4)
+        //         {
+        //             return false;
+        //         }
+        //     }
+        // }
 
         // check all reco jets are present in the event
         int n_jets_min = ch == Channel::DL ? 2 : 4;
