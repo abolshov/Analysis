@@ -103,6 +103,7 @@ void Event::ConnectTree(TTree* tree, Channel ch)
     tree->SetBranchAddress("SelectedFatJet_eta", reco_fatjet_eta.data());
     tree->SetBranchAddress("SelectedFatJet_phi", reco_fatjet_phi.data());
     tree->SetBranchAddress("SelectedFatJet_mass", reco_fatjet_mass.data());
+    tree->SetBranchAddress("SelectedFatJet_particleNetWithMass_HbbvsQCD", reco_fatjet_btag.data());
 
     tree->SetBranchAddress("lep1_pt", reco_lep_pt.data() + static_cast<size_t>(Lep::lep1));
     tree->SetBranchAddress("lep1_eta", reco_lep_eta.data() + static_cast<size_t>(Lep::lep1));
@@ -158,6 +159,11 @@ void Event::ConnectTree(TTree* tree, Channel ch)
             tree->SetBranchAddress("genV2prod2_phi", gen_quark_phi.data() + static_cast<size_t>(Quark::q2));
             tree->SetBranchAddress("genV2prod2_mass", gen_quark_mass.data() + static_cast<size_t>(Quark::q2));
         }
+
+        tree->SetBranchAddress("genHbb_pt", &Hbb_pt);
+        tree->SetBranchAddress("genHbb_eta", &Hbb_eta);
+        tree->SetBranchAddress("genHbb_phi", &Hbb_phi);
+        tree->SetBranchAddress("genHbb_mass", &Hbb_mass);
 
         // tree->SetBranchAddress("GenMET_pt", &gen_met_pt);
         // tree->SetBranchAddress("GenMET_phi", &gen_met_phi);
