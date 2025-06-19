@@ -39,6 +39,7 @@ struct Event
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_eta = {};
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_phi = {};
     std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_mass = {};
+    std::array<Float_t, MAX_RECO_FAT_JET> reco_fatjet_btag = {};
 
     // 2x4 = 8
     Float_t reco_met_pt = 0.0;
@@ -70,6 +71,11 @@ struct Event
         std::array<Float_t, MAX_GEN_NU> gen_nu_eta = {};
         std::array<Float_t, MAX_GEN_NU> gen_nu_phi = {};
         std::array<Float_t, MAX_GEN_NU> gen_nu_mass = {};
+
+        Float_t Hbb_pt{0.0};
+        Float_t Hbb_eta{0.0};
+        Float_t Hbb_phi{0.0};
+        Float_t Hbb_mass{0.0};
 
         // 4
         int n_gen_jet = 0;
