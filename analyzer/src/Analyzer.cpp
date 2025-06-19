@@ -116,7 +116,7 @@ void Analyzer::ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_
                 return;
             }
 
-            if (!IsFiducial(m_event, jets, ch))
+            if (!IsFiducial(m_event, jets, ch, bb_top))
             {
                 return;
             }

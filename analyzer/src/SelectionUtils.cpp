@@ -99,7 +99,7 @@
         return true;
     }
 
-    bool IsFiducial(Event const& s, VecLVF_t const& jets, Channel ch)
+    bool IsFiducial(Event const& s, VecLVF_t const& jets, Channel ch, Topology bb_top, Topology qq_top)
     {
         // check quark to reco jet matching
         int n_quarks = ch == Channel::DL ? 2 : 4;
@@ -109,21 +109,63 @@
             quarks_p4.push_back(LorentzVectorF_t(s.gen_quark_pt[i], s.gen_quark_eta[i], s.gen_quark_phi[i], s.gen_quark_mass[i]));
         }
 
-        std::unordered_set<int> matches;
-        for (auto const& qp4: quarks_p4)
+        LorentzVectorF_t Hbb_p4{s.Hbb_pt, s.Hbb_eta, s.Hbb_phi, s.Hbb_mass};
+        int n_fatjets = s.n_reco_fatjet;
+        Float_t min_fat_dr = 10.0;
+        for (int i = 0; i < n_fatjets; ++i)
         {
-            int idx = MatchIdx(qp4, jets);
-            matches.insert(idx);
+            LorentzVectorF_t fatjet{s.reco_fatjet_pt[i], 
+                                    s.reco_fatjet_eta[i],
+                                    s.reco_fatjet_phi[i],
+                                    s.reco_fatjet_mass[i]};
+            Float_t fat_dr = DeltaR(fatjet, Hbb_p4);
+            min_fat_dr = std::min(fat_dr, min_fat_dr);
         }
 
-        // if (matches.count(-1) || matches.size() != quarks_p4.size())
-        // {
-        //     return false;
-        // }
-
-        if (matches.count(-1))
+        if (ch == Channel::DL)
         {
-            return false;
+            if (bb_top == Topology::Boosted)
+            {
+                if (min_fat_dr > 0.8)
+                {
+                    return false;
+                }
+            }
+            else 
+            {
+                std::unordered_set<int> matches;
+                for (auto const& qp4: quarks_p4)
+                {
+                    int idx = MatchIdx(qp4, jets);
+                    matches.insert(idx);
+                }
+
+                if (matches.count(-1))
+                {
+                    return false;
+                }
+            }
+        }
+        else 
+        {
+            if (bb_top == Topology::Resolved && qq_top == Topology::Resolved)
+            {
+                std::unordered_set<int> matches;
+                for (auto const& qp4: quarks_p4)
+                {
+                    int idx = MatchIdx(qp4, jets);
+                    matches.insert(idx);
+                }
+
+                if (matches.count(-1))
+                {
+                    return false;
+                }
+            }
+            else 
+            {
+                throw std::runtime_error("Cannot handle anything but resolved topology for H->bb and W->qq in SL");
+            }
         }
 
         // check lepton reconstruction
