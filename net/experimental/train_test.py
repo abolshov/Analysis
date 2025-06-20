@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 from DataWrapper import DataWrapper
-from NetUtils import TrainableSiLU, CombinedLoss
+from NetUtils import TrainableSiLU, CombinedLoss, EpochLossUpdater
 
 
 target_names = {"genHbb_E": "E(H->bb)",
@@ -84,7 +84,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
 tf.random.set_seed(42)
 
-model_name = "model_hh_dl_all_aug_trainable_silu_comb_loss"
+model_name = "model_hh_dl_all_aug_trainable_silu_dynamic_comb_loss"
 
 schedule_callback = tf.keras.callbacks.LearningRateScheduler(Scheduler)
 early_stopping = tf.keras.callbacks.EarlyStopping(
@@ -92,6 +92,11 @@ early_stopping = tf.keras.callbacks.EarlyStopping(
     patience=3,
     min_delta=10e-3
 )
+
+penalty_strength = tf.Variable(1e-6, dtype=tf.float32)
+update_rate = 1.0001
+combined_loss = CombinedLoss(penalty_strength)
+loss_updater = EpochLossUpdater(combined_loss.strength, update_rate)
 
 input_shape = dw.train_features.shape
 
@@ -122,7 +127,7 @@ model.add(tf.keras.layers.Dense(8))
 
 # model.compile(loss='logcosh', 
 #               optimizer=tf.keras.optimizers.Adam(3e-4))
-model.compile(loss=CombinedLoss(1e-4), 
+model.compile(loss=CombinedLoss(penalty_strength), 
               optimizer=tf.keras.optimizers.Adam(3e-4))
 
 model.build(dw.train_features.shape)
@@ -133,8 +138,8 @@ history = model.fit(dw.train_features,
                     validation_split=0.2,
                     verbose=1,
                     batch_size=2048,
-                    epochs=50,
-                    callbacks=[schedule_callback])
+                    epochs=100,
+                    callbacks=[schedule_callback, loss_updater])
 
 model.save(f"{model_name}.keras")
 PlotMetric(history, model_name, "loss")

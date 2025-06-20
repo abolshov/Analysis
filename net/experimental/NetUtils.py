@@ -2,6 +2,8 @@ import tensorflow as tf
 
 mh = tf.constant(125.0)
 
+# decorators seem to be unavailable with my version of keras
+# @tf.keras.saving.register_keras_serializable(package="TrainableSiLU")
 class TrainableSiLU(tf.keras.layers.Layer):
     def __init__(self, units=1, **kwargs):
         super(TrainableSiLU, self).__init__(**kwargs)
@@ -26,8 +28,8 @@ class TrainableSiLU(tf.keras.layers.Layer):
         This is necessary for saving and loading the model with custom objects.
         """
         config = super(TrainableSiLU, self).get_config()
-        config.update({"beta": self.beta.numpy()})
-        config.update({"units": self.units})
+        config.update({"name": "beta", 
+                       "units": self.units})
         return config
 
     @classmethod
@@ -35,13 +37,13 @@ class TrainableSiLU(tf.keras.layers.Layer):
         # Reconstruct the layer from the saved configuration
         return cls(**config)
 
-
+# @tf.keras.saving.register_keras_serializable(package="CombinedLoss")
 class CombinedLoss(tf.keras.losses.Loss):
     def __init__(self, strength=0.01, name="combined_loss", **kwargs):
         super().__init__(name=name)
         self.strength = strength
         self.logcosh_loss = tf.keras.losses.LogCosh() 
-        self.mse_loss = tf.keras.losses.MeanSquaredError() 
+        self.mse_loss = tf.keras.losses.MeanSquaredError()
 
     def call(self, y_true, y_pred):
         logcosh = self.logcosh_loss(y_true, y_pred)
@@ -52,7 +54,11 @@ class CombinedLoss(tf.keras.losses.Loss):
         # penalty = tf.sqrt(0.5*self.mse_loss(mh, mbb)) + 0.5*tf.sqrt(self.mse_loss(mh, mww))
         penalty = 0.5*self.mse_loss(mh, mbb) + 0.5*self.mse_loss(mh, mww)
         total_loss = logcosh + self.strength*penalty
+        tf.print(self.strength)
         return total_loss 
+
+    def update_epoch(self):
+        self.current_epoch.assign_add(1)
 
     def get_config(self):
         """
@@ -60,9 +66,24 @@ class CombinedLoss(tf.keras.losses.Loss):
         This is necessary for saving and loading the model with custom objects.
         """
         config = super().get_config()
-        config.update({"strength": self.strength})
+        config.update({"strength": self.strength.numpy()})
         return config
 
     @classmethod
     def from_config(cls, config):
         return cls(**config)
+
+
+class EpochLossUpdater(tf.keras.callbacks.Callback):
+    def __init__(self, initial_value, update_rate):
+        super().__init__()
+        self.loss_parameter = initial_value
+        self.update_rate = update_rate
+
+    def on_epoch_end(self, epoch, logs=None):
+        # Update the loss_param at the end of each epoch
+        new_value = self.loss_parameter*self.update_rate  
+        self.loss_parameter.assign(new_value)
+        print(f"\nEpoch {epoch + 1}: Loss parameter updated to {self.loss_parameter.numpy():.6e}")
+
+
