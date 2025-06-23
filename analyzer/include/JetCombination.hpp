@@ -4,6 +4,7 @@
 #include "TString.h"
 
 #include "Constants.hpp"
+#include <array>
 
 // redesign this struct to distinguish between:
 // - DL channel, slim jets

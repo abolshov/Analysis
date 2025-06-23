@@ -25,6 +25,7 @@ class EstimatorBase
     EstimatorBase(TString const& dbg_file_name, AggregationMode aggr_mode);
     virtual ~EstimatorBase() = default;
 
+    // EstimateMass must implement logic of estimation: it should decide what data to use for estimation based on what's available 
     virtual OptArrF_t<ESTIM_OUT_SZ> EstimateMass(Event const& event) = 0;
     inline void OpenDbgFile(TString const& dbg_file_name) { m_recorder.OpenFile(dbg_file_name); }
 
