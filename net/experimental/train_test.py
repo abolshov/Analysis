@@ -86,7 +86,7 @@ tf.random.set_seed(42)
 
 model_name = "model_hh_dl_all_aug_trainable_silu_dynamic_comb_loss"
 
-schedule_callback = tf.keras.callbacks.LearningRateScheduler(Scheduler)
+learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(Scheduler)
 early_stopping = tf.keras.callbacks.EarlyStopping(
     monitor='val_loss',
     patience=3,
@@ -95,43 +95,22 @@ early_stopping = tf.keras.callbacks.EarlyStopping(
 
 penalty_strength = tf.Variable(1e-6, dtype=tf.float32)
 update_rate = 1.0001
-combined_loss = CombinedLoss(penalty_strength)
-loss_updater = EpochLossUpdater(combined_loss.strength, update_rate)
+loss_updater = EpochLossUpdater(penalty_strength, update_rate)
 
 input_shape = dw.train_features.shape
+num_units = 256
+num_layers = 10
 
 model = tf.keras.Sequential()
-# model.add(tf.keras.layers.Input(shape=input_shape[1:], dtype="float32"))
-# model.add(tf.keras.layers.Input(type_spec=tf.TensorSpec(shape=input_shape, dtype=tf.float32)))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-# model.add(tf.keras.layers.Dense(256, activation='silu', kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
-model.add(tf.keras.layers.Dense(256, activation=TrainableSiLU(units=256), kernel_initializer='random_normal', bias_initializer='random_normal'))
+for _ in range(num_layers):
+    model.add(tf.keras.layers.Dense(num_units, 
+                                    activation=TrainableSiLU(units=num_units), 
+                                    kernel_initializer='random_normal', 
+                                    bias_initializer='random_normal'))
 model.add(tf.keras.layers.Dense(8))
-
-# model.compile(loss='logcosh', 
-#               optimizer=tf.keras.optimizers.Adam(3e-4))
 model.compile(loss=CombinedLoss(penalty_strength), 
               optimizer=tf.keras.optimizers.Adam(3e-4))
-
 model.build(dw.train_features.shape)
-
 
 history = model.fit(dw.train_features,
                     dw.train_labels,
@@ -139,7 +118,7 @@ history = model.fit(dw.train_features,
                     verbose=1,
                     batch_size=2048,
                     epochs=100,
-                    callbacks=[schedule_callback, loss_updater])
+                    callbacks=[learning_rate_scheduler, loss_updater])
 
 model.save(f"{model_name}.keras")
 PlotMetric(history, model_name, "loss")
@@ -152,15 +131,7 @@ dw.FormTestSet()
 res = model.predict(dw.test_features)
 pred_dict = {label: res[:, i] for i, label in enumerate(dw.test_labels.columns)}
 pred_df = pd.DataFrame.from_dict(pred_dict)
-
-# print("before inverse transform:")
 print(pred_df.describe())
-
-# pred_df *= std
-# pred_df += mean
-
-# print("after inverse transform:")
-# print(pred_df.describe())
 
 for col in pred_df.columns:
     PlotCompare2D(dw.test_labels[col], pred_df[col], col)
