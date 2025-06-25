@@ -11,8 +11,10 @@ def IsCorrectLepton(df, lep):
     if lep not in [1, 2]:
         raise RuntimeError("Can have at most 2 leptons")
 
+    # reco_lep_type = df[f'lep{lep}_type']
+    # gen_lep_type = df[f'lep{lep}_genLep_kind']
     reco_lep_type = df[f'lep{lep}_type']
-    gen_lep_type = df[f'lep{lep}_genLep_kind']
+    gen_lep_type = df[f'lep{lep}_gen_kind'] # modification for new data
 
     reco_lep_mu = reco_lep_type == 2
     reco_lep_ele = reco_lep_type == 1
@@ -77,6 +79,19 @@ def AddKinematicLabels(df, branches):
                          'phi': branches['genHVV_phi'],
                          'mass': branches['genHVV_mass']})
 
+    # to run on bkg
+    # sz = len(branches)
+    # Hbb_p4 = vector.zip({'pt': ak.Array(np.zeros(sz)),
+    #                      'eta': ak.Array(np.zeros(sz)),
+    #                      'phi': ak.Array(np.zeros(sz)),
+    #                      'mass': ak.Array(np.zeros(sz))})
+
+    # Hww_p4 = vector.zip({'pt': ak.Array(np.zeros(sz)),
+    #                      'eta': ak.Array(np.zeros(sz)),
+    #                      'phi': ak.Array(np.zeros(sz)),
+    #                      'mass': ak.Array(np.zeros(sz))})
+
+    # idk what's this
     # v1_p4 = vector.zip({'pt': branches['genV1_pt'],
     #                     'eta': branches['genV1_eta'],
     #                     'phi': branches['genV1_phi'],
@@ -145,6 +160,7 @@ def AddKinematicFeatures(df, branches, n_lep, n_jet):
     met_p4 = lep1_p4 = vector.zip({'pt': branches['PuppiMET_pt'], 'eta': 0.0, 'phi': branches['PuppiMET_phi'], 'mass': 0.0})
     df['met_px'] = met_p4.px.to_numpy()
     df['met_py'] = met_p4.py.to_numpy()
+    df['met_E'] = met_p4.E.to_numpy()
 
     return df
 
@@ -188,15 +204,15 @@ def AddMindR(df, branches, n_lep, n_jet):
                         'phi': branches['genb2_phi'],
                         'mass': branches['genb2_mass']})
 
-    mindR_b1 = np.minimum(b1_p4.deltaR(jets_p4[:, 0]), b1_p4.deltaR(jets_p4[:, 1]))
-    mindR_b2 = np.minimum(b2_p4.deltaR(jets_p4[:, 0]), b2_p4.deltaR(jets_p4[:, 1]))
+    # mindR_b1 = np.minimum(b1_p4.deltaR(jets_p4[:, 0]), b1_p4.deltaR(jets_p4[:, 1]))
+    # mindR_b2 = np.minimum(b2_p4.deltaR(jets_p4[:, 0]), b2_p4.deltaR(jets_p4[:, 1]))
 
-    # mindR_b1 = ak.min(b1_p4.deltaR(jets_p4), axis=1)
-    # mindR_b2 = ak.min(b2_p4.deltaR(jets_p4), axis=1)
-    # df['mindR_b1'] = mindR_b1.to_numpy()
-    # df['mindR_b2'] = mindR_b2.to_numpy()
-    df['mindR_b1'] = mindR_b1
-    df['mindR_b2'] = mindR_b2
+    mindR_b1 = ak.min(b1_p4.deltaR(jets_p4), axis=1)
+    mindR_b2 = ak.min(b2_p4.deltaR(jets_p4), axis=1)
+    df['mindR_b1'] = mindR_b1.to_numpy()
+    df['mindR_b2'] = mindR_b2.to_numpy()
+    # df['mindR_b1'] = mindR_b1
+    # df['mindR_b2'] = mindR_b2
 
     if n_lep == 1:
         q1_p4 = vector.zip({'pt': branches['genV2prod1_pt'],
@@ -228,8 +244,33 @@ def ApplyFiducialSelection(df, branches, n_lep, n_jet):
                         'phi': branches['genb2_phi'],
                         'mass': branches['genb2_mass']})
 
+    # col_names = ['b1_pt', 'b2_pt', 'b1_eta', 'b2_eta', 'b1_vis_pt', 'b2_vis_pt',
+    #              'n_jet', 'lep1_type', 'lep2_type', 'lep1_genLep_kind', 'lep2_genLep_kind']
     col_names = ['b1_pt', 'b2_pt', 'b1_eta', 'b2_eta', 'b1_vis_pt', 'b2_vis_pt',
-                 'n_jet', 'lep1_type', 'lep2_type', 'lep1_genLep_kind', 'lep2_genLep_kind']
+                 'n_jet', 'lep1_type', 'lep2_type', 'lep1_gen_kind', 'lep2_gen_kind'] # modification for new data
+    # branch_name_map = {'b1_pt': 'genb1_pt',
+    #                    'b1_eta': 'genb1_eta',
+    #                    'b2_pt': 'genb2_pt',
+    #                    'b2_eta': 'genb2_eta',
+    #                    'b1_vis_pt': 'genb1_vis_pt',
+    #                    'b2_vis_pt': 'genb2_vis_pt',
+    #                    'n_jet': 'ncentralJet',
+    #                    'lep1_type': 'lep1_type', 
+    #                    'lep2_type': 'lep2_type', 
+    #                    'lep1_genLep_kind': 'lep1_genLep_kind', 
+    #                    'lep2_genLep_kind': 'lep2_genLep_kind'}
+    # branch_name_map = {'b1_pt': 'genb1_pt',
+    #                    'b1_eta': 'genb1_eta',
+    #                    'b2_pt': 'genb2_pt',
+    #                    'b2_eta': 'genb2_eta',
+    #                    'b1_vis_pt': 'genb1_vis_pt',
+    #                    'b2_vis_pt': 'genb2_vis_pt',
+    #                    'n_jet': 'ncentralJet',
+    #                    'lep1_type': 'lep1_type', 
+    #                    'lep2_type': 'lep2_type', 
+    #                    'lep1_gen_kind': 'lep1_gen_kind', 
+    #                    'lep2_gen_kind': 'lep2_gen_kind'} # modification for new data
+
     branch_name_map = {'b1_pt': 'genb1_pt',
                        'b1_eta': 'genb1_eta',
                        'b2_pt': 'genb2_pt',
@@ -239,8 +280,9 @@ def ApplyFiducialSelection(df, branches, n_lep, n_jet):
                        'n_jet': 'ncentralJet',
                        'lep1_type': 'lep1_type', 
                        'lep2_type': 'lep2_type', 
-                       'lep1_genLep_kind': 'lep1_genLep_kind', 
-                       'lep2_genLep_kind': 'lep2_genLep_kind'}
+                       'lep1_gen_kind': 'lep1_genLep_kind', 
+                       'lep2_gen_kind': 'lep2_genLep_kind'}
+
     tmp_dict = {name: branches[branch_name_map[name]].to_numpy() for name in col_names}
     tmp_dict['bb_dr'] = b1_p4.deltaR(b2_p4)
     df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
@@ -268,29 +310,69 @@ def ApplyFiducialSelection(df, branches, n_lep, n_jet):
         tmp_dict['qq_dr'] = q1_p4.deltaR(q2_p4)
         df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
 
+    df = AddMindR(df, branches, n_lep, n_jet)
+
     # apply cuts
     # cuts to b quarks are applied anyway
-    df = df[df['bb_dr'] > 0.4]
+    df = df[df['bb_dr'] > 0.8]
     df = df[df['lep1_pt'] > 0.0]
-    df = df[df['lep2_pt'] > 0.0]
 
-    df = df[df['b1_vis_pt'] > 0.0]
-    df = df[df['b2_vis_pt'] > 0.0]
+    if n_lep == 2:
+        df = df[df['lep2_pt'] > 0.0]
+
+    # df = df[df['b1_vis_pt'] > 0.0]
+    # df = df[df['b2_vis_pt'] > 0.0]
     df = df[df['b1_pt'] > 20.0]
     df = df[df['b2_pt'] > 20.0]
     df = df[np.abs(df['b1_eta']) < 2.5]
     df = df[np.abs(df['b2_eta']) < 2.5]
 
+    # b1_vis_pt_cut = df['b1_vis_pt'] > 0.0
+    # b2_vis_pt_cut = df['b2_vis_pt'] > 0.0
+    # b1_pt_cut = df['b1_pt'] > 20.0
+    # b2_pt_cut = df['b2_pt'] > 20.0
+    # b1_eta_cut = np.abs(df['b1_eta']) < 2.5
+    # b2_eta_cut = np.abs(df['b2_eta']) < 2.5
+    # lep1_cut = IsCorrectLepton(df, 1)
+    # lep2_cut = IsCorrectLepton(df, 2)
+
+    # cut_dict = {"b1_vis_pt_cut": b1_vis_pt_cut.to_numpy(),
+    #             "b2_vis_pt_cut": b2_vis_pt_cut.to_numpy(),
+    #             "b1_pt_cut": b1_pt_cut.to_numpy(), 
+    #             "b2_pt_cut": b2_pt_cut.to_numpy(), 
+    #             "b1_eta_cut": b1_eta_cut.to_numpy(), 
+    #             "b2_eta_cut": b2_eta_cut.to_numpy(), 
+    #             "lep1_cut": lep1_cut.to_numpy(),
+    #             "lep2_cut": lep2_cut.to_numpy()}
+
+    # cut_df = pd.DataFrame.from_dict(cut_dict)
+    # df = df[~np.array(cut_df.all(axis=1))]
+
+    df = df[df["mindR_b1"] < 0.4]
+    df = df[df["mindR_b2"] < 0.4]
+
     if n_lep == 2:
         # cuts specific to DL channel
         df = df[df['n_jet'] >= 2]
+
+        # fiducail: jets and leptons match to their MC objects
         df = df[IsCorrectLepton(df, 1)]
         df = df[IsCorrectLepton(df, 2)]
+        # df = df[df["mindR_b1"] < 0.4]
+        # df = df[df["mindR_b2"] < 0.4]
+
+        # non-fiducail: jets or leptons do not match to their MC objects
+        # jet_cut = np.logical_or(df['mindR_b1'] >= 0.4, df['mindR_b2'] >= 0.4)
+        # lep_cut = np.logical_or(~IsCorrectLepton(df, 1), ~IsCorrectLepton(df, 2))
+        # nonfid_cut = np.logical_or(jet_cut, lep_cut)
+        # df = df[nonfid_cut]
     elif n_lep == 1:
         # cuts specific to SL channel
         df = df[df['n_jet'] >= 4]
-        df = df[df['q1_vis_pt'] > 0.0]
-        df = df[df['q2_vis_pt'] > 0.0]
+        # df = df[df['q1_vis_pt'] > 0.0]
+        # df = df[df['q2_vis_pt'] > 0.0]
+        df = df[df["mindR_q1"] < 0.4]
+        df = df[df["mindR_q2"] < 0.4]
         df = df[df['qq_dr'] > 0.4]
         df = df[df['q1_pt'] > 20.0]
         df = df[df['q2_pt'] > 20.0]

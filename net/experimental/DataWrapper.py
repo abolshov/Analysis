@@ -3,6 +3,7 @@ import numpy as np
 import awkward as ak
 import uproot
 import vector
+import itertools
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
 from DataWrapper_utils import *
@@ -22,8 +23,8 @@ class DataWrapper():
                         'btagPNetQvG']
 
         self.feature_list = [f"jet{i + 1}_{var}" for i in range(self.n_jets) for var in self.jet_obs + ['px', 'py', 'pz', 'E']]
-        self.feature_list.extend([f"lep{i + 1}_{var}" for i in range(self.n_lep) for var in ['px', 'py', 'pz', 'E']])
-        self.feature_list.extend(["met_px", "met_py"])
+        self.feature_list.extend([f"lep{i + 1}_{var}" for i in range(2) for var in ['px', 'py', 'pz', 'E']])
+        self.feature_list.extend(["met_px", "met_py", "met_E"])
 
         self.tree_name = "Events"
         self.extra_data = ["event"]
@@ -72,10 +73,14 @@ class DataWrapper():
         to_keep = self.features + auxilliary_columns + self.labels
         to_drop = [name for name in df.columns if name not in to_keep]
         df = df.drop(columns=to_drop)
-        df = df.drop(columns=["lep1_pt", "lep2_pt"])
+
+        if self.n_lep == 2:
+            df = df.drop(columns=["lep1_pt", "lep2_pt"])
+            self.features.remove("lep2_pt")
+        else:
+            df = df.drop(columns=["lep1_pt"])
 
         self.features.remove("lep1_pt")
-        self.features.remove("lep2_pt")
 
         if self.data is not None:
             self.data = pd.concat([self.data, df]) 
@@ -89,6 +94,7 @@ class DataWrapper():
         print("============START READING FILES============")
         for file_name in input_files:
             self.ReadFile(file_name)
+            break
         print("=============END READING FILES=============")
 
 
@@ -119,6 +125,7 @@ class DataWrapper():
 
     def FormTestSet(self):
         self.test_data = self.SelectEvents(self.test_val, self.modulo)
+        self.test_events = self.test_data["event"]
         self.test_data = self.test_data.drop(columns=self.extra_data)
 
         self.test_labels = self.test_data[[col for col in self.test_data.columns if col not in self.feature_list]]
@@ -128,18 +135,39 @@ class DataWrapper():
 
 
     def AugmentDataset(self):
-        df = self.data.copy()
-        for col in df.columns:
-            if 'pz' in col:
-                df[col] = -1.0*df[col]
-        self.data = pd.concat([self.data, df])
+        original = self.data.copy()
+        directions = ['px', 'py', 'pz']
+
+        # reflection against individual directions
+        for direction in directions:
+            copy = original.copy()
+            for col in copy.columns:
+                if direction in col:
+                    copy[col] = -1.0*copy[col]
+            self.data = pd.concat([self.data, copy])
+
+        # reflection of pairs of directions
+        for pair in list(itertools.combinations(directions, 2)):
+            copy = original.copy()
+            d1, d2 = pair
+            for col in copy.columns:
+                if d1 in col or d2 in col:
+                    copy[col] = -1.0*copy[col]
+            self.data = pd.concat([self.data, copy])
+
+        # reflect all 3 directions simultaneously        
+        copy = original.copy()   
+        for col in copy.columns:
+            if 'px' in col or 'py' in col or 'pz' in col:
+                copy[col] = -1.0*copy[col]
+        self.data = pd.concat([self.data, copy])
 
 
     def StandardizeFeatures(self, df):
         if self.feature_scaler is None:
             self.feature_scaler = StandardScaler()
             self.feature_scaler.fit(df)
-        scaled_values = self.feature_scaler.transform(df)
+        scaled_values = self.feature_scaler.fit_transform(df)
         return pd.DataFrame(scaled_values, columns=df.columns)
 
 
@@ -147,7 +175,7 @@ class DataWrapper():
         if self.label_scaler is None:
             self.label_scaler = StandardScaler()
             self.label_scaler.fit(df)
-        scaled_values = self.label_scaler.transform(df)
+        scaled_values = self.label_scaler.fit_transform(df)
         return pd.DataFrame(scaled_values, columns=df.columns)
 
 
