@@ -51,10 +51,11 @@ class CombinedLoss(tf.keras.losses.Loss):
         mww2 = tf.square(y_pred[:, 4]) - tf.reduce_sum(tf.square(y_pred[:, 5:8]), axis=1, keepdims=True)
         mbb = tf.sign(mbb2)*tf.sqrt(tf.abs(mbb2))
         mww = tf.sign(mww2)*tf.sqrt(tf.abs(mww2))
-        # penalty = tf.sqrt(0.5*self.mse_loss(mh, mbb)) + 0.5*tf.sqrt(self.mse_loss(mh, mww))
         penalty = 0.5*self.mse_loss(mh, mbb) + 0.5*self.mse_loss(mh, mww)
         total_loss = logcosh + self.strength*penalty
-        tf.print(self.strength)
+        # print(f"penalty_frac={penalty.numpy()[0]/total_loss.numpy()[0]:.2f}, logcosh_frac={logcosh.numpy()[0]/total_loss.numpy()[0]:.2f}")
+        # tf.print(self.strength*penalty/total_loss)
+        # tf.print(logcosh/total_loss)
         return total_loss 
 
     def update_epoch(self):
@@ -66,7 +67,34 @@ class CombinedLoss(tf.keras.losses.Loss):
         This is necessary for saving and loading the model with custom objects.
         """
         config = super().get_config()
-        config.update({"strength": self.strength.numpy()})
+        config.update({"strength": self.strength})
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+
+
+class MassLoss(tf.keras.losses.Loss):
+    def __init__(self, strength=1.0, name="mass_loss", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.mse_loss = tf.keras.losses.MeanSquaredError()
+        self.strength = strength
+
+    def call(self, y_true, y_pred):
+        mbb2 = tf.square(y_pred[:, 3]) - tf.reduce_sum(tf.square(y_pred[:, 0:3]), axis=1, keepdims=True)
+        mww2 = tf.square(y_pred[:, 7]) - tf.reduce_sum(tf.square(y_pred[:, 4:7]), axis=1, keepdims=True)
+        mbb = tf.sign(mbb2)*tf.sqrt(tf.abs(mbb2))
+        mww = tf.sign(mww2)*tf.sqrt(tf.abs(mww2))
+        loss = 0.5*self.mse_loss(mh, mbb) + 0.5*self.mse_loss(mh, mww)
+        return self.strength*loss 
+
+    def get_config(self):
+        """
+        Returns the serializable configuration of the layer.
+        This is necessary for saving and loading the model with custom objects.
+        """
+        config = super().get_config()
         return config
 
     @classmethod
