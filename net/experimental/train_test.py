@@ -34,7 +34,7 @@ def PredPeak(pred_mass):
     return peak 
 
 
-def PlotCompare2D(target, output, quantity):
+def PlotCompare2D(target, output, quantity, plotting_dir=None):
     plt.grid(False)
     min_bin = 0 if quantity[-1] == 'E' else -1200
     bins = np.linspace(min_bin, 1200, 100)
@@ -43,12 +43,15 @@ def PlotCompare2D(target, output, quantity):
     plt.title(f'{var} comparison')
     plt.ylabel(f'predicted {target_names[quantity]}')
     plt.xlabel(f'true {target_names[quantity]}')
-    plt.savefig(f"cmp2d_{quantity}.pdf", bbox_inches='tight')
+    if plotting_dir:
+        plt.savefig(os.path.join(plotting_dir, f"cmp2d_{quantity}.pdf"), bbox_inches='tight')
+    else:
+        plt.savefig(f"cmp2d_{quantity}.pdf", bbox_inches='tight')
     plt.clf()
 
 
 def Scheduler(epoch, lr):
-    if epoch < 20:
+    if epoch < 30:
         return lr
     else:
         if epoch % 2 == 0:
@@ -56,7 +59,7 @@ def Scheduler(epoch, lr):
         return lr
 
 
-def PlotMetric(history, model, metric):
+def PlotMetric(history, model, metric, plotting_dir=None):
     plt.plot(history.history[metric], label=f'train_{metric}')
     plt.plot(history.history[f'val_{metric}'], label=f'val_{metric}')
     plt.title(f'{model} {metric}')
@@ -64,7 +67,10 @@ def PlotMetric(history, model, metric):
     plt.xlabel('Epoch')
     plt.legend(loc='upper right')
     plt.grid(True)
-    plt.savefig(f"{metric}_{model}.pdf", bbox_inches='tight')
+    if plotting_dir:
+        plt.savefig(os.path.join(plotting_dir, f"{metric}_{model}.pdf"), bbox_inches='tight')
+    else:
+        plt.savefig(f"{metric}_{model}.pdf", bbox_inches='tight')
     plt.clf()
 
 
@@ -84,13 +90,15 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
 tf.random.set_seed(42)
 
-model_name = "model_hh_dl_all_aug_trainable_silu_dynamic_comb_loss"
+model_name = "model_hh_dl_aug_train_silu_l2reg"
+model_dir = model_name
+os.makedirs(model_dir, exist_ok=True)
 
 learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(Scheduler)
 early_stopping = tf.keras.callbacks.EarlyStopping(
     monitor='val_loss',
     patience=3,
-    min_delta=10e-3
+    min_delta=0.001
 )
 
 penalty_strength = tf.Variable(1e-6, dtype=tf.float32)
@@ -98,19 +106,34 @@ update_rate = 1.0001
 loss_updater = EpochLossUpdater(penalty_strength, update_rate)
 
 input_shape = dw.train_features.shape
-num_units = 256
-num_layers = 10
+num_units = 384
+num_layers = 12
+dropout_rate = 0.05
+l2_strength = 0.01
 
 model = tf.keras.Sequential()
 for _ in range(num_layers):
     model.add(tf.keras.layers.Dense(num_units, 
                                     activation=TrainableSiLU(units=num_units), 
+                                    # activation='silu',
                                     kernel_initializer='random_normal', 
-                                    bias_initializer='random_normal'))
+                                    bias_initializer='random_normal',
+                                    kernel_regularizer=tf.keras.regularizers.L2(l2_strength)))
 model.add(tf.keras.layers.Dense(8))
-model.compile(loss=CombinedLoss(penalty_strength), 
+
+# model.compile(loss=CombinedLoss(penalty_strength), 
+#               optimizer=tf.keras.optimizers.Adam(3e-4))
+model.compile(loss='logcosh', 
               optimizer=tf.keras.optimizers.Adam(3e-4))
 model.build(dw.train_features.shape)
+
+# history = model.fit(dw.train_features,
+#                     dw.train_labels,
+#                     validation_split=0.2,
+#                     verbose=1,
+#                     batch_size=2048,
+#                     epochs=100,
+#                     callbacks=[learning_rate_scheduler, loss_updater])
 
 history = model.fit(dw.train_features,
                     dw.train_labels,
@@ -118,10 +141,10 @@ history = model.fit(dw.train_features,
                     verbose=1,
                     batch_size=2048,
                     epochs=100,
-                    callbacks=[learning_rate_scheduler, loss_updater])
+                    callbacks=[learning_rate_scheduler])
 
-model.save(f"{model_name}.keras")
-PlotMetric(history, model_name, "loss")
+model.save(os.path.join(model_dir, f"{model_name}.keras"))
+PlotMetric(history, model_name, "loss", plotting_dir=model_dir)
 
 dw.Clear()
 dw.ReadFile("/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M-800/nano_0.root")
@@ -134,7 +157,7 @@ pred_df = pd.DataFrame.from_dict(pred_dict)
 print(pred_df.describe())
 
 for col in pred_df.columns:
-    PlotCompare2D(dw.test_labels[col], pred_df[col], col)
+    PlotCompare2D(dw.test_labels[col], pred_df[col], col, plotting_dir=model_dir)
 
 bins = np.linspace(0, 2000, 100)
 
@@ -159,7 +182,7 @@ plt.xlabel(f'mass, [GeV]')
 plt.figtext(0.75, 0.8, f"peak: {np.median(X_mass_pred):.2f}")
 plt.figtext(0.75, 0.75, f"width: {PredWidth(X_mass_pred):.2f}")
 plt.grid(True)
-plt.savefig(f"pred_mass.pdf", bbox_inches='tight')
+plt.savefig(os.path.join(model_dir, "pred_mass.pdf"), bbox_inches='tight')
 plt.clf()
 
 Hbb_mass_sqr = pred_df["genHbb_E"]**2 - pred_df["genHbb_px"]**2 - pred_df["genHbb_py"]**2 - pred_df["genHbb_pz"]**2
@@ -175,7 +198,7 @@ plt.figtext(0.75, 0.8, f"peak: {PredPeak(Hbb_mass):.2f}")
 plt.figtext(0.75, 0.75, f"width: {PredWidth(Hbb_mass):.2f}")
 plt.figtext(0.75, 0.7, f"pos: {pos_frac:.2f}")
 plt.grid(True)
-plt.savefig(f"Hbb_mass.pdf", bbox_inches='tight')
+plt.savefig(os.path.join(model_dir, "Hbb_mass.pdf"), bbox_inches='tight')
 plt.clf()
 
 Hvv_mass_sqr = pred_df["genHVV_E"]**2 - pred_df["genHVV_px"]**2 - pred_df["genHVV_py"]**2 - pred_df["genHVV_pz"]**2
@@ -190,7 +213,5 @@ plt.figtext(0.75, 0.8, f"peak: {PredPeak(Hvv_mass):.2f}")
 plt.figtext(0.75, 0.75, f"width: {PredWidth(Hvv_mass):.2f}")
 plt.figtext(0.75, 0.7, f"pos: {pos_frac:.2f}")
 plt.grid(True)
-plt.savefig(f"Hvv_mass.pdf", bbox_inches='tight')
+plt.savefig(os.path.join(model_dir, "Hvv_mass.pdf"), bbox_inches='tight')
 plt.clf()
-
-model.save(f"{model_name}.keras")

@@ -45,7 +45,7 @@ def main():
     outputs = tf.keras.layers.Dense(units=num_units)(x)
     composite_model = tf.keras.Model(inputs, outputs)
 
-    composite_model.compile(loss=CombinedLoss(strength=0.01), 
+    composite_model.compile(loss='mse', 
                             optimizer=tf.keras.optimizers.Adam(3e-4))
 
     history = composite_model.fit(dw.train_features,
@@ -53,7 +53,7 @@ def main():
                                   validation_split=0.2,
                                   verbose=1,
                                   batch_size=1024,
-                                  epochs=1)
+                                  epochs=30)
 
     transfer_learning_dir = "transfer_learning"
     model_name = "model_hh_dl_transf_relu"
@@ -65,31 +65,17 @@ def main():
                             to_file=os.path.join(model_dir, f'{model_name}_arch.pdf'), 
                             show_shapes=True)
 
-    # base_model.compile(loss=MassLoss(strength=1e-5), 
-    #                    optimizer=tf.keras.optimizers.Adam(1e-6))
-
-    # print("Base model on train data:")
-    # base_model.evaluate(dw.train_features,
-    #                     dw.train_labels,
-    #                     batch_size=1024)
-
-    # print("full model on train data:")
-    # composite_model.evaluate(dw.train_features,
-    #                          dw.train_labels,
-    #                          batch_size=1024)
-
     dw.Clear()
     dw.ReadFile("/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M-800/nano_0.root")
     dw.FormTestSet()
 
-    # print("Base model on test data:")
-    # base_model.evaluate(dw.test_features,
-    #                     dw.test_labels,
-    #                     batch_size=1024)
-    # print("Full model on test data:")
-    # composite_model.evaluate(dw.test_features,
-    #                          dw.test_labels,
-    #                          batch_size=1024)
+    # print(composite_model.summary())
+
+    # first_input = dw.test_features.iloc[0].to_numpy()
+    # first_input = first_input[None, :]
+    # print(base_model.predict(first_input)[0])
+    # print(composite_model.predict(first_input)[0])
+    # print(dw.test_labels.iloc[0].to_numpy())
 
     res = composite_model.predict(dw.test_features)
     pred_dict = {label: res[:, i] for i, label in enumerate(dw.test_labels.columns)}
