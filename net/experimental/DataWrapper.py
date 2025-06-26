@@ -13,6 +13,7 @@ class DataWrapper():
     def __init__(self):
         self.n_jets = 10
         self.n_lep = 2
+        self.n_fatjets = 3
         self.jet_obs = ['btagPNetB',
                         'PNetRegPtRawCorr',
                         'PNetRegPtRawCorrNeutrino',
@@ -22,7 +23,14 @@ class DataWrapper():
                         'btagPNetCvNotB',
                         'btagPNetQvG']
 
+        self.fatjet_obs = ['particleNet_QCD',
+                           'particleNetWithMass_QCD',
+                           'particleNetWithMass_HbbvsQCD',
+                           'particleNet_XbbVsQCD',
+                           'particleNet_massCorr']
+
         self.feature_list = [f"jet{i + 1}_{var}" for i in range(self.n_jets) for var in self.jet_obs + ['px', 'py', 'pz', 'E']]
+        self.feature_list.extend([f"fatjet{i + 1}_{var}" for i in range(self.n_fatjets) for var in self.fatjet_obs + ['px', 'py', 'pz', 'E']])
         self.feature_list.extend([f"lep{i + 1}_{var}" for i in range(2) for var in ['px', 'py', 'pz', 'E']])
         self.feature_list.extend(["met_px", "met_py", "met_E"])
 
@@ -63,12 +71,13 @@ class DataWrapper():
 
         df = AddKinematicFeatures(df, branches, self.n_lep, self.n_jets)
         df = AddJetFeatures(df, branches, self.jet_obs, self.n_jets)
+        df = AddFatJetFeatures(df, branches, self.fatjet_obs, self.n_fatjets)
         df = AddKinematicLabels(df, branches)
 
         self.features = [name for name in df.columns if name not in auxilliary_columns]
 
         if self.apply_fiducial_cut:
-            df = ApplyFiducialSelection(df, branches, self.n_lep, self.n_jets)
+            df = ApplyFiducialSelection(df, branches, self.n_lep, self.n_jets, self.n_fatjets)
 
         to_keep = self.features + auxilliary_columns + self.labels
         to_drop = [name for name in df.columns if name not in to_keep]
@@ -94,7 +103,7 @@ class DataWrapper():
         print("============START READING FILES============")
         for file_name in input_files:
             self.ReadFile(file_name)
-            break
+            # break
         print("=============END READING FILES=============")
 
 

@@ -186,6 +186,20 @@ def AddJetFeatures(df, branches, feature_list, n_jet):
     return df
 
 
+def AddFatJetFeatures(df, branches, feature_list, n_fatjet):
+    for feature in feature_list:
+        if IsKinematic(feature):
+            continue
+        
+        branch_name = f"SelectedFatJet_{feature}"
+        feature_branch = ak.fill_none(ak.pad_none(branches[branch_name], n_fatjet), 0.0)
+
+        tmp_dict = {f"fatjet{i + 1}_{feature}": feature_branch[:, i].to_numpy() for i in range(n_fatjet)}
+        df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
+        
+    return df
+
+
 def AddMindR(df, branches, n_lep, n_jet):
     pt = ak.fill_none(ak.pad_none(branches['centralJet_pt'], n_jet), 0.0)
     eta = ak.fill_none(ak.pad_none(branches['centralJet_eta'], n_jet), 0.0)
@@ -230,10 +244,46 @@ def AddMindR(df, branches, n_lep, n_jet):
         df['mindR_q1'] = mindR_q1.to_numpy()
         df['mindR_q2'] = mindR_q2.to_numpy()
 
+    return df
+
+
+def AddMindRFat(df, branches, n_lep, n_jet):
+    pt = ak.fill_none(ak.pad_none(branches['SelectedFatJet_pt'], n_jet), 0.0)
+    eta = ak.fill_none(ak.pad_none(branches['SelectedFatJet_eta'], n_jet), 0.0)
+    phi = ak.fill_none(ak.pad_none(branches['SelectedFatJet_phi'], n_jet), 0.0)
+    mass = ak.fill_none(ak.pad_none(branches['SelectedFatJet_mass'], n_jet), 0.0)
+    fatjets_p4 = vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
+    fatjets_p4 = fatjets_p4[:, :n_jet]
+
+    Hbb_p4 = vector.zip({'pt': branches['genHbb_pt'],
+                         'eta': branches['genHbb_eta'],
+                         'phi': branches['genHbb_phi'],
+                         'mass': branches['genHbb_mass']})
+
+    mindR = ak.min(Hbb_p4.deltaR(fatjets_p4), axis=1)
+    df['mindR_fat'] = mindR.to_numpy()
+
+    if n_lep == 1:
+        raise RuntimeError("1 lepton fatjet DR is not implemented")
+        # q1_p4 = vector.zip({'pt': branches['genV2prod1_pt'],
+        #                     'eta': branches['genV2prod1_eta'],
+        #                     'phi': branches['genV2prod1_phi'],
+        #                     'mass': branches['genV2prod1_mass']})
+
+        # q2_p4 = vector.zip({'pt': branches['genV2prod2_pt'],
+        #                     'eta': branches['genV2prod2_eta'],
+        #                     'phi': branches['genV2prod2_phi'],
+        #                     'mass': branches['genV2prod2_mass']})
+
+        # mindR_q1 = ak.min(q1_p4.deltaR(jets_p4), axis=1)
+        # mindR_q2 = ak.min(q2_p4.deltaR(jets_p4), axis=1)
+        # df['mindR_q1'] = mindR_q1.to_numpy()
+        # df['mindR_q2'] = mindR_q2.to_numpy()
+
     return df    
 
 
-def ApplyFiducialSelection(df, branches, n_lep, n_jet):
+def ApplyFiducialSelection(df, branches, n_lep, n_jet, n_fatjet):
     b1_p4 = vector.zip({'pt': branches['genb1_pt'],
                        'eta': branches['genb1_eta'],
                        'phi': branches['genb1_phi'],
@@ -311,10 +361,11 @@ def ApplyFiducialSelection(df, branches, n_lep, n_jet):
         df = pd.concat([df, pd.DataFrame.from_dict(tmp_dict)], axis=1)
 
     df = AddMindR(df, branches, n_lep, n_jet)
+    df = AddMindRFat(df, branches, n_lep, n_fatjet)
 
     # apply cuts
     # cuts to b quarks are applied anyway
-    df = df[df['bb_dr'] > 0.8]
+    # df = df[df['bb_dr'] < 0.8]
     df = df[df['lep1_pt'] > 0.0]
 
     if n_lep == 2:
@@ -348,8 +399,12 @@ def ApplyFiducialSelection(df, branches, n_lep, n_jet):
     # cut_df = pd.DataFrame.from_dict(cut_dict)
     # df = df[~np.array(cut_df.all(axis=1))]
 
-    df = df[df["mindR_b1"] < 0.4]
-    df = df[df["mindR_b2"] < 0.4]
+    # df = df[df["mindR_b1"] < 0.4]
+    # df = df[df["mindR_b2"] < 0.4]
+
+    df['reconstructed_as_slim'] = np.logical_and(df["mindR_b1"] < 0.4, df["mindR_b2"] < 0.4)
+    df['reconstructed_as_fat'] = df["mindR_fat"] < 0.8
+    df['correct_jet_reconstruction'] = np.logical_or(df['reconstructed_as_slim'], df['reconstructed_as_fat'])
 
     if n_lep == 2:
         # cuts specific to DL channel
@@ -358,6 +413,8 @@ def ApplyFiducialSelection(df, branches, n_lep, n_jet):
         # fiducail: jets and leptons match to their MC objects
         df = df[IsCorrectLepton(df, 1)]
         df = df[IsCorrectLepton(df, 2)]
+        # df = df[df['correct_jet_reconstruction']]
+        df = df[df['reconstructed_as_fat']]
         # df = df[df["mindR_b1"] < 0.4]
         # df = df[df["mindR_b2"] < 0.4]
 
