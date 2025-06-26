@@ -17,7 +17,7 @@
         return corr_lep_reco;
     }
 
-    bool IsRecoverable(Event const& s, Channel ch, Topology bb_top, Topology qq_top)
+    bool IsRecoverable(Event const& s, Channel ch)
     {
         // check all quarks
         int n_quarks = ch == Channel::DL ? 2 : 4;
@@ -25,7 +25,7 @@
         for (int i = 0; i < n_quarks; ++i)
         {
             Float_t max_eta = i < 2 ? 2.5 : 5.0;
-            if (s.gen_quark_pt[i] < 20.0 || std::abs(s.gen_quark_eta[i]) >= max_eta)
+            if (s.gen_quark_pt[i] < 20.0 || std::abs(s.gen_quark_eta[i]) > max_eta)
             {
                 return false;
             }
@@ -33,41 +33,19 @@
         }
 
         Float_t bb_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::b1)], quarks_p4[static_cast<size_t>(Quark::b2)]);
-        if (ch == Channel::DL)
+        if (bb_dr < 0.8)
         {
-            return bb_top == Topology::Resolved ? bb_dr > 0.4 : bb_dr < 0.4;
+            return false;
         }
-        else 
-        {
-            Float_t qq_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::q1)], quarks_p4[static_cast<size_t>(Quark::q2)]);
-            if (bb_top == Topology::Resolved)
-            {
-                // bb resolved here
-                return qq_top == Topology::Resolved ? (bb_dr > 0.4 && qq_dr > 0.4) : (bb_dr > 0.4 && qq_dr < 0.4 );
-            }
-            else
-            {
-                // bb boosted here
-                return qq_top == Topology::Resolved ? (bb_dr < 0.4 && qq_dr > 0.4) : (bb_dr < 0.4 && qq_dr < 0.4 );
-            }
-        }
-
-        // if (top_sel)
+        
+        // if (bb_dr > 0.8)
         // {
-        //     Float_t bb_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::b1)], quarks_p4[static_cast<size_t>(Quark::b2)]);
-        //     if (bb_dr < 0.4)
-        //     {
-        //         return false;
-        //     }
+        //     return false;
+        // }
 
-        //     if (ch == Channel::SL)
-        //     {
-        //         Float_t qq_dr = DeltaR(quarks_p4[static_cast<size_t>(Quark::q1)], quarks_p4[static_cast<size_t>(Quark::q2)]);
-        //         if (qq_dr < 0.4)
-        //         {
-        //             return false;
-        //         }
-        //     }
+        // if (s.n_reco_fatjet < 1)
+        // {
+        //     return false;
         // }
 
         // check all reco jets are present in the event
@@ -99,7 +77,7 @@
         return true;
     }
 
-    bool IsFiducial(Event const& s, VecLVF_t const& jets, Channel ch, Topology bb_top, Topology qq_top)
+    bool IsFiducial(Event const& s, VecLVF_t const& jets, Channel ch)
     {
         // check quark to reco jet matching
         int n_quarks = ch == Channel::DL ? 2 : 4;
@@ -109,63 +87,34 @@
             quarks_p4.push_back(LorentzVectorF_t(s.gen_quark_pt[i], s.gen_quark_eta[i], s.gen_quark_phi[i], s.gen_quark_mass[i]));
         }
 
-        LorentzVectorF_t Hbb_p4{s.Hbb_pt, s.Hbb_eta, s.Hbb_phi, s.Hbb_mass};
-        int n_fatjets = s.n_reco_fatjet;
-        Float_t min_fat_dr = 10.0;
-        for (int i = 0; i < n_fatjets; ++i)
+        // LorentzVectorF_t Hbb_p4{s.Hbb_pt, s.Hbb_eta, s.Hbb_phi, s.Hbb_mass};
+        // int n_fatjets = s.n_reco_fatjet;
+        // Float_t min_fat_dr = 10.0;
+        // for (int i = 0; i < n_fatjets; ++i)
+        // {
+        //     LorentzVectorF_t fatjet{s.reco_fatjet_pt[i], 
+        //                             s.reco_fatjet_eta[i],
+        //                             s.reco_fatjet_phi[i],
+        //                             s.reco_fatjet_mass[i]};
+        //     Float_t fat_dr = DeltaR(fatjet, Hbb_p4);
+        //     min_fat_dr = std::min(fat_dr, min_fat_dr);
+        // }
+
+        // if (min_fat_dr > 0.8)
+        // {
+        //     return false;
+        // }
+
+        std::unordered_set<int> matches;
+        for (auto const& qp4: quarks_p4)
         {
-            LorentzVectorF_t fatjet{s.reco_fatjet_pt[i], 
-                                    s.reco_fatjet_eta[i],
-                                    s.reco_fatjet_phi[i],
-                                    s.reco_fatjet_mass[i]};
-            Float_t fat_dr = DeltaR(fatjet, Hbb_p4);
-            min_fat_dr = std::min(fat_dr, min_fat_dr);
+            int idx = MatchIdx(qp4, jets);
+            matches.insert(idx);
         }
 
-        if (ch == Channel::DL)
+        if (matches.count(-1))
         {
-            if (bb_top == Topology::Boosted)
-            {
-                if (min_fat_dr > 0.8)
-                {
-                    return false;
-                }
-            }
-            else 
-            {
-                std::unordered_set<int> matches;
-                for (auto const& qp4: quarks_p4)
-                {
-                    int idx = MatchIdx(qp4, jets);
-                    matches.insert(idx);
-                }
-
-                if (matches.count(-1))
-                {
-                    return false;
-                }
-            }
-        }
-        else 
-        {
-            if (bb_top == Topology::Resolved && qq_top == Topology::Resolved)
-            {
-                std::unordered_set<int> matches;
-                for (auto const& qp4: quarks_p4)
-                {
-                    int idx = MatchIdx(qp4, jets);
-                    matches.insert(idx);
-                }
-
-                if (matches.count(-1))
-                {
-                    return false;
-                }
-            }
-            else 
-            {
-                throw std::runtime_error("Cannot handle anything but resolved topology for H->bb and W->qq in SL");
-            }
+            return false;
         }
 
         // check lepton reconstruction
