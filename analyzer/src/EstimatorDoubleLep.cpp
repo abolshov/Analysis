@@ -276,113 +276,6 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombSlim(VecLVF_t const& partic
 }
 
 // only implements logic of using slim (ak4) jets
-// OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
-// {
-//     std::vector<LorentzVectorF_t> particles(static_cast<size_t>(ObjDL::count));
-//     particles[static_cast<size_t>(ObjDL::lep1)] = LorentzVectorF_t(event.reco_lep_pt[static_cast<size_t>(Lep::lep1)], 
-//                                                                    event.reco_lep_eta[static_cast<size_t>(Lep::lep1)],
-//                                                                    event.reco_lep_phi[static_cast<size_t>(Lep::lep1)], 
-//                                                                    event.reco_lep_mass[static_cast<size_t>(Lep::lep1)]);
-//     particles[static_cast<size_t>(ObjDL::lep2)] = LorentzVectorF_t(event.reco_lep_pt[static_cast<size_t>(Lep::lep2)], 
-//                                                                    event.reco_lep_eta[static_cast<size_t>(Lep::lep2)],
-//                                                                    event.reco_lep_phi[static_cast<size_t>(Lep::lep2)], 
-//                                                                    event.reco_lep_mass[static_cast<size_t>(Lep::lep2)]);
-//     particles[static_cast<size_t>(ObjDL::met)] = LorentzVectorF_t(event.reco_met_pt, 0.0f, event.reco_met_phi, 0.0f);
-    
-//     if (m_aggr_mode == AggregationMode::Event)
-//     {
-//         m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", event.event_id));
-//     }
-
-//     // selection of b jets
-//     std::vector<std::pair<size_t, size_t>> bjet_pair_indices;
-//     size_t num_bjets = static_cast<size_t>(event.n_reco_jet) < NUM_BEST_BTAG ? static_cast<size_t>(event.n_reco_jet) : NUM_BEST_BTAG;
-//     for (size_t i = 0; i < num_bjets; ++i)
-//     {
-//         for (size_t j = i + 1; j < num_bjets; ++j)
-//         {
-//             bjet_pair_indices.emplace_back(i, j);
-//         }   
-//     }
-
-//     // now loop over all saved jet pairs
-//     // construct their p4 and push back it to particles
-//     // and estimate each combination
-//     std::vector<ArrF_t<ESTIM_OUT_SZ>> estimations;
-//     for (auto const& [bj1_idx, bj2_idx]: bjet_pair_indices)
-//     {
-//         // PNet resolutions of all jets but currently selected b jets
-//         // will be needed in fututre when I add contributions to met corrections from other jets
-//         // right now just a placeholder
-//         std::vector<Float_t> other_jet_resolutions{};
-
-//         // order jets such that first b jet has bigger pt and save their p4
-//         if (event.reco_jet_pt[bj1_idx] > event.reco_jet_pt[bj2_idx])
-//         {
-//             particles[static_cast<size_t>(ObjDL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
-//                                                                           event.reco_jet_eta[bj1_idx],
-//                                                                           event.reco_jet_phi[bj1_idx], 
-//                                                                           event.reco_jet_mass[bj1_idx]);
-//             particles[static_cast<size_t>(ObjDL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
-//                                                                           event.reco_jet_eta[bj2_idx],
-//                                                                           event.reco_jet_phi[bj2_idx], 
-//                                                                           event.reco_jet_mass[bj2_idx]);
-//         }
-//         else 
-//         {
-//             particles[static_cast<size_t>(ObjDL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
-//                                                                           event.reco_jet_eta[bj2_idx],
-//                                                                           event.reco_jet_phi[bj2_idx], 
-//                                                                           event.reco_jet_mass[bj2_idx]);
-//             particles[static_cast<size_t>(ObjDL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
-//                                                                           event.reco_jet_eta[bj1_idx],
-//                                                                           event.reco_jet_phi[bj1_idx], 
-//                                                                           event.reco_jet_mass[bj1_idx]);
-//         }
-        
-//         JetComb comb(bj1_idx, bj2_idx, event.reco_jet_btag);
-//         ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombSlim(particles, other_jet_resolutions, event.event_id, comb);
-
-//         // success: mass > 0
-//         if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
-//         {
-//             estimations.push_back(comb_result);
-//         }
-//     }
-
-//     if (!estimations.empty())
-//     {
-//         if (m_aggr_mode == AggregationMode::Combination)
-//         {
-//             // pick combination with largest integral
-//             auto IntegralComparator = [](ArrF_t<ESTIM_OUT_SZ> const& c1, ArrF_t<ESTIM_OUT_SZ> const& c2)
-//             {
-//                 return c1[static_cast<size_t>(EstimOut::integral)] < c2[static_cast<size_t>(EstimOut::integral)];
-//             };
-//             auto it = std::max_element(estimations.begin(), estimations.end(), IntegralComparator);
-//             size_t best_est_idx = it - estimations.begin();
-//             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[best_est_idx]);
-//         }
-//         else if (m_aggr_mode == AggregationMode::Event)
-//         {
-//             ArrF_t<ESTIM_OUT_SZ> res{};
-//             int binmax = m_res_mass->GetMaximumBin(); 
-//             res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
-//             res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
-//             res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
-//             res[static_cast<size_t>(EstimOut::integral)] = m_res_mass->Integral();
-//             ResetHist(m_res_mass);
-//             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(res);
-//         }
-//         else 
-//         {
-//             throw std::runtime_error("Unknown strategy to aggregate combination data to estimate event mass");
-//         }
-//     }
-//     ResetHist(m_res_mass);
-//     return std::nullopt;
-// }
-
 OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
 {
     std::vector<LorentzVectorF_t> particles(static_cast<size_t>(ObjDL::count));
@@ -401,28 +294,60 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
         m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", event.event_id));
     }
 
-    size_t num_fatjets = event.n_reco_fatjet;
-    if (num_fatjets == 0)
+    // selection of b jets
+    std::vector<std::pair<size_t, size_t>> bjet_pair_indices;
+    size_t num_bjets = static_cast<size_t>(event.n_reco_jet) < NUM_BEST_BTAG ? static_cast<size_t>(event.n_reco_jet) : NUM_BEST_BTAG;
+    for (size_t i = 0; i < num_bjets; ++i)
     {
-        return std::nullopt;
+        for (size_t j = i + 1; j < num_bjets; ++j)
+        {
+            bjet_pair_indices.emplace_back(i, j);
+        }   
     }
 
-    // select fatjets to consider here
-    // for now only choose the one with highest btag
+    // now loop over all saved jet pairs
+    // construct their p4 and push back it to particles
+    // and estimate each combination
     std::vector<ArrF_t<ESTIM_OUT_SZ>> estimations;
-    auto it = std::max_element(event.reco_fatjet_btag.begin(), event.reco_fatjet_btag.end());
-    size_t fatjet_idx = it - event.reco_fatjet_btag.begin();
-    particles[static_cast<size_t>(ObjDL::fatbb)] = LorentzVectorF_t(event.reco_fatjet_pt[fatjet_idx], 
-                                                                    event.reco_fatjet_eta[fatjet_idx],
-                                                                    event.reco_fatjet_phi[fatjet_idx], 
-                                                                    event.reco_fatjet_mass[fatjet_idx]);
-
-    JetComb comb{};
-    std::vector<Float_t> other_jet_resolutions{};
-    ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombFat(particles, other_jet_resolutions, event.event_id, comb);
-    if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
+    for (auto const& [bj1_idx, bj2_idx]: bjet_pair_indices)
     {
-        estimations.push_back(comb_result);
+        // PNet resolutions of all jets but currently selected b jets
+        // will be needed in fututre when I add contributions to met corrections from other jets
+        // right now just a placeholder
+        std::vector<Float_t> other_jet_resolutions{};
+
+        // order jets such that first b jet has bigger pt and save their p4
+        if (event.reco_jet_pt[bj1_idx] > event.reco_jet_pt[bj2_idx])
+        {
+            particles[static_cast<size_t>(ObjDL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
+                                                                          event.reco_jet_eta[bj1_idx],
+                                                                          event.reco_jet_phi[bj1_idx], 
+                                                                          event.reco_jet_mass[bj1_idx]);
+            particles[static_cast<size_t>(ObjDL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
+                                                                          event.reco_jet_eta[bj2_idx],
+                                                                          event.reco_jet_phi[bj2_idx], 
+                                                                          event.reco_jet_mass[bj2_idx]);
+        }
+        else 
+        {
+            particles[static_cast<size_t>(ObjDL::bj1)] = LorentzVectorF_t(event.reco_jet_pt[bj2_idx], 
+                                                                          event.reco_jet_eta[bj2_idx],
+                                                                          event.reco_jet_phi[bj2_idx], 
+                                                                          event.reco_jet_mass[bj2_idx]);
+            particles[static_cast<size_t>(ObjDL::bj2)] = LorentzVectorF_t(event.reco_jet_pt[bj1_idx], 
+                                                                          event.reco_jet_eta[bj1_idx],
+                                                                          event.reco_jet_phi[bj1_idx], 
+                                                                          event.reco_jet_mass[bj1_idx]);
+        }
+        
+        JetComb comb(bj1_idx, bj2_idx, event.reco_jet_btag);
+        ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombSlim(particles, other_jet_resolutions, event.event_id, comb);
+
+        // success: mass > 0
+        if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
+        {
+            estimations.push_back(comb_result);
+        }
     }
 
     if (!estimations.empty())
@@ -457,6 +382,81 @@ OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
     ResetHist(m_res_mass);
     return std::nullopt;
 }
+
+// OptArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateMass(Event const& event)
+// {
+//     std::vector<LorentzVectorF_t> particles(static_cast<size_t>(ObjDL::count));
+//     particles[static_cast<size_t>(ObjDL::lep1)] = LorentzVectorF_t(event.reco_lep_pt[static_cast<size_t>(Lep::lep1)], 
+//                                                                    event.reco_lep_eta[static_cast<size_t>(Lep::lep1)],
+//                                                                    event.reco_lep_phi[static_cast<size_t>(Lep::lep1)], 
+//                                                                    event.reco_lep_mass[static_cast<size_t>(Lep::lep1)]);
+//     particles[static_cast<size_t>(ObjDL::lep2)] = LorentzVectorF_t(event.reco_lep_pt[static_cast<size_t>(Lep::lep2)], 
+//                                                                    event.reco_lep_eta[static_cast<size_t>(Lep::lep2)],
+//                                                                    event.reco_lep_phi[static_cast<size_t>(Lep::lep2)], 
+//                                                                    event.reco_lep_mass[static_cast<size_t>(Lep::lep2)]);
+//     particles[static_cast<size_t>(ObjDL::met)] = LorentzVectorF_t(event.reco_met_pt, 0.0f, event.reco_met_phi, 0.0f);
+    
+//     if (m_aggr_mode == AggregationMode::Event)
+//     {
+//         m_res_mass->SetNameTitle("X_mass", Form("X->HH mass: event %llu", event.event_id));
+//     }
+
+//     size_t num_fatjets = event.n_reco_fatjet;
+//     if (num_fatjets == 0)
+//     {
+//         return std::nullopt;
+//     }
+
+//     // select fatjets to consider here
+//     // for now only choose the one with highest btag
+//     std::vector<ArrF_t<ESTIM_OUT_SZ>> estimations;
+//     auto it = std::max_element(event.reco_fatjet_btag.begin(), event.reco_fatjet_btag.end());
+//     size_t fatjet_idx = it - event.reco_fatjet_btag.begin();
+//     particles[static_cast<size_t>(ObjDL::fatbb)] = LorentzVectorF_t(event.reco_fatjet_pt[fatjet_idx], 
+//                                                                     event.reco_fatjet_eta[fatjet_idx],
+//                                                                     event.reco_fatjet_phi[fatjet_idx], 
+//                                                                     event.reco_fatjet_mass[fatjet_idx]);
+
+//     JetComb comb{};
+//     std::vector<Float_t> other_jet_resolutions{};
+//     ArrF_t<ESTIM_OUT_SZ> comb_result = EstimateCombFat(particles, other_jet_resolutions, event.event_id, comb);
+//     if (comb_result[static_cast<size_t>(EstimOut::mass)] > 0.0)
+//     {
+//         estimations.push_back(comb_result);
+//     }
+
+//     if (!estimations.empty())
+//     {
+//         if (m_aggr_mode == AggregationMode::Combination)
+//         {
+//             // pick combination with largest integral
+//             auto IntegralComparator = [](ArrF_t<ESTIM_OUT_SZ> const& c1, ArrF_t<ESTIM_OUT_SZ> const& c2)
+//             {
+//                 return c1[static_cast<size_t>(EstimOut::integral)] < c2[static_cast<size_t>(EstimOut::integral)];
+//             };
+//             auto it = std::max_element(estimations.begin(), estimations.end(), IntegralComparator);
+//             size_t best_est_idx = it - estimations.begin();
+//             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(estimations[best_est_idx]);
+//         }
+//         else if (m_aggr_mode == AggregationMode::Event)
+//         {
+//             ArrF_t<ESTIM_OUT_SZ> res{};
+//             int binmax = m_res_mass->GetMaximumBin(); 
+//             res[static_cast<size_t>(EstimOut::mass)] = m_res_mass->GetXaxis()->GetBinCenter(binmax);
+//             res[static_cast<size_t>(EstimOut::peak_value)] = m_res_mass->GetBinContent(binmax);
+//             res[static_cast<size_t>(EstimOut::width)] = ComputeWidth(m_res_mass, Q16, Q84);
+//             res[static_cast<size_t>(EstimOut::integral)] = m_res_mass->Integral();
+//             ResetHist(m_res_mass);
+//             return std::make_optional<ArrF_t<ESTIM_OUT_SZ>>(res);
+//         }
+//         else 
+//         {
+//             throw std::runtime_error("Unknown strategy to aggregate combination data to estimate event mass");
+//         }
+//     }
+//     ResetHist(m_res_mass);
+//     return std::nullopt;
+// }
 
 std::unique_ptr<TTree> EstimatorDoubleLep::MakeTree(TString const& tree_name)
 {
@@ -574,8 +574,9 @@ ArrF_t<ESTIM_OUT_SZ> EstimatorDoubleLep::EstimateCombFat(VecLVF_t const& particl
     {
         // iter loop
         Float_t c_fat = pdf_fatbb->GetRandom(m_prg.get());
-        LorentzVectorF_t Hbb = c_fat*fatjet;
         Float_t mh = m_prg->Gaus(HIGGS_MASS, HIGGS_WIDTH);
+        // Float_t c_fat = mh/fatjet.M();
+        LorentzVectorF_t Hbb = c_fat*fatjet;
         if (std::abs(Hbb.M() - mh) > 1.0)
         {
             continue;

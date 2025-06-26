@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <fstream>
 
 #include "TH1.h"
 
@@ -110,13 +111,12 @@ void Analyzer::ProcessEvent(ULong64_t evt, UTree_t& input_tree, UTree_t& output_
     #ifdef DEV 
         if (!is_bkg)
         {
-            Topology bb_top = Topology::Boosted;
-            if (!IsRecoverable(m_event, ch, bb_top))
+            if (!IsRecoverable(m_event, ch))
             {
                 return;
             }
 
-            if (!IsFiducial(m_event, jets, ch, bb_top))
+            if (!IsFiducial(m_event, jets, ch))
             {
                 return;
             }
