@@ -34,15 +34,17 @@ def PlotCompare2D(target, output, quantity, plotting_dir=None):
     plt.clf()
 
 
-def PlotHist(bins=np.linspace(0, 250, 100), pos_frac=None, **kwargs):
+def PlotHist(bins=np.linspace(0, 250, 100), pos_frac=None, plot_count=True, **kwargs):
     plt.hist(kwargs['data'], bins=bins)
     plt.title(kwargs['title'])
     plt.ylabel(kwargs['ylabel'])
     plt.xlabel(kwargs['ylabel'])
     plt.figtext(0.75, 0.8, f"peak: {PredPeak(kwargs['data']):.2f}")
     plt.figtext(0.75, 0.75, f"width: {PredWidth(kwargs['data']):.2f}")
+    if plot_count:
+        plt.figtext(0.75, 0.7, f"count: {len(kwargs['data'])}")
     if pos_frac:
-        plt.figtext(0.75, 0.7, f"pos: {pos_frac:.2f}")
+        plt.figtext(0.75, 0.65, f"pos: {pos_frac:.2f}")
     plt.grid(True)
     if '.' in kwargs['file_name']:
         plt.savefig(os.path.join(kwargs['plotting_dir'], kwargs['file_name']), bbox_inches='tight')
