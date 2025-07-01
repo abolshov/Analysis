@@ -91,7 +91,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
 tf.random.set_seed(42)
 
-model_name = "model_hh_dl_aug_train_silu_l2reg"
+model_name = "model_hh_dl_aug_train_silu_l2reg_mom3Dloss"
 model_dir = model_name
 os.makedirs(model_dir, exist_ok=True)
 
@@ -123,7 +123,7 @@ model.add(tf.keras.layers.Dense(6))
 
 # model.compile(loss=CombinedLoss(penalty_strength), 
 #               optimizer=tf.keras.optimizers.Adam(3e-4))
-model.compile(loss=Momentum3DLoss, 
+model.compile(loss=Momentum3DLoss(), 
               optimizer=tf.keras.optimizers.Adam(3e-4))
 model.build(dw.train_features.shape)
 
@@ -152,9 +152,16 @@ dw.ReadFile("/Users/artembolshov/Desktop/CMS/Di-Higgs/data/GluGlutoRadiontoHHto2
 dw.FormTestSet()
 
 res = model.predict(dw.test_features)
-pred_dict = {label: res[:, i] for i, label in enumerate(dw.test_labels.columns)}
+# pred_dict = {label: res[:, i] for i, label in enumerate(dw.test_labels.columns)}
+pred_dict = {label: res[:, i] for i, label in enumerate(["genHbb_px", "genHbb_py", "genHbb_pz", "genHVV_px", "genHVV_py", "genHVV_pz"])}
 pred_df = pd.DataFrame.from_dict(pred_dict)
 print(pred_df.describe())
+
+Hbb_en = np.sqrt(125.0**2 + pred_df["genHbb_px"]**2 + pred_df["genHbb_py"]**2 + pred_df["genHbb_pz"]**2)
+Hww_en = np.sqrt(125.0**2 + pred_df["genHVV_px"]**2 + pred_df["genHVV_py"]**2 + pred_df["genHVV_pz"]**2)
+X_en = Hbb_en + Hww_en
+pred_df["genHbb_E"] = Hbb_en
+pred_df["genHVV_E"] = Hww_en
 
 for col in pred_df.columns:
     PlotCompare2D(dw.test_labels[col], pred_df[col], col, plotting_dir=model_dir)
@@ -165,10 +172,6 @@ X_E_pred = pred_df["genHbb_E"] + pred_df["genHVV_E"]
 X_px_pred = pred_df["genHbb_px"] + pred_df["genHVV_px"]
 X_py_pred = pred_df["genHbb_py"] + pred_df["genHVV_py"]
 X_pz_pred = pred_df["genHbb_pz"] + pred_df["genHVV_pz"]
-
-Hbb_en = np.sqrt(125.0**2 + pred_df["genHbb_px"]**2 + pred_df["genHbb_py"]**2 + pred_df["genHbb_pz"]**2)
-Hww_en = np.sqrt(125.0**2 + pred_df["genHVV_px"]**2 + pred_df["genHVV_py"]**2 + pred_df["genHVV_pz"]**2)
-X_en = Hbb_en + Hww_en
 
 X_mass_pred_sqr = X_E_pred**2 - X_px_pred**2 - X_py_pred**2 - X_pz_pred**2
 X_mass_sqr_pos = X_mass_pred_sqr[X_mass_pred_sqr > 0.0]
