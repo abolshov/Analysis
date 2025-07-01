@@ -1,0 +1,81 @@
+file_names:
+  - nano_0.root
+tree_name: Events
+branches_to_load:
+  jet_branches:
+    shape: 6
+    names:
+      - 'ncentralJet'
+      - 'centralJet_pt'
+      - 'centralJet_eta'
+      - 'centralJet_phi'
+      - 'centralJet_mass'
+      - 'centralJet_btagPNetB'
+      - 'centralJet_btagPNetCvB'
+      - 'centralJet_btagPNetCvL'
+      - 'centralJet_btagPNetCvNotB'
+      - 'centralJet_btagPNetQvG'
+      - 'centralJet_PNetRegPtRawCorr'
+      - 'centralJet_PNetRegPtRawCorrNeutrino'
+      - 'centralJet_PNetRegPtRawRes'
+  fatjet_branches:
+    shape: 3
+    names:
+      - 'nSelectedFatJet'
+      - 'SelectedFatJet_pt'
+      - 'SelectedFatJet_eta'
+      - 'SelectedFatJet_phi'
+      - 'SelectedFatJet_mass'
+      - 'SelectedFatJet_particleNet_QCD'
+      - 'SelectedFatJet_particleNet_XbbVsQCD'
+      - 'SelectedFatJet_particleNetWithMass_QCD'
+      - 'SelectedFatJet_particleNetWithMass_HbbvsQCD'
+      - 'SelectedFatJet_particleNet_massCorr'
+  lep_branches:
+    shape: 1
+    names: 
+      - 'lep1_pt'
+      - 'lep1_eta'
+      - 'lep1_phi'
+      - 'lep1_mass'
+      - 'lep1_legType'
+      - 'lep1_gen_kind'
+      - 'lep2_pt'
+      - 'lep2_eta'
+      - 'lep2_phi'
+      - 'lep2_mass'
+      - 'lep2_legType'
+      - 'lep2_gen_kind'
+  met_branches:
+    shape: 1
+    names:
+      - 'met_pt'
+      - 'met_phi'
+  target_branches:
+    shape: 1
+    names:
+      - 'genHVV_pt'
+      - 'genHVV_eta'
+      - 'genHVV_phi'
+      - 'genHVV_mass'
+      - 'genHbb_pt'
+      - 'genHbb_eta'
+      - 'genHbb_phi'
+      - 'genHbb_mass'
+  extra_branches:
+    shape: 1
+    names: 
+    - 'event'
+    - 'genb1_pt'
+    - 'genb1_eta'
+    - 'genb1_phi'
+    - 'genb1_mass'
+    - 'genb2_pt'
+    - 'genb2_eta'
+    - 'genb2_phi'
+    - 'genb2_mass'
+    - 'sample_type'
+apply_selections: True
+plot_cutflow: True
+use_percentages: False
+use_topology: mixed
