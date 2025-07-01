@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 
 
 from DataWrapper import DataWrapper
-from NetUtils import TrainableSiLU, CombinedLoss, EpochLossUpdater
+from NetUtils import TrainableSiLU, EpochLossUpdater
+from LossUtils import Momentum3DLoss
 
 
 target_names = {"genHbb_E": "E(H->bb)",
@@ -115,15 +116,14 @@ model = tf.keras.Sequential()
 for _ in range(num_layers):
     model.add(tf.keras.layers.Dense(num_units, 
                                     activation=TrainableSiLU(units=num_units), 
-                                    # activation='silu',
                                     kernel_initializer='random_normal', 
                                     bias_initializer='random_normal',
                                     kernel_regularizer=tf.keras.regularizers.L2(l2_strength)))
-model.add(tf.keras.layers.Dense(8))
+model.add(tf.keras.layers.Dense(6))
 
 # model.compile(loss=CombinedLoss(penalty_strength), 
 #               optimizer=tf.keras.optimizers.Adam(3e-4))
-model.compile(loss='logcosh', 
+model.compile(loss=Momentum3DLoss, 
               optimizer=tf.keras.optimizers.Adam(3e-4))
 model.build(dw.train_features.shape)
 
