@@ -12,8 +12,8 @@ class CombinedLoss(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         logcosh = self.logcosh_loss(y_true, y_pred)
-        mbb2 = tf.square(y_pred[:, 3]) - tf.reduce_sum(tf.square(y_pred[:, 0:3]), axis=1, keepdims=True)
-        mww2 = tf.square(y_pred[:, 7]) - tf.reduce_sum(tf.square(y_pred[:, 4:7]), axis=1, keepdims=True)
+        mbb2 = tf.square(y_pred[:, 3]) - tf.reduce_sum(tf.square(y_pred[:, 0:3]), axis=1)
+        mww2 = tf.square(y_pred[:, 7]) - tf.reduce_sum(tf.square(y_pred[:, 4:7]), axis=1)
         mbb = tf.sign(mbb2)*tf.sqrt(tf.abs(mbb2))
         mww = tf.sign(mww2)*tf.sqrt(tf.abs(mww2))
         penalty = 0.5*self.mse_loss(mh, mbb) + 0.5*self.mse_loss(mh, mww)
@@ -44,8 +44,8 @@ class MassLoss(tf.keras.losses.Loss):
         self.strength = strength
 
     def call(self, y_true, y_pred):
-        mbb2 = tf.square(y_pred[:, 3]) - tf.reduce_sum(tf.square(y_pred[:, 0:3]), axis=1, keepdims=True)
-        mww2 = tf.square(y_pred[:, 7]) - tf.reduce_sum(tf.square(y_pred[:, 4:7]), axis=1, keepdims=True)
+        mbb2 = tf.square(y_pred[:, 3]) - tf.reduce_sum(tf.square(y_pred[:, 0:3]), axis=1)
+        mww2 = tf.square(y_pred[:, 7]) - tf.reduce_sum(tf.square(y_pred[:, 4:7]), axis=1)
         mbb = tf.sign(mbb2)*tf.sqrt(tf.abs(mbb2))
         mww = tf.sign(mww2)*tf.sqrt(tf.abs(mww2))
         loss = 0.5*self.mse_loss(mh, mbb) + 0.5*self.mse_loss(mh, mww)
@@ -65,19 +65,33 @@ class MassLoss(tf.keras.losses.Loss):
 
 
 class Momentum3DLoss(tf.keras.losses.Loss):
-    def __init__(self, name="momentum3D_loss", **kwargs):
+    def __init__(self, relative_weights={'energy': 0.225, 'momentum': 0.675, 'mass': 0.1}, name="momentum3D_loss", **kwargs):
         super().__init__(name=name, **kwargs)
         self.loss_func = tf.keras.losses.LogCosh()
+        self.energy_weight = relative_weights['energy']
+        self.momentum_weight = relative_weights['momentum']
+        self.mass_weight = relative_weights['mass']
 
     def call(self, y_true, y_pred):
-        pred_hbb_energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(y_pred[:, 0:3]), axis=1, keepdims=True)
-        pred_hvv_energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(y_pred[:, 3:6]), axis=1, keepdims=True)
+        pred_hbb_energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(y_pred[:, 0:3]), axis=1)
+        pred_hvv_energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(y_pred[:, 3:6]), axis=1)
         pred_hbb_energy = tf.sign(pred_hbb_energy_sqr)*tf.sqrt(tf.abs(pred_hbb_energy_sqr))
         pred_hvv_energy = tf.sign(pred_hvv_energy_sqr)*tf.sqrt(tf.abs(pred_hvv_energy_sqr))
+
+        pred_x_energy = pred_hbb_energy + pred_hvv_energy
+        pred_x_p3 = y_pred[:, 0:3] + y_pred[:, 3:6]
+        pred_x_mass_sqr = tf.square(pred_x_energy) - tf.reduce_sum(tf.square(pred_x_p3), axis=1)
+        pred_x_mass = tf.sign(pred_x_mass_sqr)*tf.sqrt(tf.abs(pred_x_mass_sqr))
+
+        true_x_energy = y_true[:, 3] + y_true[:, 7]
+        true_x_p3 = y_true[:, 0:3] + y_true[:, 4:7]
+        true_x_mass = tf.sqrt(tf.square(true_x_energy) - tf.reduce_sum(tf.square(true_x_p3), axis=1))
+
         # make sure format of labels is (px, py, pz, E)
         energy_loss = (self.loss_func(y_true[:, 3], pred_hbb_energy) + self.loss_func(y_true[:, 7], pred_hvv_energy))/2
         momentum_loss = (self.loss_func(y_true[:, 0:3], y_pred[:, 0:3]) + self.loss_func(y_true[:, 4:7], y_pred[:, 3:6]))/2
-        total_loss = (energy_loss + momentum_loss)/2
+        mass_loss = self.loss_func(true_x_mass, pred_x_mass)
+        total_loss = self.energy_weight*energy_loss + self.momentum_weight*momentum_loss + self.mass_weight*mass_loss
         return total_loss
 
     def get_config(self):
@@ -86,6 +100,9 @@ class Momentum3DLoss(tf.keras.losses.Loss):
         This is necessary for saving and loading the model with custom objects.
         """
         config = super().get_config()
+        config.update({'energy_weight': self.energy_weight, 
+                       'momentum_weight': self.momentum_weight,
+                       'mass_weight': self.mass_weight})
         return config
 
     @classmethod
