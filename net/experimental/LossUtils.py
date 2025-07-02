@@ -1,4 +1,5 @@
 import tensorflow as tf 
+import numpy as np
 
 mh = tf.constant(125.0)
 
@@ -111,22 +112,36 @@ class Momentum3DLoss(tf.keras.losses.Loss):
 
 
 class QuantileLoss(tf.keras.losses.Loss):
-    def __init__(self, quantiles=[0.5], name="quantile_loss", **kwargs):
+    def __init__(self, num_predictions, quantiles=[0.5], name="quantile_loss", **kwargs):
         super().__init__(name=name, **kwargs)
-        self.quantiles = tf.constant(quantiles)
-
+        self.num_quantiles = len(quantiles)
+        self.num_predictions = num_predictions
+        # quantiles must have shape (num_quantiles, num_predictions)
+        # each row repeats value of quantile as num_predictions times such that each output node computes every quantile
+        self.quantiles = tf.constant(np.repeat(np.reshape(quantiles, (-1, 1)), num_predictions, axis=-1), dtype=tf.float32)
 
     def call(self, y_true, y_pred):
-        assert y_pred.shape[0] == y_true.shape[0], (
-            "QuantileLoss: Batch sizes for predictions and ground truth values "
-            f"must be equal. ({y_pred.shape[0]} vs. {y_true.shape[0]})")
+        pred_hbb_p3 = y_pred[:, 0:3]
+        pred_hvv_p3 = y_pred[:, 3:6]
+        pred_hbb_energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(pred_hbb_p3), axis=-1)
+        pred_hvv_energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(pred_hvv_p3), axis=-1)
+        pred_hbb_energy = tf.sign(pred_hbb_energy_sqr)*tf.sqrt(tf.abs(pred_hbb_energy_sqr))
+        pred_hvv_energy = tf.sign(pred_hvv_energy_sqr)*tf.sqrt(tf.abs(pred_hvv_energy_sqr))
 
-        assert y_pred.shape[-1] == self.quantiles.shape[0], (
-                "QuantileLoss: Predictions must match the number of quantiles. "
-                f"({y_pred.shape[-1]} vs. {self.quantiles.shape[0]})")
+        pred_hbb_energy = tf.reshape(pred_hbb_energy, [-1, 1])
+        pred_hvv_energy = tf.reshape(pred_hvv_energy, [-1, 1])
+        pred_hbb_p4 = tf.concat([pred_hbb_p3, pred_hbb_energy], axis=-1)
+        pred_hvv_p4 = tf.concat([pred_hvv_p3, pred_hvv_energy], axis=-1)
+        y = tf.concat([pred_hbb_p4, pred_hvv_p4], axis=-1)
 
-        error = y_true - y_pred
-        return tf.reduce_mean(tf.maximum(self.quantiles*error, error*(self.quantiles - 1)), axis=-1)
+        assert y_true.shape[-1] == self.num_predictions, ("QuantileLoss: dimension of output vector must match number of predictions"
+                f"{y_true.shape[-1]} vs {self.num_predictions}")
+
+        error = y_true - y
+        # error must have shape (batch_size, num_quantiles, num_predictions)
+        error = tf.reshape(error, [-1, self.num_quantiles, self.num_predictions])
+        # reduce over all predictions and, all quantiles and all examples in the batch
+        return tf.reduce_mean(tf.maximum(self.quantiles*error, error*(self.quantiles - 1)))
 
 
     def get_config(self):
@@ -135,7 +150,9 @@ class QuantileLoss(tf.keras.losses.Loss):
         This is necessary for saving and loading the model with custom objects.
         """
         config = super().get_config()
-        config.update({'qunatiles': self.quantiles.numpy()})
+        config.update({'quantiles': self.quantiles.numpy(),
+                       'num_quantiles': self.num_quantiles,
+                       'num_predictions': self.num_predictions})
         return config
 
 
