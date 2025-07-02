@@ -108,3 +108,37 @@ class Momentum3DLoss(tf.keras.losses.Loss):
     @classmethod
     def from_config(cls, config):
         return cls(**config)
+
+
+class QuantileLoss(tf.keras.losses.Loss):
+    def __init__(self, quantiles=[0.5], name="quantile_loss", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.quantiles = tf.constant(quantiles)
+
+
+    def call(self, y_true, y_pred):
+        assert y_pred.shape[0] == y_true.shape[0], (
+            "QuantileLoss: Batch sizes for predictions and ground truth values "
+            f"must be equal. ({y_pred.shape[0]} vs. {y_true.shape[0]})")
+
+        assert y_pred.shape[-1] == self.quantiles.shape[0], (
+                "QuantileLoss: Predictions must match the number of quantiles. "
+                f"({y_pred.shape[-1]} vs. {self.quantiles.shape[0]})")
+
+        error = y_true - y_pred
+        return tf.reduce_mean(tf.maximum(self.quantiles*error, error*(self.quantiles - 1)), axis=-1)
+
+
+    def get_config(self):
+        """
+        Returns the serializable configuration of the layer.
+        This is necessary for saving and loading the model with custom objects.
+        """
+        config = super().get_config()
+        config.update({'qunatiles': self.quantiles.numpy()})
+        return config
+
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
