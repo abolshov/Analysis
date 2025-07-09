@@ -14,6 +14,12 @@ sample_type_map = {1: "GluGluToRadion",
                    4 : "VBFToBulkGraviton"}
 
 
+def IsKinematic(var):
+    if var in ['pt', 'eta', 'phi', 'mass', 'px', 'py', 'pz', 'E']:
+        return True
+    return False
+
+
 class Dataset:
     def __init__(self, branch_loading_cfg):
         self.dataset_cfg = None
@@ -22,98 +28,140 @@ class Dataset:
         with open (branch_loading_cfg, 'r') as branch_loading_cfg_file:
             self.dataset_cfg = yaml.safe_load(branch_loading_cfg_file)
         assert self.dataset_cfg, "Must contain mapping of branches to load for each object"
-
-    def MakeDataFrame(self, tree):
-        branch_collections = self.dataset_cfg['branches_to_load']
-        branch_dict = {}
-
-        if 'X_mass' in tree.keys():
-            branch_dict['masspoint'] = tree['X_mass'].array().to_numpy()
-
-        for obj_coll in branch_collections.keys():
-            branches_cfg = branch_collections[obj_coll]
-            branch_list = branches_cfg['names']
-            arrays = tree.arrays(branch_list)
-            shape = branches_cfg['shape']
-
-            momentum_branches = {}
-            for branch in branch_list:
-                min_depth, max_depth = arrays[branch].layout.minmax_depth
-                branch_var = branch.split('_')[-1]
-                if branch_var in ['pt', 'eta', 'phi', 'mass']:
-                    particle = branch.split('_')[0]
-                    if particle not in momentum_branches:
-                        momentum_branches[particle] = {}
-                    if max_depth > 1:
-                        momentum_branches[particle][branch_var] = ak.fill_none(ak.pad_none(arrays[branch], shape), 0.0)
-                    else:
-                        momentum_branches[particle][branch_var] = arrays[branch].to_numpy()
-                else:
-                    if max_depth > 1:
-                        arr = ak.fill_none(ak.pad_none(arrays[branch], shape), 0)
-                        arr = arr[:, :shape]
-                        for idx in range(shape):
-                            branch_dict[f'{branch}_{idx}'] = arr[:, idx].to_numpy()
-                    else:
-                        branch_dict[branch] = arrays[branch].to_numpy()
-
-            if momentum_branches:
-                for particle in momentum_branches.keys():
-                    p4 = vector.zip(momentum_branches[particle])
-                    self.p4_cache[particle] = p4
-                    if shape > 1:
-                        p4 = p4[:, :shape]
-                    # met p4 only has 2 keys - pt and phi
-                    if len(momentum_branches[particle].keys()) > 2:
-                        for new_var in ['px', 'py', 'pz', 'E']:
-                            if shape > 1:
-                                for idx in range(shape):
-                                    branch_dict[f'{particle}_{new_var}_{idx}'] = (lambda x: getattr(x, new_var))(p4[:, idx]).to_numpy()
-                            else:
-                                branch_dict[f'{particle}_{new_var}'] = (lambda x: getattr(x, new_var))(p4).to_numpy()
-                    else:
-                        for new_var in ['px', 'py']:
-                            branch_dict[f'{particle}_{new_var}'] = (lambda x: getattr(x, new_var))(p4).to_numpy()
-    
-        # compute high-level kinematics needed for selections using p4_cache
-        branch_dict['b1_accept_pt'] = self.p4_cache['genb1'].pt > 20
-        branch_dict['b2_accept_pt'] = self.p4_cache['genb2'].pt > 20
-        branch_dict['b1_accept_eta'] = np.abs(self.p4_cache['genb1'].eta) < 2.5
-        branch_dict['b2_accept_eta'] = np.abs(self.p4_cache['genb2'].eta) < 2.5
-        branch_dict['genb1_accept'] = np.logical_and(branch_dict['b1_accept_pt'], branch_dict['b1_accept_eta'])
-        branch_dict['genb2_accept'] = np.logical_and(branch_dict['b2_accept_pt'], branch_dict['b2_accept_eta'])
-        branch_dict['genb_accept'] = np.logical_and(branch_dict['genb1_accept'], branch_dict['genb2_accept'])
-        branch_dict['bb_dr'] = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
-        branch_dict['mindR_b1_Jet'] = ak.min(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        branch_dict['mindR_b2_Jet'] = ak.min(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        branch_dict['b1_match_idx'] = ak.argmin(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        branch_dict['b2_match_idx'] = ak.argmin(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        branch_dict['has_two_matches'] = np.logical_and(branch_dict['mindR_b1_Jet'] < 0.4, branch_dict['mindR_b2_Jet'] < 0.4)
-        # branch_dict['one_to_one_match'] = np.logical_and(branch_dict['has_two_matches'], branch_dict['b1_match_idx'] != branch_dict['b2_match_idx'])
-        branch_dict['mindR_Hbb_FatJet'] = ak.min(self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
-        branch_dict['is_boosted'] = branch_dict['bb_dr'] < 0.8
-        branch_dict['is_resolved'] = ~branch_dict['is_boosted']
-        branch_dict['reco_as_boosted'] = np.logical_and(branch_dict['mindR_Hbb_FatJet'] < 0.8, branch_dict['nSelectedFatJet'] >= 1)
-        branch_dict['reco_2b'] = np.logical_and(branch_dict['has_two_matches'], branch_dict['b1_match_idx'] != branch_dict['b2_match_idx'])
-        branch_dict['reco_as_resolved'] = np.logical_and(branch_dict['reco_2b'], branch_dict['ncentralJet'] >= 2)
-        branch_dict['successful_jet_reco'] = np.logical_or(branch_dict['reco_as_resolved'], branch_dict['reco_as_boosted'])
-        branch_dict['reco_lep1'] = np.logical_and(self.p4_cache['lep1'].pt > 0.0, branch_dict['lep1_legType'] == branch_dict['lep1_gen_kind'])
-        branch_dict['reco_lep2'] = np.logical_and(self.p4_cache['lep2'].pt > 0.0, branch_dict['lep2_legType'] == branch_dict['lep2_gen_kind'])
-        branch_dict['successful_lep_reco'] = np.logical_and(branch_dict['reco_lep1'], branch_dict['reco_lep2'])
-        branch_dict['successful_reco'] = np.logical_and(branch_dict['successful_lep_reco'], branch_dict['successful_jet_reco'])
         
-        return pd.DataFrame.from_dict(branch_dict)
+        self.input_names = self.MakeNameCollection('input_objects')
+        self.target_names = self.MakeNameCollection('target_objects')
+        
+
+    def MakeNameCollection(self, category):
+        res = []
+        obj_cfg = self.dataset_cfg['objects'][category]
+        for obj_name, obj_params in obj_cfg.items():
+            dim = obj_params['target_shape']
+            features = [f for f in obj_params['branches_to_load'] if not IsKinematic(f)]
+            features.extend(obj_params['kinematics_output_format'])
+            if dim > 1:
+                res.extend([f'{obj_name}_{i + 1}_{f}' for f in features for i in range(dim)])
+            else:
+                res.extend([f'{obj_name}_{f}' for f in features])
+        return res
+
+    def ClearCache(self):
+        self.p4_cache.clear()
+
+    def LoadObject(self, obj_name, obj_cfg, tree):
+        # only load in memory branches specified in the config
+        arrays = tree.arrays([f'{obj_name}_{var}' for var in obj_cfg['branches_to_load']])
+        target_shape = obj_cfg['target_shape']
+        kinematics_format = obj_cfg['kinematics_output_format']
+        # needs_kinematic_conversion = kinematics_format not None
+
+        # create 2 dicts: one with kinematic variables if conversion is needed
+        # another for everything else
+        # dict maps variable name (without object prefix) to array of values (possibly > one-dimensional) 
+
+        momentum_branches = {}
+        other_branches = {}
+        for var in obj_cfg['branches_to_load']:
+            branch_name = f'{obj_name}_{var}'
+            min_depth, max_depth = arrays[branch_name].layout.minmax_depth
+            array = arrays[branch_name]
+            
+            # add inner dimension to 1D arrays to treat them the same way as branches with nested arrays
+            if max_depth == 1:
+                array = ak.unflatten(array, 1)
+
+            if IsKinematic(var):
+                momentum_branches[var] = ak.fill_none(ak.pad_none(array, target_shape), 0)
+            else:
+                other_branches[var] = ak.fill_none(ak.pad_none(array, target_shape), 0)                
+            
+        p4 = vector.zip(momentum_branches)
+        p4 = p4[:, :target_shape]
+        self.p4_cache[obj_name] = p4 if target_shape > 1 else ak.flatten(p4)
+
+        tmp_dict = {}
+        # flattening arrays for each variable if needed
+        for i in range(target_shape):
+            prefix = f'{obj_name}_{i + 1}' if target_shape > 1 else obj_name
+            # first deal with non-kinematic quantities
+            for var, arr in other_branches.items():
+                tmp_dict[f'{prefix}_{var}'] = arr[:, i].to_numpy()
+            
+            # now deal with momentum branches
+            for var in kinematics_format:
+                tmp_dict[f'{prefix}_{var}'] = (lambda x: getattr(x, var))(p4[:, i]).to_numpy()
+
+        return pd.DataFrame.from_dict(tmp_dict)
+
+    def LoadObjects(self, tree):
+        # concatenate data from all objects horizontally
+        df = pd.DataFrame()
+        objects_to_load = self.dataset_cfg['objects']
+        for obj_type, obj_type_settings in objects_to_load.items():
+            for obj_name, cfg in obj_type_settings.items():
+                obj_df = self.LoadObject(obj_name, cfg, tree)
+                df = pd.concat([df, obj_df], axis=1)
+        return df     
 
     def Load(self):
         for file_name in self.dataset_cfg['file_names']:
             tree_name = self.dataset_cfg['tree_name']
             tree = uproot.open(f'{file_name}:{tree_name}')
+            df = pd.concat([self.LoadObjects(tree), self.LoadBranches(tree)], axis=1)
 
-            df = self.MakeDataFrame(tree)
             if self.dataset_cfg['apply_selections']:
+                df = self.ComputeCutflow(df)
                 df = self.ApplySelections(df, self.dataset_cfg['plot_cutflow'])
-                
+
             self.df = pd.concat([self.df, df], axis=0)
+            self.ClearCache()
+    
+    def LoadBranches(self, tree):
+        aux_branches_dict = {}
+        branch_names = self.dataset_cfg['auxilliary_branches']
+        for branch in branch_names:
+            if branch in tree.keys():
+                aux_branches_dict[branch] = tree[branch].array().to_numpy()
+            else:
+                aux_branches_dict[branch] = np.full(tree.num_entries, np.nan)
+        return pd.DataFrame.from_dict(aux_branches_dict)
+
+    def DropUnused(self):
+        cols_to_drop = [col for col in self.df.columns if col not in self.input_names + self.target_names]
+        self.df.drop(cols_to_drop, axis=1, inplace=True)
+
+    def ComputeCutflow(self, df):
+        # compute high-level kinematics needed for selections using p4_cache
+        cut_dict = {}
+        cut_dict['b1_accept_pt'] = self.p4_cache['genb1'].pt > 20
+        cut_dict['b2_accept_pt'] = self.p4_cache['genb2'].pt > 20
+        cut_dict['b1_accept_eta'] = np.abs(self.p4_cache['genb1'].eta) < 2.5
+        cut_dict['b2_accept_eta'] = np.abs(self.p4_cache['genb2'].eta) < 2.5
+        cut_dict['genb1_accept'] = np.logical_and(cut_dict['b1_accept_pt'], cut_dict['b1_accept_eta'])
+        cut_dict['genb2_accept'] = np.logical_and(cut_dict['b2_accept_pt'], cut_dict['b2_accept_eta'])
+        cut_dict['genb_accept'] = np.logical_and(cut_dict['genb1_accept'], cut_dict['genb2_accept'])
+        cut_dict['bb_dr'] = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
+        cut_dict['mindR_b1_Jet'] = ak.min(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cut_dict['mindR_b2_Jet'] = ak.min(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cut_dict['b1_match_idx'] = ak.argmin(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cut_dict['b2_match_idx'] = ak.argmin(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cut_dict['has_two_matches'] = np.logical_and(cut_dict['mindR_b1_Jet'] < 0.4, cut_dict['mindR_b2_Jet'] < 0.4)
+        cut_dict['mindR_Hbb_FatJet'] = ak.min(self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
+        cut_dict['is_boosted'] = cut_dict['bb_dr'] < 0.8
+        cut_dict['is_resolved'] = ~cut_dict['is_boosted']
+        cut_dict['reco_as_boosted'] = np.logical_and(cut_dict['mindR_Hbb_FatJet'] < 0.8, df['nSelectedFatJet'] >= 1)
+        cut_dict['reco_2b'] = np.logical_and(cut_dict['has_two_matches'], cut_dict['b1_match_idx'] != cut_dict['b2_match_idx'])
+        cut_dict['reco_as_resolved'] = np.logical_and(cut_dict['reco_2b'], df['ncentralJet'] >= 2)
+        cut_dict['successful_jet_reco'] = np.logical_or(cut_dict['reco_as_resolved'], cut_dict['reco_as_boosted'])
+        cut_dict['reco_lep1'] = np.logical_and(self.p4_cache['lep1'].pt > 0.0, df['lep1_legType'] == df['lep1_gen_kind'])
+        cut_dict['reco_lep2'] = np.logical_and(self.p4_cache['lep2'].pt > 0.0, df['lep2_legType'] == df['lep2_gen_kind'])
+        cut_dict['successful_lep_reco'] = np.logical_and(cut_dict['reco_lep1'], cut_dict['reco_lep2'])
+        cut_dict['successful_reco'] = np.logical_and(cut_dict['successful_lep_reco'], cut_dict['successful_jet_reco'])
+
+        cut_df = pd.DataFrame.from_dict(cut_dict)
+        df = pd.concat([df, cut_df], axis=1)
+        return df
 
     def ApplySelections(self, df, plot_cutflow):
         if not plot_cutflow:
@@ -163,8 +211,9 @@ class Dataset:
                 passed_evt_info = [val/passed_evt_info[0]*100 for val in passed_evt_info]
             fig, ax = plt.subplots()
             bar_container = ax.bar(cut_names, passed_evt_info)
+
             sample_type = sample_type_map[df['sample_type'].iloc[0]]
-            mp = df['masspoint'].iloc[0]
+            mp = df['X_mass'].iloc[0]
             mass = int(mp) if not np.isnan(mp) else None
             title = f"Cutflow {sample_type} M={mass}" if mp else f"Cutflow {sample_type}"
             ax.set(ylabel='Number of events passed', title=title)
@@ -179,4 +228,9 @@ class Dataset:
 
             return df
 
-                
+    def Get(self, selection, *args, **kwargs):
+        """
+        returns tuple (X, [names of features], y, [names of targets])
+        """
+        df = self.df[selection(self.df, *args, **kwargs)]
+        return df[self.input_names].values, self.input_names, df[self.target_names].values, self.target_names

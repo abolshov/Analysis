@@ -1,81 +1,120 @@
 file_names:
   - nano_0.root
 tree_name: Events
-branches_to_load:
-  jet_branches:
-    shape: 6
-    names:
-      - 'ncentralJet'
-      - 'centralJet_pt'
-      - 'centralJet_eta'
-      - 'centralJet_phi'
-      - 'centralJet_mass'
-      - 'centralJet_btagPNetB'
-      - 'centralJet_btagPNetCvB'
-      - 'centralJet_btagPNetCvL'
-      - 'centralJet_btagPNetCvNotB'
-      - 'centralJet_btagPNetQvG'
-      - 'centralJet_PNetRegPtRawCorr'
-      - 'centralJet_PNetRegPtRawCorrNeutrino'
-      - 'centralJet_PNetRegPtRawRes'
-  fatjet_branches:
-    shape: 3
-    names:
-      - 'nSelectedFatJet'
-      - 'SelectedFatJet_pt'
-      - 'SelectedFatJet_eta'
-      - 'SelectedFatJet_phi'
-      - 'SelectedFatJet_mass'
-      - 'SelectedFatJet_particleNet_QCD'
-      - 'SelectedFatJet_particleNet_XbbVsQCD'
-      - 'SelectedFatJet_particleNetWithMass_QCD'
-      - 'SelectedFatJet_particleNetWithMass_HbbvsQCD'
-      - 'SelectedFatJet_particleNet_massCorr'
-  lep_branches:
-    shape: 1
-    names: 
-      - 'lep1_pt'
-      - 'lep1_eta'
-      - 'lep1_phi'
-      - 'lep1_mass'
-      - 'lep1_legType'
-      - 'lep1_gen_kind'
-      - 'lep2_pt'
-      - 'lep2_eta'
-      - 'lep2_phi'
-      - 'lep2_mass'
-      - 'lep2_legType'
-      - 'lep2_gen_kind'
-  met_branches:
-    shape: 1
-    names:
-      - 'met_pt'
-      - 'met_phi'
-  target_branches:
-    shape: 1
-    names:
-      - 'genHVV_pt'
-      - 'genHVV_eta'
-      - 'genHVV_phi'
-      - 'genHVV_mass'
-      - 'genHbb_pt'
-      - 'genHbb_eta'
-      - 'genHbb_phi'
-      - 'genHbb_mass'
-  extra_branches:
-    shape: 1
-    names: 
-    - 'event'
-    - 'genb1_pt'
-    - 'genb1_eta'
-    - 'genb1_phi'
-    - 'genb1_mass'
-    - 'genb2_pt'
-    - 'genb2_eta'
-    - 'genb2_phi'
-    - 'genb2_mass'
-    - 'sample_type'
+
+objects:
+  input_objects:
+    centralJet:
+      target_shape: 6
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: True
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+        - 'btagPNetB'
+        - 'btagPNetCvB'
+        - 'btagPNetCvL'
+        - 'btagPNetCvNotB'
+        - 'btagPNetQvG'
+        - 'PNetRegPtRawCorr'
+        - 'PNetRegPtRawCorrNeutrino'
+        - 'PNetRegPtRawRes'
+    SelectedFatJet:
+      target_shape: 2
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: True
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+        - 'particleNet_QCD'
+        - 'particleNet_XbbVsQCD'
+        - 'particleNetWithMass_QCD'
+        - 'particleNetWithMass_HbbvsQCD'
+        - 'particleNet_massCorr'
+    lep1:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: False
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    lep2:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: False
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    met:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py']
+      compute_num_valid: False
+      branches_to_load:
+        - 'pt'
+        - 'phi'
+
+  target_objects:
+    genHVV:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: False
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    genHbb:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: False
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+
+  extra_objects:
+    genb1:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: False
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    genb2:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      compute_num_valid: False
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+
+# loaded as they are in input file
+auxilliary_branches:
+  - 'event'
+  - 'sample_type'
+  - 'X_mass'
+  - 'ncentralJet'
+  - 'nSelectedFatJet'
+  - 'lep1_legType'
+  - 'lep1_gen_kind'
+  - 'lep2_legType'
+  - 'lep2_gen_kind'
+
 apply_selections: True
 plot_cutflow: True
+plot_dir: 'cutflow_plots'
 use_percentages: False
-use_topology: mixed
+use_topology: boosted
