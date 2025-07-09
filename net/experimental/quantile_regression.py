@@ -141,7 +141,11 @@ history = model.fit(X_train,
                     callbacks=[learning_rate_scheduler])
 
 model.save(os.path.join(model_dir, f"{model_name}.keras"))
-PlotMetric(history, model_name, "loss", plotting_dir=model_dir)
+
+history_keys = list(history.history.keys())
+drawable_metrics = [key for key in history_keys if 'loss' in key and 'val' not in key]
+for metric in drawable_metrics:
+    PlotMetric(history, model_name, metric, plotting_dir=model_dir)    
 
 # form testing dataset
 def TestSelection(df, mod, parity, mass, sample_type):
