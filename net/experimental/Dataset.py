@@ -32,6 +32,7 @@ class Dataset:
         self.input_names = self.MakeNameCollection('input_objects')
         self.target_names = self.MakeNameCollection('target_objects')
         
+        os.makedirs(self.dataset_cfg['plot_dir'], exist_ok=True)
 
     def MakeNameCollection(self, category):
         res = []
@@ -106,6 +107,7 @@ class Dataset:
 
     def Load(self):
         for file_name in self.dataset_cfg['file_names']:
+            print(f'Loading {file_name}')
             tree_name = self.dataset_cfg['tree_name']
             tree = uproot.open(f'{file_name}:{tree_name}')
             df = pd.concat([self.LoadObjects(tree), self.LoadBranches(tree)], axis=1)
@@ -113,7 +115,7 @@ class Dataset:
             if self.dataset_cfg['apply_selections']:
                 df = self.ComputeCutflow(df)
                 df = self.ApplySelections(df, self.dataset_cfg['plot_cutflow'])
-
+            print(f'\tadding {len(df)} events')
             self.df = pd.concat([self.df, df], axis=0)
             self.ClearCache()
     
@@ -212,6 +214,7 @@ class Dataset:
             fig, ax = plt.subplots()
             bar_container = ax.bar(cut_names, passed_evt_info)
 
+            # print(df.describe())
             sample_type = sample_type_map[df['sample_type'].iloc[0]]
             mp = df['X_mass'].iloc[0]
             mass = int(mp) if not np.isnan(mp) else None
@@ -223,7 +226,8 @@ class Dataset:
                 ax.bar_label(bar_container, fmt=lambda x: int(x), fontsize=8)
             plt.xticks(rotation=45, ha='right')
 
-            plt.savefig("cutflow.pdf", format='pdf', bbox_inches='tight')
+            cutlfow_name = f"cutflow_{sample_type}_M{mass}"
+            plt.savefig(os.path.join(self.dataset_cfg['plot_dir'], f"{cutlfow_name}.pdf"), format='pdf', bbox_inches='tight')
             plt.close()
 
             return df

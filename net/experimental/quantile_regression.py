@@ -42,7 +42,6 @@ def PlotCompare2D(target, output, quantity, quantile, plotting_dir=None):
     plt.hist2d(target, output, bins=bins)
     var = quantity.split('_')[1]
     plt.title(f'{var} comparison')
-    # quantity = '_'.join(quantity.split('_')[:-1])
     plt.ylabel(f'predicted {ground_truth_map[quantity]}')
     plt.xlabel(f'true {ground_truth_map[quantity]}')
     if plotting_dir:
@@ -96,7 +95,7 @@ num_layers = 12
 l2_strength = 0.01
 quantiles = [0.16, 0.5, 0.84]
 num_quantiles = len(quantiles)
-epochs = 10
+epochs = 100
 batch_size = 512
 
 # prepare base part of the model
@@ -145,13 +144,14 @@ model.save(os.path.join(model_dir, f"{model_name}.keras"))
 PlotMetric(history, model_name, "loss", plotting_dir=model_dir)
 
 # form testing dataset
-def TestSelection(df, mod, parity, mass):
-    return np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
+def TestSelection(df, mod, parity, mass, sample_type):
+    tmp = np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
+    return np.logical_and(tmp, df['sample_type'] == sample_type)
 
-X_test, _, y_test, _ = dataset.Get(TestSelection, 2, 1, 800)
+X_test, _, y_test, _ = dataset.Get(TestSelection, 2, 1, 800, 1)
 ys_pred = model.predict(X_test)
 
-assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values ({len(ys_pred)} vs {len(target_names)})"
+assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
 
 # ys_pred is a list of np arrays of shape (num_events, num_quantiles)
 pred_dict = {}
@@ -163,8 +163,6 @@ for i, name in enumerate(target_names):
         pred_dict[f'{name}_q{q}'] = q_pred_array
 
 pred_df = pd.DataFrame.from_dict(pred_dict)
-print(pred_df.head())
-print(pred_df.columns)
 
 bins = np.linspace(0, 2000, 100)
 for quantile in quantiles:
