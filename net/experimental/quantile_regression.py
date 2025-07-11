@@ -11,6 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from Dataset import Dataset
 from NetUtils import TrainableSiLU, EpochLossUpdater
 from LossUtils import QuantileLoss
+from LayerUtils import EnergyLayer
 
 
 ground_truth_map = {"genHbb_E": "E(H->bb)",
@@ -81,7 +82,7 @@ def main():
     dataset.Load()
     X_train, input_names, y_train, target_names = dataset.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
-    standardize = True
+    standardize = False
     input_scaler = None
     target_scaler = None
     if standardize:
@@ -94,7 +95,7 @@ def main():
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
     tf.random.set_seed(42)
 
-    model_name = "model_hh_dl_bn_relu_qloss"
+    model_name = "test"
     model_dir = model_name
     os.makedirs(model_dir, exist_ok=True)
 
@@ -103,28 +104,25 @@ def main():
     input_shape = X_train.shape[1:]
     num_units = 384
     num_layers = 12
-    l2_strength = 0.01
+    l2_strength = 0.001
     quantiles = [0.16, 0.5, 0.84]
     num_quantiles = len(quantiles)
     epochs = 50
     batch_size = 1024
-    batch_norm = True
+    batch_norm = False
+    momentum = 0.01
+    use_energy_layer = True
 
     # prepare base part of the model
     inputs = tf.keras.layers.Input(shape=input_shape)
     if batch_norm:
-        x = tf.keras.layers.Dense(num_units)(inputs)
-        x = tf.keras.layers.BatchNormalization(momentum=0.01)(x)
-        # x = TrainableSiLU(units=num_units)(x)
-        # x = tf.keras.layers.Activation('relu')(x)
+        x = tf.keras.layers.Dense(num_units, kernel_regularizer=tf.keras.regularizers.L2(l2_strength))(inputs)
+        x = tf.keras.layers.BatchNormalization(momentum=momentum)(x)
         x = TrainableSiLU(units=num_units)(x)
-        # x = tf.keras.layers.BatchNormalization(momentum=0.01)(x)
         for _ in range(num_layers - 1):
-            x = tf.keras.layers.Dense(num_units)(x)
-            x = tf.keras.layers.BatchNormalization(momentum=0.01)(x)
+            x = tf.keras.layers.Dense(num_units, kernel_regularizer=tf.keras.regularizers.L2(l2_strength))(x)
+            x = tf.keras.layers.BatchNormalization(momentum=momentum)(x)
             x = TrainableSiLU(units=num_units)(x)
-            # x = tf.keras.layers.Activation('relu')(x)
-            # x = tf.keras.layers.BatchNormalization(momentum=0.01)(x)
     else:
         x = tf.keras.layers.Dense(num_units, 
                                   activation=TrainableSiLU(units=num_units), 
@@ -141,6 +139,7 @@ def main():
     # prepeare output heads
     num_targets = len(target_names)
     losses = {}
+    loss_weights = {}
     outputs = []
     ys_train = []
     for idx, target_name in enumerate(target_names):
@@ -152,11 +151,34 @@ def main():
         target_array = np.repeat(target_array, repeats=num_quantiles, axis=-1)
         ys_train.append(target_array)
 
+        # if custom energy calculation is used, skip energy outputs, they'll be inserted separately
+        if use_energy_layer and 'E' in target_name:
+            continue
+
         output = tf.keras.layers.Dense(num_quantiles, name=target_name)(x)
         outputs.append(output)
 
+        loss_weights[target_name] = 1.0
+
+    if use_energy_layer:
+        # energy layer of H->bb takes outputs of heads producing p3 of H->bb, but not the rest of the model
+        # energy layer of H->VV takes outputs of heads producing p3 of H->VV, but not the rest of the model
+        # energy layers have to be inserted back into list of outputs for compatibility with order of targets
+        hvv_en_idx = target_names.index('genHVV_E')
+        hbb_en_idx = target_names.index('genHbb_E')
+
+        hbb_energy_layer = EnergyLayer(num_quantiles=num_quantiles, name='genHbb_E')(tf.concat(outputs[3:], axis=-1))
+        hvv_energy_layer = EnergyLayer(num_quantiles=num_quantiles, name='genHVV_E')(tf.concat(outputs[:3], axis=-1))
+        outputs.insert(hvv_en_idx, hvv_energy_layer)
+        outputs.insert(hbb_en_idx, hbb_energy_layer)
+
+        loss_weights['genHbb_E'] = 1.0
+        loss_weights['genHVV_E'] = 1.0
+
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    model.compile(loss=losses, optimizer=tf.keras.optimizers.Adam(3e-4))
+    model.compile(loss=losses,
+                  loss_weights=loss_weights, 
+                  optimizer=tf.keras.optimizers.Adam(3e-4))
 
     history = model.fit(X_train,
                         ys_train,
@@ -182,15 +204,16 @@ def main():
     X_test, _, y_test, _ = dataset.Get(TestSelection, 2, 1, 800, 1)
     if standardize:
         X_test = input_scaler.transform(X_test)
-        # y_test = target_scaler.transform(y_test)
     ys_pred = model.predict(X_test)
 
     # transform predicted data back to normal
     if standardize:
-        for target_idx, arr in enumerate(ys_pred):
+        # eachitem of ys_pred is a array of shape (n, 3) for 3 quantiles
+        # each quantile for given variable should be rescaled back by the same scale
+        for pred_idx, arr in enumerate(ys_pred):
             for q_idx in range(num_quantiles):
-                arr[:, q_idx] *= target_scaler.scale_[target_idx]
-                arr[:, q_idx] += target_scaler.mean_[target_idx]
+                arr[:, q_idx] *= target_scaler.scale_[pred_idx]
+                arr[:, q_idx] += target_scaler.mean_[pred_idx]
 
     assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
 
