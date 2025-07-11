@@ -118,6 +118,9 @@ class Dataset:
             print(f'\tadding {len(df)} events')
             self.df = pd.concat([self.df, df], axis=0)
             self.ClearCache()
+
+        # shuffle rows
+        self.df = self.df.sample(frac=1, random_state=42).reset_index(drop=True)
     
     def LoadBranches(self, tree):
         aux_branches_dict = {}

@@ -157,7 +157,7 @@ auxilliary_branches:
   - 'lep2_gen_kind'
 
 apply_selections: True
-plot_cutflow: True
+plot_cutflow: False
 plot_dir: 'cutflow_plots'
 use_percentages: False
 use_topology: mixed
