@@ -82,7 +82,7 @@ def main():
     dataset.Load()
     X_train, input_names, y_train, target_names = dataset.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
-    standardize = False
+    standardize = True
     input_scaler = None
     target_scaler = None
     if standardize:
@@ -95,7 +95,7 @@ def main():
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
     tf.random.set_seed(42)
 
-    model_name = "test"
+    model_name = "model_hh_dl_bn_train_silu_mom3Dqloss_l2reg"
     model_dir = model_name
     os.makedirs(model_dir, exist_ok=True)
 
@@ -109,8 +109,8 @@ def main():
     num_quantiles = len(quantiles)
     epochs = 50
     batch_size = 1024
-    batch_norm = False
-    momentum = 0.01
+    batch_norm = True
+    momentum = 0.001
     use_energy_layer = True
 
     # prepare base part of the model
@@ -167,8 +167,16 @@ def main():
         hvv_en_idx = target_names.index('genHVV_E')
         hbb_en_idx = target_names.index('genHbb_E')
 
-        hbb_energy_layer = EnergyLayer(num_quantiles=num_quantiles, name='genHbb_E')(tf.concat(outputs[3:], axis=-1))
-        hvv_energy_layer = EnergyLayer(num_quantiles=num_quantiles, name='genHVV_E')(tf.concat(outputs[:3], axis=-1))
+        hbb_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
+                                       normalize=batch_norm, 
+                                       means=target_scaler.mean_[4:],
+                                       scales=target_scaler.scale_[4:],
+                                       name='genHbb_E')(tf.concat(outputs[3:], axis=-1))
+        hvv_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
+                                       normalize=batch_norm, 
+                                       means=target_scaler.mean_[:4],
+                                       scales=target_scaler.scale_[:4],
+                                       name='genHVV_E')(tf.concat(outputs[:3], axis=-1))
         outputs.insert(hvv_en_idx, hvv_energy_layer)
         outputs.insert(hbb_en_idx, hbb_energy_layer)
 
@@ -189,6 +197,7 @@ def main():
                         shuffle=True,
                         callbacks=[learning_rate_scheduler])
 
+    tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
     model.save(os.path.join(model_dir, f"{model_name}.keras"))
 
     history_keys = list(history.history.keys())
