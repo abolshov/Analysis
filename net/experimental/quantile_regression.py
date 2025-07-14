@@ -14,27 +14,8 @@ from LossUtils import QuantileLoss
 from LayerUtils import EnergyLayer
 
 
-ground_truth_map = {"genHbb_E": "E(H->bb)",
-                    "genHbb_px": "px(H->bb)",
-                    "genHbb_py": "py(H->bb)",
-                    "genHbb_pz": "pz(H->bb)",
-                    "genHVV_E": "E(H->VV)",
-                    "genHVV_px": "px(H->VV)",
-                    "genHVV_py": "py(H->VV)",
-                    "genHVV_pz": "pz(H->VV)" }
-
-
-def PredWidth(pred_mass):
-    q_84 = np.quantile(pred_mass, 0.84)
-    q_16 = np.quantile(pred_mass, 0.16)
-    width = q_84 - q_16
-    return width 
-
-
-def PredPeak(pred_mass):
-    counts = np.bincount(pred_mass)
-    peak = np.argmax(counts)
-    return peak 
+from MiscUtils import *
+from PlotUtils import PlotMetric, PlotHist
 
 
 def PlotCompare2D(target, output, quantity, quantile, plotting_dir=None):
@@ -53,36 +34,12 @@ def PlotCompare2D(target, output, quantity, quantile, plotting_dir=None):
     plt.clf()
 
 
-def Scheduler(epoch, lr):
-    if epoch < 30:
-        return lr
-    else:
-        if epoch % 2 == 0:
-            return 0.9*lr
-        return lr
-
-
-def PlotMetric(history, model, metric, plotting_dir=None):
-    plt.plot(history.history[metric], label=f'train_{metric}')
-    plt.plot(history.history[f'val_{metric}'], label=f'val_{metric}')
-    plt.title(f'{model} {metric}')
-    plt.ylabel(metric)
-    plt.xlabel('Epoch')
-    plt.legend(loc='upper right')
-    plt.grid(True)
-    if plotting_dir:
-        plt.savefig(os.path.join(plotting_dir, f"{metric}_{model}.pdf"), bbox_inches='tight')
-    else:
-        plt.savefig(f"{metric}_{model}.pdf", bbox_inches='tight')
-    plt.clf()
-
-
 def main():
     dataset = Dataset('dataset_config.yaml')
     dataset.Load()
     X_train, input_names, y_train, target_names = dataset.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
-    standardize = True
+    standardize = False
     input_scaler = None
     target_scaler = None
     if standardize:
@@ -95,7 +52,8 @@ def main():
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
     tf.random.set_seed(42)
 
-    model_name = "model_hh_dl_bn_train_silu_mom3Dqloss_l2reg"
+    # model_name = "model_hh_dl_bn_train_silu_mom3Dqloss_l2reg"
+    model_name = "model_test"
     model_dir = model_name
     os.makedirs(model_dir, exist_ok=True)
 
@@ -104,14 +62,14 @@ def main():
     input_shape = X_train.shape[1:]
     num_units = 384
     num_layers = 12
-    l2_strength = 0.001
+    l2_strength = 0.01
     quantiles = [0.16, 0.5, 0.84]
     num_quantiles = len(quantiles)
     epochs = 50
-    batch_size = 1024
-    batch_norm = True
-    momentum = 0.001
-    use_energy_layer = True
+    batch_size = 256
+    batch_norm = False
+    momentum = 0.01
+    use_energy_layer = False
 
     # prepare base part of the model
     inputs = tf.keras.layers.Input(shape=input_shape)
@@ -167,15 +125,26 @@ def main():
         hvv_en_idx = target_names.index('genHVV_E')
         hbb_en_idx = target_names.index('genHbb_E')
 
+        hbb_means = None
+        hbb_scales = None
+        hvv_means = None
+        hvv_scales = None
+        if standardize:
+            hbb_means = target_scaler.mean_[4:]
+            hbb_scales = target_scaler.scale_[4:]
+
+            hvv_means = target_scaler.mean_[:4]
+            hvv_scales = target_scaler.scale_[:4]
+
         hbb_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
                                        normalize=batch_norm, 
-                                       means=target_scaler.mean_[4:],
-                                       scales=target_scaler.scale_[4:],
+                                       means=hbb_means,
+                                       scales=hbb_scales,
                                        name='genHbb_E')(tf.concat(outputs[3:], axis=-1))
         hvv_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
                                        normalize=batch_norm, 
-                                       means=target_scaler.mean_[:4],
-                                       scales=target_scaler.scale_[:4],
+                                       means=hvv_means,
+                                       scales=hvv_scales,
                                        name='genHVV_E')(tf.concat(outputs[:3], axis=-1))
         outputs.insert(hvv_en_idx, hvv_energy_layer)
         outputs.insert(hbb_en_idx, hbb_energy_layer)
@@ -255,15 +224,38 @@ def main():
         print(f"quantile {q}: positive mass fraction: {len(X_mass_sqr_pos)}/{len(X_mass_pred_sqr)}={len(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])/len(X_mass_pred_sqr):.3f}")
 
         X_mass_pred = np.sqrt(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])
-        plt.hist(X_mass_pred, bins=bins)
-        plt.title('Predicted X->HH mass')
-        plt.ylabel('Count')
-        plt.xlabel(f'mass, [GeV]')
-        plt.figtext(0.75, 0.8, f"peak: {np.median(X_mass_pred):.2f}")
-        plt.figtext(0.75, 0.75, f"width: {PredWidth(X_mass_pred):.2f}")
-        plt.grid(True)
-        plt.savefig(os.path.join(model_dir, f"pred_mass_q{q}.pdf"), bbox_inches='tight')
-        plt.clf()
+        PlotHist(data=X_mass_pred, 
+                 bins=bins,
+                 title="Predicted X->HH mass",
+                 ylabel='Count',
+                 xlabel='Mass, [GeV]',
+                 plotting_dir=model_dir,
+                 peak=True,
+                 width=True,
+                 count=True,
+                 file_name=f'pred_mass_q{q}')
+
+    # plot errors
+    for i, name in enumerate(target_names):
+        up = pred_df[f'{name}_q84']
+        down = pred_df[f'{name}_q16']
+        ground_truth = y_test[:, i]
+        err = up - down
+        pred = pred_df[f'{name}_q50']
+        correct_predictions = np.abs(pred - ground_truth) < err
+        proba = len(ground_truth[correct_predictions])/len(ground_truth)
+        print(f'Target {name}:')
+        print(f'\tprediction coverage probability: {proba:.2f}')
+        print(f'\tnegative confidence interval: {len(err[err < 0.0])/len(err):.2f}')
+
+        bins = np.linspace(np.min(err) - 10, np.max(err) + 10, 50)
+        PlotHist(data=err, 
+                 bins=bins,
+                 title=f'Predicted {name} error',
+                 ylabel='Count',
+                 xlabel='Error, [GeV]',
+                 plotting_dir=model_dir,
+                 file_name=f'error_{name}')
 
 
 if __name__ == '__main__':
