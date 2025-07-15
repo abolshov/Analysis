@@ -62,4 +62,22 @@ class EnergyLayer(tf.keras.layers.Layer):
     @classmethod
     def from_config(cls, config):
         return cls(**config)
-            
+    
+
+class CoordTransformLayer(tf.keras.layers.Layer):
+    def __init__(self, name='coordinate_transform_layer', **kwargs):
+        pass
+
+    def call(self, inputs):
+        # inputs: px, py, pz
+        # outputs: log(pt), eta, phi, E
+        pass
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({})
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
