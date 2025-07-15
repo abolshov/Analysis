@@ -64,20 +64,52 @@ class EnergyLayer(tf.keras.layers.Layer):
         return cls(**config)
     
 
-class CoordTransformLayer(tf.keras.layers.Layer):
-    def __init__(self, name='coordinate_transform_layer', **kwargs):
-        pass
+class PtLayer(tf.keras.layers.Layer):
+    def __init__(self, name='pt_layer', **kwargs):
+        super(PtLayer, self).__init__(name=name, **kwargs)
 
     def call(self, inputs):
-        # inputs: px, py, pz
-        # outputs: log(pt), eta, phi, E
-        pass
+        # inputs: px, py, pz, \delta E
+        # inputs: pt
+        p2 = inputs[:, :2]
+        return tf.sqrt(tf.square(tf.reduce_sum(p2, axis=1)))
 
-    def get_config(self):
-        config = super().get_config()
-        config.update({})
-        return config
 
-    @classmethod
-    def from_config(cls, config):
-        return cls(**config)
+class EtaLayer(tf.keras.layers.Layer):
+    def __init__(self, name='eta_layer', **kwargs):
+        super(EtaLayer, self).__init__(name=name, **kwargs)
+
+    def call(self, inputs):
+        # inputs: px, py, pz, \delta E
+        # inputs: eta
+        p3 = inputs[:, :3]
+        mod = tf.sqrt(tf.square(tf.reduce_sum(p3, axis=1)))
+        return tf.atanh(p3[:, -1]/mod)
+
+
+class PhiLayer(tf.keras.layers.Layer):
+    def __init__(self, name='phi_layer', **kwargs):
+        super(PhiLayer, self).__init__(name=name, **kwargs)
+
+    def call(self, inputs):
+        # inputs: px, py, pz, \delta E
+        # inputs: phi
+        p3 = inputs[:, :3]
+        return tf.atan2(p3[:, 1], p3[:, 0])
+
+
+class EnErrLayer(tf.keras.layers.Layer):
+    def __init__(self, name='energy_error_layer', **kwargs):
+        super(EnErrLayer, self).__init__(name=name, **kwargs)
+
+    def call(self, inputs):
+        # inputs: px, py, pz, \delta E
+        # inputs: [E, \delta E]
+        p3 = inputs[:, :3]
+        dE = inputs[:, 3]
+        dE = tf.expand_dims(dE, axis=-1) 
+        energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(p3), axis=1)           
+        energy = tf.sign(energy_sqr)*tf.sqrt(energy_sqr)
+        energy = tf.expand_dims(energy, axis=-1) 
+        output = tf.concat([energy, dE], axis=-1)
+        return output
