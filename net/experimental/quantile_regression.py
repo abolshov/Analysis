@@ -52,7 +52,6 @@ def main():
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
     tf.random.set_seed(42)
 
-    # model_name = "model_hh_dl_bn_train_silu_mom3Dqloss_l2reg"
     model_name = "model_test"
     model_dir = model_name
     os.makedirs(model_dir, exist_ok=True)
@@ -69,7 +68,7 @@ def main():
     batch_size = 256
     batch_norm = False
     momentum = 0.01
-    use_energy_layer = False
+    use_energy_layer = True
 
     # prepare base part of the model
     inputs = tf.keras.layers.Input(shape=input_shape)
@@ -246,12 +245,22 @@ def main():
         proba = len(ground_truth[correct_predictions])/len(ground_truth)
         print(f'Target {name}:')
         print(f'\tprediction coverage probability: {proba:.2f}')
-        print(f'\tnegative confidence interval: {len(err[err < 0.0])/len(err):.2f}')
+        print(f'\tquantile crossing fraction: {len(err[err < 0.0])/len(err):.2f}')
 
         bins = np.linspace(np.min(err) - 10, np.max(err) + 10, 50)
         PlotHist(data=err, 
                  bins=bins,
                  title=f'Predicted {name} error',
+                 ylabel='Count',
+                 xlabel='Error, [GeV]',
+                 plotting_dir=model_dir,
+                 file_name=f'pred_error_{name}')
+
+        actual_error = pred - ground_truth
+        bins = np.linspace(np.min(actual_error) - 10, np.max(actual_error) + 10, 50)
+        PlotHist(data=actual_error, 
+                 bins=bins,
+                 title=f'Actual {name} error',
                  ylabel='Count',
                  xlabel='Error, [GeV]',
                  plotting_dir=model_dir,
