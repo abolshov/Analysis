@@ -1,13 +1,13 @@
 import numpy as np
 
-target_names = {"genHbb_E": "E(H->bb)",
-                "genHbb_px": "px(H->bb)",
-                "genHbb_py": "py(H->bb)",
-                "genHbb_pz": "pz(H->bb)",
-                "genHVV_E": "E(H->VV)",
-                "genHVV_px": "px(H->VV)",
-                "genHVV_py": "py(H->VV)",
-                "genHVV_pz": "pz(H->VV)" }
+ground_truth_map = {"genHbb_E": "E(H->bb)",
+                    "genHbb_px": "px(H->bb)",
+                    "genHbb_py": "py(H->bb)",
+                    "genHbb_pz": "pz(H->bb)",
+                    "genHVV_E": "E(H->VV)",
+                    "genHVV_px": "px(H->VV)",
+                    "genHVV_py": "py(H->VV)",
+                    "genHVV_pz": "pz(H->VV)" }
 
 
 def PredWidth(pred_mass):
