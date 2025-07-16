@@ -64,6 +64,20 @@ class EnergyLayer(tf.keras.layers.Layer):
         return cls(**config)
     
 
+class QuantileOrderingLayer(tf.keras.layers.Layer):
+    def __init__(self, name='quantile_ordering_layer', **kwargs):
+        super(QuantileOrderingLayer, self).__init__(name=name, **kwargs)
+        
+    def call(self, inputs):
+        # Compute the left and right parts of the quantiles
+        first_quants = inputs[..., 0:1]
+        rem_quants = first_quants + tf.math.cumsum(tf.nn.softplus(inputs[..., 1:]), axis=-1)
+
+        # Concatenate the parts along the last dimension
+        out = tf.concat([first_quants, rem_quants], axis=-1)
+        return out
+
+
 class PtLayer(tf.keras.layers.Layer):
     def __init__(self, name='pt_layer', **kwargs):
         super(PtLayer, self).__init__(name=name, **kwargs)
