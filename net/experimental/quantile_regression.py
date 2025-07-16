@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from Dataset import Dataset
 from NetUtils import TrainableSiLU, EpochLossUpdater
 from LossUtils import QuantileLoss
-from LayerUtils import EnergyLayer
+from LayerUtils import EnergyLayer, QuantileOrderingLayer
 
 
 from MiscUtils import *
@@ -39,7 +39,7 @@ def main():
     dataset.Load()
     X_train, input_names, y_train, target_names = dataset.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
-    standardize = False
+    standardize = True
     input_scaler = None
     target_scaler = None
     if standardize:
@@ -65,10 +65,11 @@ def main():
     quantiles = [0.16, 0.5, 0.84]
     num_quantiles = len(quantiles)
     epochs = 50
-    batch_size = 256
-    batch_norm = False
+    batch_size = 1024
+    batch_norm = True
     momentum = 0.01
-    use_energy_layer = True
+    use_energy_layer = False
+    use_quantile_ordering = True
 
     # prepare base part of the model
     inputs = tf.keras.layers.Input(shape=input_shape)
@@ -112,7 +113,12 @@ def main():
         if use_energy_layer and 'E' in target_name:
             continue
 
-        output = tf.keras.layers.Dense(num_quantiles, name=target_name)(x)
+        output = None
+        if use_quantile_ordering:
+            output = tf.keras.layers.Dense(num_quantiles)(x)
+            output = QuantileOrderingLayer(name=target_name)(output)
+        else:
+            output = tf.keras.layers.Dense(num_quantiles, name=target_name)(x)
         outputs.append(output)
 
         loss_weights[target_name] = 1.0
