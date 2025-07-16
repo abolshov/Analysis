@@ -115,23 +115,23 @@ class QuantileLoss(tf.keras.losses.Loss):
     """
     Loss for predicting array of quantiles for single variable
     """
-    def __init__(self, quantiles=[0.5], order_penalty=False, width_penalty=True, name="quantile_loss", **kwargs):
+    def __init__(self, quantiles=[0.5], order_penalty_rate=None, width_penalty_rate=None, name="quantile_loss", **kwargs):
         super().__init__(name=name, **kwargs)
         self.quantiles = tf.constant(quantiles, dtype=tf.float32)
-        self.order_penalty = order_penalty and len(quantiles) > 1
-        self.width_penalty = width_penalty and len(quantiles) > 1
+        self.order_penalty_rate = order_penalty_rate if order_penalty_rate and len(quantiles) > 1 else None
+        self.width_penalty_rate = width_penalty_rate if width_penalty_rate and len(quantiles) > 1 else None
 
     def call(self, y_true, y_pred):
         error = y_true - y_pred
         loss = tf.reduce_mean(tf.maximum(self.quantiles*error, error*(self.quantiles - 1)), axis=-1)
         
-        if self.order_penalty:
+        if self.order_penalty_rate:
             quantile_gap = y_pred[:, 1:] - y_pred[:, :-1]
             order_penalty = tf.reduce_mean(0.5*(1 - tf.sign(quantile_gap))*tf.abs(quantile_gap), axis=-1)
-            return loss + order_penalty
+            return loss + self.order_penalty_rate*order_penalty
 
-        if self.width_penalty:
-            width_penalty = 0.01*(tf.abs(y_pred[:, -1] - y_pred[:, 0]))
+        if self.width_penalty_rate:
+            width_penalty = self.width_penalty_rate*tf.abs(y_pred[:, -1] - y_pred[:, 0])
             return loss + width_penalty
 
         return loss
@@ -143,7 +143,8 @@ class QuantileLoss(tf.keras.losses.Loss):
         """
         config = super().get_config()
         config.update({'quantiles': self.quantiles.numpy(),
-                       'order_penalty': self.order_penalty})
+                       'order_penalty_rate': self.order_penalty_rate,
+                       'width_penalty_rate': self.width_penalty_rate})
         return config
 
     @classmethod
