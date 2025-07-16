@@ -65,6 +65,9 @@ class EnergyLayer(tf.keras.layers.Layer):
     
 
 class QuantileOrderingLayer(tf.keras.layers.Layer):
+    """
+    https://www.kaggle.com/code/syerramilli/pfi-multi-quantile-neural-network-regression
+    """
     def __init__(self, name='quantile_ordering_layer', **kwargs):
         super(QuantileOrderingLayer, self).__init__(name=name, **kwargs)
         
