@@ -100,7 +100,8 @@ class EtaLayer(tf.keras.layers.Layer):
         # inputs: px, py, pz, \delta E
         # inputs: eta
         p3 = inputs[:, :3]
-        mod = tf.sqrt(tf.square(tf.reduce_sum(p3, axis=1)))
+        # tf.print(p3)
+        mod = tf.sqrt(tf.reduce_sum(tf.square(p3), axis=1))
         return tf.atanh(p3[:, -1]/mod)
 
 
@@ -115,15 +116,16 @@ class PhiLayer(tf.keras.layers.Layer):
         return tf.atan2(p3[:, 1], p3[:, 0])
 
 
-class EnErrLayer(tf.keras.layers.Layer):
+class EnergyErrorLayer(tf.keras.layers.Layer):
     def __init__(self, name='energy_error_layer', **kwargs):
-        super(EnErrLayer, self).__init__(name=name, **kwargs)
+        super(EnergyErrorLayer, self).__init__(name=name, **kwargs)
 
     def call(self, inputs):
         # inputs: px, py, pz, \delta E
         # inputs: [E, \delta E]
         p3 = inputs[:, :3]
         dE = inputs[:, 3]
+        dE = tf.nn.softplus(dE)
         dE = tf.expand_dims(dE, axis=-1) 
         energy_sqr = tf.square(mh) + tf.reduce_sum(tf.square(p3), axis=1)           
         energy = tf.sign(energy_sqr)*tf.sqrt(energy_sqr)

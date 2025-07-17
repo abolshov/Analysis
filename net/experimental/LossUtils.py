@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 mh = tf.constant(125.0)
+pi = tf.constant(np.pi)
 
 # @tf.keras.saving.register_keras_serializable(package="CombinedLoss")
 class CombinedLoss(tf.keras.losses.Loss):
@@ -150,3 +151,48 @@ class QuantileLoss(tf.keras.losses.Loss):
     @classmethod
     def from_config(cls, config):
         return cls(**config)
+
+
+class LogPtLoss(tf.keras.losses.Loss):
+    def __init__(self, name="log_pt_loss", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.log_cosh = tf.keras.losses.LogCosh()
+        self.epsilon = tf.constant(0.1, dtype=tf.float32)
+
+    def call(self, y_true, y_pred):
+        return self.log_cosh(tf.math.log(y_true + self.epsilon), tf.math.log(y_pred + self.epsilon))
+
+
+
+class DeltaPhiLoss(tf.keras.losses.Loss):
+    def __init__(self, name="delta_phi_loss", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.log_cosh = tf.keras.losses.LogCosh()
+
+    def call(self, y_true, y_pred):
+        dphi = y_true - y_pred
+        dphi = tf.where(dphi > pi, dphi - 2*pi, dphi)
+        dphi = tf.where(dphi <= -pi, dphi + 2*pi, dphi)
+        return self.log_cosh(dphi, 0)
+
+
+class CombinedEnergyLoss(tf.keras.losses.Loss):
+    def __init__(self, name="combined_energy_loss", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.log_cosh = tf.keras.losses.LogCosh()
+        self.q = 0.68
+
+    def call(self, y_true, y_pred):
+        # y_true - only contains ground truth for energy
+        # there is no ground truth for energy error
+        energy_loss = self.log_cosh(y_true, y_pred[:, 0])
+        
+        def Heaviside(x):
+            return 0.5*(1 + tf.sign(x))
+
+        def QR(q, x, mu):
+            return (x - mu)*(q*Heaviside(x - mu) + (1 - q)*Heaviside(mu - x))
+
+        dE_pred = y_pred[:, 1]
+        energy_error_loss = QR(0.5*(1 - self.q), tf.math.log(y_true), tf.math.log(y_pred[:, 0]) - tf.math.log(dE_pred)) + QR(0.5*(1 + self.q), tf.math.log(y_true), tf.math.log(y_pred[:, 0]) + tf.math.log(dE_pred))
+        return energy_loss + energy_error_loss
