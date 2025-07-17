@@ -42,7 +42,6 @@ file_names: [../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_1
   ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_650/nano_0.root,
   ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_700/nano_0.root,
   ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root]
-  # - nano_0.root
 tree_name: Events
 
 objects:
