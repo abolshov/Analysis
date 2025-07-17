@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
 
-from Dataset import Dataset
+from Dataloader import Dataloader
 from NetUtils import TrainableSiLU, EpochLossUpdater
 from LossUtils import QuantileLoss
 from LayerUtils import EnergyLayer, QuantileOrderingLayer
@@ -35,11 +35,15 @@ def PlotCompare2D(target, output, quantity, quantile, plotting_dir=None):
 
 
 def main():
-    dataset = Dataset('dataset_config.yaml')
-    dataset.Load()
-    X_train, input_names, y_train, target_names = dataset.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
+    files = []
+    with open('dl_train_files.txt', 'r') as file_cfg:
+        files = [line[:-1] for line in file_cfg.readlines()]
 
-    standardize = True
+    dataloader = Dataloader('dataloader_config.yaml')
+    dataloader.Load(files)
+    X_train, input_names, y_train, target_names = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
+
+    standardize = False
     input_scaler = None
     target_scaler = None
     if standardize:
@@ -52,7 +56,7 @@ def main():
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
     tf.random.set_seed(42)
 
-    model_name = "model_test"
+    model_name = "model_hh_dl_train_silu_qloss_width_pen"
     model_dir = model_name
     os.makedirs(model_dir, exist_ok=True)
 
@@ -65,11 +69,12 @@ def main():
     quantiles = [0.16, 0.5, 0.84]
     num_quantiles = len(quantiles)
     epochs = 50
-    batch_size = 1024
-    batch_norm = True
+    batch_size = 512
+    batch_norm = False
     momentum = 0.01
     use_energy_layer = False
     use_quantile_ordering = True
+    width_penalty_rate = 0.02
 
     # prepare base part of the model
     inputs = tf.keras.layers.Input(shape=input_shape)
@@ -103,7 +108,10 @@ def main():
     for idx, target_name in enumerate(target_names):
         target_array = y_train[:, idx]
         target_array = np.reshape(target_array, (-1, 1))
-        losses[target_name] = QuantileLoss(quantiles=quantiles, name=f'loss_{target_name}')
+
+        losses[target_name] = QuantileLoss(quantiles=quantiles, 
+                                           width_penalty_rate=width_penalty_rate, 
+                                           name=f'loss_{target_name}')
 
         # repeat each target array num_quantiles times so that each output node has ground truth value
         target_array = np.repeat(target_array, repeats=num_quantiles, axis=-1)
@@ -179,12 +187,12 @@ def main():
     for metric in drawable_metrics:
         PlotMetric(history, model_name, metric, plotting_dir=model_dir)    
 
-    # form testing dataset
+    # form testing dataloader
     def TestSelection(df, mod, parity, mass, sample_type):
         tmp = np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
         return np.logical_and(tmp, df['sample_type'] == sample_type)
 
-    X_test, _, y_test, _ = dataset.Get(TestSelection, 2, 1, 800, 1)
+    X_test, _, y_test, _ = dataloader.Get(TestSelection, 2, 1, 800, 1)
     if standardize:
         X_test = input_scaler.transform(X_test)
     ys_pred = model.predict(X_test)
