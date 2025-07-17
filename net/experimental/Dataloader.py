@@ -286,9 +286,15 @@ class Dataloader:
 
     def Get(self, selection=None, *args, **kwargs):
         """
-        returns tuple (X, [names of features], y, [names of targets])
+        returns tuple (X, [names of features], y, [names of targets]) or underlying dataframe
+        args:
+            selection: callable with signature df, *args
         """
         if selection:
-            df = self.df[selection(self.df, *args, **kwargs)]
+            df = self.df[selection(self.df, *args)]
+            if 'df' in kwargs and kwargs['df']:
+                return df
             return df[self.input_names].values, self.input_names, df[self.target_names].values, self.target_names
+        if 'df' in kwargs and kwargs['df']:
+            return self.df
         return self.df[self.input_names].values, self.input_names, self.df[self.target_names].values, self.target_names
