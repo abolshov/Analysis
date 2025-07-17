@@ -8,18 +8,19 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
 
-from Dataset import Dataset
+from Dataloader import Dataloader
 from NetUtils import TrainableSiLU, EpochLossUpdater
-from LayerUtils import PtLayer, EtaLayer, PhiLayer, EnErrLayer
+from LayerUtils import PtLayer, EtaLayer, PhiLayer, EnergyErrorLayer
+from LossUtils import DeltaPhiLoss, CombinedEnergyLoss, LogPtLoss
 
 from MiscUtils import *
 from PlotUtils import PlotMetric, PlotHist
 
 
 def main():
-    dataset = Dataset('dataset_config.yaml')
-    dataset.Load()
-    X_train, input_names, y_train, target_names = dataset.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
+    dataloader = Dataloader('dataloader_config.yaml')
+    dataloader.Load('nano_0.root')
+    X_train, input_names, y_train, target_names = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
@@ -41,27 +42,58 @@ def main():
     # prepare base part of the model
     inputs = tf.keras.layers.Input(shape=input_shape)
     x = tf.keras.layers.Dense(num_units, 
-                              activation=TrainableSiLU(units=num_units), 
+                              activation='silu', 
                               kernel_initializer='random_normal', 
                               bias_initializer='random_normal',
                               kernel_regularizer=tf.keras.regularizers.L2(l2_strength))(inputs)
     for _ in range(num_layers - 1):
         x = tf.keras.layers.Dense(num_units, 
-                                  activation=TrainableSiLU(units=num_units), 
+                                  activation='silu', 
                                   kernel_initializer='random_normal', 
                                   bias_initializer='random_normal',
                                   kernel_regularizer=tf.keras.regularizers.L2(l2_strength))(x)
-        
 
-    # prepeare output heads
-    # each output head takes all inputs of the base model
-    # and does with them whatever it needs to do 
+    # separate heads to H->bb and H->VV   
+    hbb_head = tf.keras.layers.Dense(4)(x)
+    hvv_head = tf.keras.layers.Dense(4)(x)
+
+    # compute output variables and assign losses
+    losses = {}
+
+    # prepare H->bb outputs
+    hbb_pt_head = PtLayer(name='genHbb_pt')(hbb_head)
+    losses['genHbb_pt'] = LogPtLoss()
+    hbb_eta_head = EtaLayer(name='genHbb_eta')(hbb_head)
+    losses['genHbb_eta'] = tf.keras.losses.LogCosh()
+    hbb_phi_head = PhiLayer(name='genHbb_phi')(hbb_head)
+    losses['genHbb_phi'] = DeltaPhiLoss()
+    hbb_en_head = EnergyErrorLayer(name='genHbb_E')(hbb_head)
+    losses['genHbb_E'] = CombinedEnergyLoss()
+
+    # prepare H->VV outputs
+    hvv_pt_head = PtLayer(name='genHVV_pt')(hvv_head)
+    losses['genHVV_pt'] = LogPtLoss()
+    hvv_eta_head = EtaLayer(name='genHVV_eta')(hvv_head)
+    losses['genHVV_eta'] = tf.keras.losses.LogCosh()
+    hvv_phi_head = PhiLayer(name='genHVV_phi')(hvv_head)
+    losses['genHVV_phi'] = DeltaPhiLoss()
+    hvv_en_head = EnergyErrorLayer(name='genHVV_E')(hvv_head)
+    losses['genHVV_E'] = CombinedEnergyLoss()
     
+    outputs = [hvv_pt_head, hvv_eta_head, hvv_phi_head, hvv_en_head,
+               hbb_pt_head, hbb_eta_head, hbb_phi_head, hbb_en_head]
+
+    ys_train = []
+    for idx, target_name in enumerate(target_names):
+        target_array = y_train[:, idx]
+        target_array = np.reshape(target_array, (-1, 1))
+        ys_train.append(target_array)
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     model.compile(loss=losses,
-                  loss_weights=loss_weights, 
                   optimizer=tf.keras.optimizers.Adam(3e-4))
+
+    tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
 
     history = model.fit(X_train,
                         ys_train,
@@ -86,13 +118,9 @@ def main():
         return np.logical_and(tmp, df['sample_type'] == sample_type)
 
     X_test, _, y_test, _ = dataset.Get(TestSelection, 2, 1, 800, 1)
-    if standardize:
-        X_test = input_scaler.transform(X_test)
     ys_pred = model.predict(X_test)
 
     assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
-
-    
 
 
 if __name__ == '__main__':
