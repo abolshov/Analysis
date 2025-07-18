@@ -4,10 +4,16 @@ ground_truth_map = {"genHbb_E": "E(H->bb)",
                     "genHbb_px": "px(H->bb)",
                     "genHbb_py": "py(H->bb)",
                     "genHbb_pz": "pz(H->bb)",
+                    "genHbb_pt": "Pt(H->bb)",
+                    "genHbb_eta": "Eta(H->bb)",
+                    "genHbb_phi": "Phi(H->bb)",
                     "genHVV_E": "E(H->VV)",
                     "genHVV_px": "px(H->VV)",
                     "genHVV_py": "py(H->VV)",
-                    "genHVV_pz": "pz(H->VV)" }
+                    "genHVV_pz": "pz(H->VV)",
+                    "genHVV_pt": "Pt(H->VV)",
+                    "genHVV_eta": "Eta(H->VV)",
+                    "genHVV_phi": "Phi(H->VV)" }
 
 
 def PredWidth(pred_mass):
