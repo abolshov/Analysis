@@ -173,7 +173,7 @@ class DeltaPhiLoss(tf.keras.losses.Loss):
         dphi = y_true - y_pred
         dphi = tf.where(dphi > pi, dphi - 2*pi, dphi)
         dphi = tf.where(dphi <= -pi, dphi + 2*pi, dphi)
-        return self.log_cosh(dphi, 0)
+        return self.log_cosh(dphi, 0.0)
 
 
 class CombinedEnergyLoss(tf.keras.losses.Loss):
