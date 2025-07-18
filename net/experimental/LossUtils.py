@@ -177,7 +177,7 @@ class DeltaPhiLoss(tf.keras.losses.Loss):
 
 
 class CombinedEnergyLoss(tf.keras.losses.Loss):
-    def __init__(self, quantile=0.68, log=False, name="combined_energy_loss", **kwargs):
+    def __init__(self, quantile=None, log=False, name="combined_energy_loss", **kwargs):
         super().__init__(name=name, **kwargs)
         self.log_cosh = tf.keras.losses.LogCosh()
         self.quantile = quantile
@@ -192,17 +192,21 @@ class CombinedEnergyLoss(tf.keras.losses.Loss):
         else:
             energy_loss = self.log_cosh(y_true, y_pred[:, 0])
         
-        def Heaviside(x):
-            return 0.5*(1 + tf.sign(x))
+        if self.quantile:
+            def Heaviside(x):
+                return 0.5*(1 + tf.sign(x))
 
-        def QR(q, x, mu):
-            return (x - mu)*(q*Heaviside(x - mu) + (1 - q)*Heaviside(mu - x))
+            def QR(q, x, mu):
+                return (x - mu)*(q*Heaviside(x - mu) + (1 - q)*Heaviside(mu - x))
 
-        dE_pred = y_pred[:, 1]
-        qr1 = QR(0.5*(1 - self.quantile), tf.math.log(y_true), tf.math.log(y_pred[:, 0]) - tf.math.log(dE_pred))
-        qr2 = QR(0.5*(1 + self.quantile), tf.math.log(y_true), tf.math.log(y_pred[:, 0]) + tf.math.log(dE_pred))
-        energy_error_loss = qr1 + qr2
-        return energy_loss + energy_error_loss
+            dE_pred = y_pred[:, 1]
+            qr1 = QR(0.5*(1 - self.quantile), tf.math.log(y_true), tf.math.log(y_pred[:, 0]) - tf.math.log(dE_pred))
+            qr2 = QR(0.5*(1 + self.quantile), tf.math.log(y_true), tf.math.log(y_pred[:, 0]) + tf.math.log(dE_pred))
+            energy_error_loss = qr1 + qr2
+            return energy_loss + energy_error_loss
+        else:
+            return energy_loss
+        
 
     def get_config(self):
         config = super().get_config()
