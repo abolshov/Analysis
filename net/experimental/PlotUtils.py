@@ -21,8 +21,17 @@ def PlotMetric(history, model, metric, plotting_dir=None):
 
 def PlotCompare2D(target, output, quantity, plotting_dir=None):
     plt.grid(False)
-    min_bin = 0 if quantity[-1] == 'E' else -1200
-    bins = np.linspace(min_bin, 1200, 100)
+    
+    min_target = np.min(target)
+    min_output = np.min(output)
+    bin_left = np.min(min_target, min_output) - 1.0
+
+    max_target = np.max(target)
+    max_output = np.max(output)
+    bin_right = np.max(max_target, max_output) + 1.0
+
+    bins = np.linspace(bin_left, bin_right, 100)
+
     plt.hist2d(target, output, bins=bins)
     var = quantity.split('_')[-1]
     plt.title(f'{var} comparison')

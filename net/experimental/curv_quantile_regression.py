@@ -142,7 +142,11 @@ def main():
     #plot predicted errors
     var_dict = {}
     for i, name in enumerate(target_names):
+        ground_truth = y_test[:, i]
+        
         if 'E' in name: 
+            PlotCompare2D(ground_truth, ys_pred[i][:, 0], name, plotting_dir=model_dir)
+
             err = ys_pred[i][:, 1]
             bins = np.linspace(np.min(err) - 10, np.max(err) + 10, 50)
             PlotHist(data=err, 
@@ -156,11 +160,13 @@ def main():
             var_dict[name] = ys_pred[i][:, 0]
         else:
             var_dict[name] = ys_pred[i]
+            PlotCompare2D(ground_truth, ys_pred[i], name, plotting_dir=model_dir)
 
     hbb_p4 = vector.zip({name.split('_')[-1]: var_dict[name] for name in var_dict.keys() if 'Hbb' in name})
     hvv_p4 = vector.zip({name.split('_')[-1]: var_dict[name] for name in var_dict.keys() if 'HVV' in name})
     X_p4 = hbb_p4 + hvv_p4
     pred_mass = np.array(X_p4.mass)
+    
     PlotHist(data=pred_mass, 
              bins=np.linspace(0, 2500, 100),
             #  peak=True,
