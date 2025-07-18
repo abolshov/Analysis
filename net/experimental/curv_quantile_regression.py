@@ -5,6 +5,7 @@ import uproot
 import awkward as ak 
 import os
 import matplotlib.pyplot as plt
+import vector
 
 
 from Dataloader import Dataloader
@@ -18,15 +19,19 @@ from PlotUtils import PlotMetric, PlotHist
 
 
 def main():
+    files = []
+    with open('files_Run3_2022.txt', 'r') as file_cfg:
+        files = [line[:-1] for line in file_cfg.readlines()]
+
     dataloader = Dataloader('dataloader_config.yaml')
-    dataloader.Load('nano_0.root')
+    dataloader.Load(files)
     X_train, input_names, y_train, target_names = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
     tf.random.set_seed(42)
 
-    model_name = "model_test"
+    model_name = "model_hh_dl_curv"
     model_dir = model_name
     os.makedirs(model_dir, exist_ok=True)
 
@@ -36,7 +41,7 @@ def main():
     num_units = 384
     num_layers = 12
     l2_strength = 0.01
-    epochs = 50
+    epochs = 30
     batch_size = 256
 
     # prepare base part of the model
@@ -83,7 +88,8 @@ def main():
     outputs = [hvv_pt_head, hvv_eta_head, hvv_phi_head, hvv_en_head,
                hbb_pt_head, hbb_eta_head, hbb_phi_head, hbb_en_head]
 
-    # assign weights to losses
+    # assign weights to losses: not working
+    # for some reason at the moment applying weights drags loss to nan
     loss_weights = {'genHbb_pt': 1.0,
                     'genHbb_eta': 1.0,
                     'genHbb_phi': 1.0,
@@ -134,25 +140,38 @@ def main():
     assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
 
     #plot predicted errors
-    hvv_err = ys_pred[3]
-    bins = np.linspace(np.min(hvv_err) - 10, np.max(hvv_err) + 10, 50)
-    PlotHist(data=hvv_err, 
-             bins=bins,
-             title=f'Predicted H->VV energy error',
-             ylabel='Count',
-             xlabel='Error, [GeV]',
-             plotting_dir=model_dir,
-             file_name=f'pred_error_HVV_E')
+    var_dict = {}
+    for i, name in enumerate(target_names):
+        if 'E' in name: 
+            err = ys_pred[i][:, 1]
+            bins = np.linspace(np.min(err) - 10, np.max(err) + 10, 50)
+            PlotHist(data=err, 
+                    bins=bins,
+                    title=f'Predicted {name} error',
+                    ylabel='Count',
+                    xlabel='Error, [GeV]',
+                    plotting_dir=model_dir,
+                    file_name=f'pred_error_{name}')
+            
+            var_dict[name] = ys_pred[i][:, 0]
+        else:
+            var_dict[name] = ys_pred[i]
 
-    hbb_err = ys_pred[7]
-    bins = np.linspace(np.min(hbb_err) - 10, np.max(hbb_err) + 10, 50)
-    PlotHist(data=hbb_err, 
-             bins=bins,
-             title=f'Predicted H->bb energy error',
+    hbb_p4 = vector.zip({name.split('_')[-1]: var_dict[name] for name in var_dict.keys() if 'Hbb' in name})
+    hvv_p4 = vector.zip({name.split('_')[-1]: var_dict[name] for name in var_dict.keys() if 'HVV' in name})
+    X_p4 = hbb_p4 + hvv_p4
+    pred_mass = np.array(X_p4.mass)
+    PlotHist(data=pred_mass, 
+             bins=np.linspace(0, 2500, 100),
+            #  peak=True,
+            #  width=True,
+            #  count=True,
+             title='Predicted X->HH error',
              ylabel='Count',
-             xlabel='Error, [GeV]',
+             xlabel='Mass, [GeV]',
              plotting_dir=model_dir,
-             file_name=f'pred_error_Hbb_E')
+             file_name='pred_mass')
+
 
 if __name__ == '__main__':
     main()
