@@ -5,13 +5,13 @@ import uproot
 import awkward as ak 
 import os
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
 
 
 from Dataloader import Dataloader
-from NetUtils import TrainableSiLU, EpochLossUpdater
+from NetUtils import TrainableSiLU
 from LayerUtils import PtLayer, EtaLayer, PhiLayer, EnergyErrorLayer
 from LossUtils import DeltaPhiLoss, CombinedEnergyLoss, LogPtLoss
+
 
 from MiscUtils import *
 from PlotUtils import PlotMetric, PlotHist
@@ -68,7 +68,7 @@ def main():
     hbb_phi_head = PhiLayer(name='genHbb_phi')(hbb_head)
     losses['genHbb_phi'] = DeltaPhiLoss()
     hbb_en_head = EnergyErrorLayer(name='genHbb_E')(hbb_head)
-    losses['genHbb_E'] = CombinedEnergyLoss()
+    losses['genHbb_E'] = CombinedEnergyLoss(log=True)
 
     # prepare H->VV outputs
     hvv_pt_head = PtLayer(name='genHVV_pt')(hvv_head)
@@ -78,10 +78,20 @@ def main():
     hvv_phi_head = PhiLayer(name='genHVV_phi')(hvv_head)
     losses['genHVV_phi'] = DeltaPhiLoss()
     hvv_en_head = EnergyErrorLayer(name='genHVV_E')(hvv_head)
-    losses['genHVV_E'] = CombinedEnergyLoss()
+    losses['genHVV_E'] = CombinedEnergyLoss(log=True)
     
     outputs = [hvv_pt_head, hvv_eta_head, hvv_phi_head, hvv_en_head,
                hbb_pt_head, hbb_eta_head, hbb_phi_head, hbb_en_head]
+
+    # assign weights to losses
+    loss_weights = {'genHbb_pt': 1.0,
+                    'genHbb_eta': 1.0,
+                    'genHbb_phi': 1.0,
+                    'genHbb_E': 0.1,
+                    'genHVV_pt': 1.0,
+                    'genHVV_eta': 1.0,
+                    'genHVV_phi': 1.0,
+                    'genHVV_E': 0.1}
 
     ys_train = []
     for idx, target_name in enumerate(target_names):
@@ -91,6 +101,7 @@ def main():
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     model.compile(loss=losses,
+                #   loss_weights=loss_weights,
                   optimizer=tf.keras.optimizers.Adam(3e-4))
 
     tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
@@ -117,11 +128,31 @@ def main():
         tmp = np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
         return np.logical_and(tmp, df['sample_type'] == sample_type)
 
-    X_test, _, y_test, _ = dataset.Get(TestSelection, 2, 1, 800, 1)
+    X_test, _, y_test, _ = dataloader.Get(TestSelection, 2, 1, 800, 1)
     ys_pred = model.predict(X_test)
 
     assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
 
+    #plot predicted errors
+    hvv_err = ys_pred[3]
+    bins = np.linspace(np.min(hvv_err) - 10, np.max(hvv_err) + 10, 50)
+    PlotHist(data=hvv_err, 
+             bins=bins,
+             title=f'Predicted H->VV energy error',
+             ylabel='Count',
+             xlabel='Error, [GeV]',
+             plotting_dir=model_dir,
+             file_name=f'pred_error_HVV_E')
+
+    hbb_err = ys_pred[7]
+    bins = np.linspace(np.min(hbb_err) - 10, np.max(hbb_err) + 10, 50)
+    PlotHist(data=hbb_err, 
+             bins=bins,
+             title=f'Predicted H->bb energy error',
+             ylabel='Count',
+             xlabel='Error, [GeV]',
+             plotting_dir=model_dir,
+             file_name=f'pred_error_Hbb_E')
 
 if __name__ == '__main__':
     main()
