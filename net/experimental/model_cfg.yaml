@@ -1,0 +1,13 @@
+directory: 'model_test'
+name: 'model_test'
+format: 'keras'
+# mapping of object name -> module where it is defined
+custom_objects:
+  PtLayer: LayerUtils
+  PhiLayer: LayerUtils
+  EtaLayer: LayerUtils
+  EnergyErrorLayer: LayerUtils
+  DeltaPhiLoss: LossUtils
+  CombinedEnergyLoss: LossUtils
+  LogPtLoss: LossUtils
+  TrainableSiLU: NetUtils
