@@ -16,14 +16,14 @@ from PlotUtils import PlotHist
 
 def main():
     # load dataset for model evaluation
-    file = 'nano_0.root'
+    file = 'DY.root'
     dataloader = Dataloader('dataloader_config.yaml')
-    dataloader.Load(file)
+    dataloader.Load(file, apply_selections=False)
     X, input_names, y, target_names = dataloader.Get()
 
     # load model
-    model_dir = 'model_test'
-    model_name = 'model_test'
+    model_dir = 'model_hh_dl_train_silu_qloss_wwidth_weights_l2reg'
+    model_name = 'model_hh_dl_train_silu_qloss_wwidth_weights_l2reg'
     path_to_model = os.path.join(model_dir, f'{model_name}.keras')
     custom_objects = {'TrainableSiLU': TrainableSiLU,
                       'QuantileLoss': QuantileLoss,
@@ -31,9 +31,10 @@ def main():
     model = tf.keras.models.load_model(path_to_model, custom_objects=custom_objects)
 
     # make predictions and plot them
-    ys_pred = model.predict(X_test)
+    ys_pred = model.predict(X)
     
     pred_dict = {}
+    quantiles = [0.16, 0.5, 0.84]
     for i, name in enumerate(target_names):
         pred_array = ys_pred[i]
         for q_idx, quantile in enumerate(quantiles):
@@ -72,13 +73,9 @@ def main():
     for i, name in enumerate(target_names):
         up = pred_df[f'{name}_q84']
         down = pred_df[f'{name}_q16']
-        ground_truth = y_test[:, i]
         err = up - down
         pred = pred_df[f'{name}_q50']
-        correct_predictions = np.abs(pred - ground_truth) < err
-        proba = len(ground_truth[correct_predictions])/len(ground_truth)
         print(f'Target {name}:')
-        print(f'\tprediction coverage probability: {proba:.2f}')
         print(f'\tquantile crossing fraction: {len(err[err < 0.0])/len(err):.2f}')
 
         bins = np.linspace(np.min(err) - 10, np.max(err) + 10, 50)
