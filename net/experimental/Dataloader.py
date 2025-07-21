@@ -161,8 +161,10 @@ class Dataloader:
         df = pd.concat([self.LoadObjects(tree), self.LoadBranches(tree)], axis=1)
 
         if apply_selections:
-            df = self.ComputeCutflow(df)
-            df = self.ApplySelections(df, self.loader_cfg['plot_cutflow'])
+            is_bkg = np.all(df['sample_type'] > 4)
+            df = self.ComputeCutflow(df, is_bkg)
+            if not is_bkg:
+                df = self.ApplySelections(df, self.loader_cfg['plot_cutflow'])
 
         if append:
             self.df = pd.concat([self.df, df], axis=0)
@@ -185,39 +187,52 @@ class Dataloader:
         cols_to_drop = [col for col in self.df.columns if col not in self.input_names + self.target_names]
         self.df.drop(cols_to_drop, axis=1, inplace=True)
 
-    def ComputeCutflow(self, df):
-        # compute high-level kinematics needed for selections using p4_cache
-        cut_dict = {}
-        cut_dict['b1_accept_pt'] = self.p4_cache['genb1'].pt > 20
-        cut_dict['b2_accept_pt'] = self.p4_cache['genb2'].pt > 20
-        cut_dict['b1_accept_eta'] = np.abs(self.p4_cache['genb1'].eta) < 2.5
-        cut_dict['b2_accept_eta'] = np.abs(self.p4_cache['genb2'].eta) < 2.5
-        cut_dict['genb1_accept'] = np.logical_and(cut_dict['b1_accept_pt'], cut_dict['b1_accept_eta'])
-        cut_dict['genb2_accept'] = np.logical_and(cut_dict['b2_accept_pt'], cut_dict['b2_accept_eta'])
-        cut_dict['genb_accept'] = np.logical_and(cut_dict['genb1_accept'], cut_dict['genb2_accept'])
-        cut_dict['bb_dr'] = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
-        cut_dict['mindR_b1_Jet'] = ak.min(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        cut_dict['mindR_b2_Jet'] = ak.min(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        cut_dict['b1_match_idx'] = ak.argmin(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        cut_dict['b2_match_idx'] = ak.argmin(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        cut_dict['has_two_matches'] = np.logical_and(cut_dict['mindR_b1_Jet'] < 0.4, cut_dict['mindR_b2_Jet'] < 0.4)
-        cut_dict['mindR_Hbb_FatJet'] = ak.min(self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
-        cut_dict['is_boosted'] = cut_dict['bb_dr'] < 0.8
-        cut_dict['is_resolved'] = ~cut_dict['is_boosted']
-        cut_dict['reco_as_boosted'] = np.logical_and(cut_dict['mindR_Hbb_FatJet'] < 0.8, df['nSelectedFatJet'] >= 1)
-        cut_dict['reco_2b'] = np.logical_and(cut_dict['has_two_matches'], cut_dict['b1_match_idx'] != cut_dict['b2_match_idx'])
-        cut_dict['reco_as_resolved'] = np.logical_and(cut_dict['reco_2b'], df['ncentralJet'] >= 2)
-        cut_dict['successful_jet_reco'] = np.logical_or(cut_dict['reco_as_resolved'], cut_dict['reco_as_boosted'])
-        cut_dict['reco_lep1'] = np.logical_and(self.p4_cache['lep1'].pt > 0.0, df['lep1_legType'] == df['lep1_gen_kind'])
-        cut_dict['reco_lep2'] = np.logical_and(self.p4_cache['lep2'].pt > 0.0, df['lep2_legType'] == df['lep2_gen_kind'])
-        cut_dict['successful_lep_reco'] = np.logical_and(cut_dict['reco_lep1'], cut_dict['reco_lep2'])
-        cut_dict['successful_reco'] = np.logical_and(cut_dict['successful_lep_reco'], cut_dict['successful_jet_reco'])
+    def ComputeUniversalCuts(self, df, cuts):
+        # compute cuts applicable to both signal and bkg sample
+        cuts['reco_lep1'] = np.logical_and(self.p4_cache['lep1'].pt > 0.0, df['lep1_legType'] == df['lep1_gen_kind'])
+        cuts['reco_lep2'] = np.logical_and(self.p4_cache['lep2'].pt > 0.0, df['lep2_legType'] == df['lep2_gen_kind'])
+        cuts['successful_lep_reco'] = np.logical_and(cuts['reco_lep1'], cuts['reco_lep2'])
+        return cuts
 
+    def ComputeSignalCuts(self, df, cuts):
+        # compute signal specific cuts
+        cuts['b1_accept_pt'] = self.p4_cache['genb1'].pt > 20
+        cuts['b2_accept_pt'] = self.p4_cache['genb2'].pt > 20
+        cuts['b1_accept_eta'] = np.abs(self.p4_cache['genb1'].eta) < 2.5
+        cuts['b2_accept_eta'] = np.abs(self.p4_cache['genb2'].eta) < 2.5
+        cuts['genb1_accept'] = np.logical_and(cuts['b1_accept_pt'], cuts['b1_accept_eta'])
+        cuts['genb2_accept'] = np.logical_and(cuts['b2_accept_pt'], cuts['b2_accept_eta'])
+        cuts['genb_accept'] = np.logical_and(cuts['genb1_accept'], cuts['genb2_accept'])
+        cuts['bb_dr'] = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
+        cuts['mindR_b1_Jet'] = ak.min(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cuts['mindR_b2_Jet'] = ak.min(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cuts['b1_match_idx'] = ak.argmin(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cuts['b2_match_idx'] = ak.argmin(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
+        cuts['has_two_matches'] = np.logical_and(cuts['mindR_b1_Jet'] < 0.4, cuts['mindR_b2_Jet'] < 0.4)
+        cuts['mindR_Hbb_FatJet'] = ak.min(self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
+        cuts['is_boosted'] = cuts['bb_dr'] < 0.8
+        cuts['is_resolved'] = ~cuts['is_boosted']
+        cuts['reco_as_boosted'] = np.logical_and(cuts['mindR_Hbb_FatJet'] < 0.8, df['nSelectedFatJet'] >= 1)
+        cuts['reco_2b'] = np.logical_and(cuts['has_two_matches'], cuts['b1_match_idx'] != cuts['b2_match_idx'])
+        cuts['reco_as_resolved'] = np.logical_and(cuts['reco_2b'], df['ncentralJet'] >= 2)
+        cuts['successful_jet_reco'] = np.logical_or(cuts['reco_as_resolved'], cuts['reco_as_boosted'])
+        cuts['successful_reco'] = np.logical_and(cuts['successful_lep_reco'], cuts['successful_jet_reco'])
+        return cuts
+
+    def ComputeCutflow(self, df, is_bkg):
+        # I want it to return list of cuts it computed in certain order for plotting cutflow
+        cut_dict = {}
+        cut_dict = self.ComputeUniversalCuts(df, cut_dict)
+        
+        if not is_bkg:
+            cut_dict.update(self.ComputeSignalCuts(df, cut_dict))
+    
         cut_df = pd.DataFrame.from_dict(cut_dict)
         df = pd.concat([df, cut_df], axis=1)
         return df
 
     def ApplySelections(self, df, plot_cutflow):
+        # I want to rewrite this one as loop over cuts to be applied
         if not plot_cutflow:
             df = df[df['successful_reco']]
             return df
