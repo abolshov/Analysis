@@ -48,12 +48,13 @@ def PlotHist(bins=np.linspace(0, 250, 100), **kwargs):
     plt.hist(kwargs['data'], bins=bins)
     plt.title(kwargs['title'])
     plt.ylabel(kwargs['ylabel'])
-    plt.xlabel(kwargs['ylabel'])
+    plt.xlabel(kwargs['xlabel'])
     plt.grid(True)
 
     text_y = 0.8
     if 'peak' in kwargs.keys() and kwargs['peak']:
         plt.figtext(0.75, text_y, f"peak: {PredPeak(kwargs['data']):.2f}")
+        text_y -= 0.05
     if 'width' in kwargs.keys() and kwargs['width']:
         plt.figtext(0.75, text_y, f"width: {PredWidth(kwargs['data']):.2f}")
         text_y -= 0.05
