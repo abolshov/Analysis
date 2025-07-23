@@ -19,8 +19,12 @@ def PlotMetric(history, model, metric, plotting_dir=None):
     plt.clf()
 
 
-def PlotCompare2D(target, output, quantity, plotting_dir=None):
+def PlotCompare2D(target, output, quantity, quantile=None, plotting_dir=None):
     plt.grid(False)
+
+    plot_name_tokens = ['cmp2d', quantity]
+    if quantile:
+        plot_name_tokens.append(f'q{quantile}')
     
     min_target = np.min(target)
     min_output = np.min(output)
@@ -37,10 +41,12 @@ def PlotCompare2D(target, output, quantity, plotting_dir=None):
     plt.title(f'{var} comparison')
     plt.ylabel(f'predicted {ground_truth_map[quantity]}')
     plt.xlabel(f'true {ground_truth_map[quantity]}')
+
+    plot_name = '_'.join(plot_name_tokens)
     if plotting_dir:
-        plt.savefig(os.path.join(plotting_dir, f"cmp2d_{quantity}.pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(plotting_dir, f'{plot_name}.pdf'), bbox_inches='tight')
     else:
-        plt.savefig(f"cmp2d_{quantity}.pdf", bbox_inches='tight')
+        plt.savefig(f'{plot_name}.pdf', bbox_inches='tight')
     plt.clf()
 
 

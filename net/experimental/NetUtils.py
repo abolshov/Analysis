@@ -11,7 +11,7 @@ class TrainableSiLU(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         self.beta = self.add_weight(
-            name='beta',
+            # name='beta',
             shape=(self.units,),
             initializer='ones',  # Initialize beta to 1.0
             trainable=True,
