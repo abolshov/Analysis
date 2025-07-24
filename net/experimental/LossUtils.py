@@ -173,7 +173,8 @@ class DeltaPhiLoss(tf.keras.losses.Loss):
         dphi = y_true - y_pred
         dphi = tf.where(dphi > pi, dphi - 2*pi, dphi)
         dphi = tf.where(dphi <= -pi, dphi + 2*pi, dphi)
-        return self.log_cosh(dphi, 0.0)
+        loss = self.log_cosh(dphi, 0.0)
+        return loss
 
 
 class CombinedEnergyLoss(tf.keras.losses.Loss):
@@ -217,3 +218,103 @@ class CombinedEnergyLoss(tf.keras.losses.Loss):
     @classmethod
     def from_config(cls, config):
         return cls(**config)
+
+
+class PtEtaPhiELoss(tf.keras.losses.Loss):
+    def __init__(self, quantile=None, log=False, name="PtEtaPhiELoss_loss", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.log_cosh = tf.keras.losses.LogCosh()
+        self.quantile = quantile
+        self.log = log
+
+    def call(self, y_true, y_pred):
+        # y_true: [pt, eta, phi, E]
+        # y_pred: [px, py, pz, dE]
+        
+        energy_loss = None
+        en_pred = tf.sqrt(tf.square(mh) + tf.reduce_sum(tf.square(y_pred[:, :3]), axis=1))
+        if self.log:
+            energy_loss = self.log_cosh(tf.math.log(y_true[:, 3] + 10), tf.math.log(en_pred + 10))
+        else:
+            energy_loss = self.log_cosh(y_true[:, 3], en_pred)
+        
+        if self.quantile:
+            def Heaviside(x):
+                return 0.5*(1 + tf.sign(x))
+
+            def QR(q, x, mu):
+                return (x - mu)*(q*Heaviside(x - mu) + (1 - q)*Heaviside(mu - x))
+
+            dE_pred = tf.nn.softplus(y_pred[:, 3])
+            qr1 = QR(0.5*(1 - self.quantile), tf.math.log(y_true[:, 3] + 10), tf.math.log(en_pred + 10) - tf.math.log(dE_pred + 10))
+            qr2 = QR(0.5*(1 + self.quantile), tf.math.log(y_true[:, 3] + 10), tf.math.log(en_pred + 10) + tf.math.log(dE_pred + 10))
+            energy_error_loss = qr1 + qr2
+            energy_loss = energy_loss + energy_error_loss
+
+        pt_loss = None
+        p2_pred = y_pred[:, :2]
+        pt_pred = tf.sqrt(tf.reduce_sum(tf.square(p2_pred), axis=1))
+        # tf.print(pt_pred)
+        pt_true = y_true[:, 0]
+        # tf.print(pt_true)
+        if self.log:
+            pt_loss = self.log_cosh(tf.math.log(pt_true + 10), tf.math.log(pt_pred + 10))
+        else:
+            pt_loss = self.log_cosh(pt_true, pt_pred)
+
+        # tf.print(pt_loss)
+
+        eta_loss = None
+        p3_pred = y_pred[:, :3]
+        mod_pred = tf.sqrt(tf.reduce_sum(tf.square(p3_pred), axis=1))
+        eta_pred = tf.atanh(p3_pred[:, -1]/mod_pred) 
+        eta_true = y_true[:, 1]
+        eta_loss = self.log_cosh(eta_true, eta_pred)
+
+        # tf.print(eta_loss[0])
+
+        phi_loss = None
+        phi_pred = tf.atan2(p3_pred[:, 1], p3_pred[:, 0])
+        dphi = y_true[:, 2] - phi_pred
+        dphi = tf.where(dphi > pi, dphi - 2*pi, dphi)
+        dphi = tf.where(dphi <= -pi, dphi + 2*pi, dphi)
+        phi_loss = self.log_cosh(dphi, 0.0)
+
+        # print('phi_loss:')
+        # tf.print(phi_loss[0])
+
+        # print('----------------------')
+
+        total_loss = pt_loss + energy_loss + eta_loss + phi_loss
+        return total_loss
+        
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'quantile': self.quantile,
+                       'log': self.log})
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+
+
+class MultiheadLoss(tf.keras.losses.Loss):
+    def __init__(self, name="multihead_loss", **kwargs):
+        super().__init__(name=name, **kwargs)
+
+    def call(self, y_true, y_pred):
+        # each head outputs num_quantiles predictions for 1 variable
+        # y_true: list of 8 tensors (batch_size, num_quantiles)
+        # y_true: list of 8 tensors (batch_size, )
+
+        central_pred = y_pred[:, ::3]
+
+        print(y_true.shape)
+        print(central_pred.shape)
+
+        return 0.0
+
+
+        

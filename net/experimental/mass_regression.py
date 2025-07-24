@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 
 from Dataloader import Dataloader
 from NetUtils import TrainableSiLU
-from LossUtils import QuantileLoss
+from LossUtils import QuantileLoss, MultiheadLoss
 from LayerUtils import EnergyLayer, QuantileOrderingLayer
 
 
@@ -28,13 +28,14 @@ def main():
         files = [line[:-1] for line in file_cfg.readlines()]
 
     dataloader = Dataloader('dataloader_config.yaml')
-    dataloader.Load(files)
+    # dataloader.Load(files)
+    dataloader.Load('../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root')
     X_train, input_names, y_train, target_names = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
     params['input_names'] = input_names
     params['target_names'] = target_names
 
-    standardize = True
+    standardize = False
     params['standardize'] = standardize
     params['target_train_means'] = None
     params['target_train_scales'] = None
@@ -60,7 +61,7 @@ def main():
 
     model_name = 'model'
     params['model_name'] = model_name
-    model_dir = 'model_dilep_single_output'
+    model_dir = 'miultihead_loss_test'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -70,20 +71,20 @@ def main():
     num_units = 384
     num_layers = 12
     l2_strength = 0.01
-    # quantiles = [0.16, 0.5, 0.84]
-    # num_quantiles = len(quantiles)
-    quantiles = None
+    quantiles = [0.16, 0.5, 0.84]
+    # quantiles = None
     num_quantiles = len(quantiles) if quantiles else 1
     epochs = 50
     batch_size = 4096
-    batch_norm = True
+    batch_norm = False
     momentum = 0.01
     bn_eps = 0.01
     learning_rate = 1e-4
     use_energy_layer = False
-    use_quantile_ordering = False
-    use_quantile_width_penalty = False
+    use_quantile_ordering = True
+    use_quantile_width_penalty = True
     num_output_units = num_quantiles
+    add_mass_loss = True
 
     params['input_shape'] = list(input_shape)
     params['num_units'] = num_units
@@ -101,6 +102,7 @@ def main():
     params['use_quantile_ordering'] = use_quantile_ordering
     params['use_quantile_width_penalty'] = use_quantile_width_penalty
     params['num_output_units'] = num_output_units
+    params['add_mass_loss'] = add_mass_loss
     
     # individual width penalty rates
     # some errors are overestimated, others are underestimated
@@ -211,6 +213,14 @@ def main():
         loss_weights['genHbb_E'] = 1.0
         loss_weights['genHVV_E'] = 1.0
 
+    if add_mass_loss:
+        # mass loss needs outputs from all heads => concatenate heads into list of tensors and append to outputs
+        ys_train.append(y_train)
+        combined_outputs = tf.keras.layers.Concatenate(name='combined')(outputs)
+        outputs.append(combined_outputs)
+        losses['combined'] = MultiheadLoss()
+        loss_weights['combined'] = 1.0
+
     params['loss_names'] = loss_names
     params['loss_weights'] = loss_weights
 
@@ -282,14 +292,17 @@ def main():
 
     pred_df = pd.DataFrame.from_dict(pred_dict)
 
-    bins = np.linspace(0, 2000, 100)
     if quantiles:
         for quantile in quantiles:
             q = int(100*quantile)
 
             for i, col in enumerate(target_names):
                 ground_truth = y_test[:, i]
-                PlotCompare2D(ground_truth, pred_df[f'{col}_q{q}'], col, q, plotting_dir=plotting_dir)
+                output = pred_df[f'{col}_q{q}']
+                bin_left = np.min([np.quantile(ground_truth, 0.05), np.quantile(output, 0.05)]) - 1.0
+                bin_right = np.max([np.quantile(ground_truth, 0.95), np.quantile(output, 0.95)]) + 1.0
+                bins = np.linspace(bin_left, bin_right, 100)
+                PlotCompare2D(ground_truth, output, col, bins=bins, quantile=q, plotting_dir=plotting_dir)
 
             X_E_pred = pred_df[f"genHbb_E_q{q}"] + pred_df[f"genHVV_E_q{q}"]
             X_px_pred = pred_df[f"genHbb_px_q{q}"] + pred_df[f"genHVV_px_q{q}"]
@@ -302,7 +315,7 @@ def main():
 
             X_mass_pred = np.sqrt(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])
             PlotHist(data=X_mass_pred, 
-                     bins=bins,
+                     bins=np.linspace(0, 2000, 100),
                      title="Predicted X->HH mass",
                      ylabel='Count',
                      xlabel='Mass, [GeV]',
@@ -314,7 +327,10 @@ def main():
     else:
         for i, col in enumerate(target_names):
                 ground_truth = y_test[:, i]
-                PlotCompare2D(ground_truth, pred_df[col], col, plotting_dir=plotting_dir)
+                bin_left = np.min([np.quantile(ground_truth, 0.05), np.quantile(pred_df[col], 0.05)]) - 1.0
+                bin_right = np.max([np.quantile(ground_truth, 0.95), np.quantile(pred_df[col], 0.95)]) + 1.0
+                bins = np.linspace(bin_left, bin_right, 100)
+                PlotCompare2D(ground_truth, pred_df[col], col, bins=bins, plotting_dir=plotting_dir)
 
         X_E_pred = pred_df["genHbb_E"] + pred_df["genHVV_E"]
         X_px_pred = pred_df["genHbb_px"] + pred_df["genHVV_px"]
@@ -327,7 +343,7 @@ def main():
 
         X_mass_pred = np.sqrt(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])
         PlotHist(data=X_mass_pred, 
-                bins=bins,
+                bins=np.linspace(0, 2000, 100),
                 title="Predicted X->HH mass",
                 ylabel='Count',
                 xlabel='Mass, [GeV]',
@@ -351,7 +367,9 @@ def main():
             print(f'\tprediction coverage probability: {proba:.2f}')
             print(f'\tquantile crossing fraction: {len(err[err < 0.0])/len(err):.2f}')
 
-            bins = np.linspace(np.min(err) - 10, np.max(err) + 10, 50)
+            bin_left = np.quantile(err, 0.05) - 1.0
+            bin_right = np.quantile(err, 0.95) + 1.0
+            bins = np.linspace(bin_left, bin_right, 50)
             PlotHist(data=err, 
                     bins=bins,
                     title=f'Predicted {name} error',
