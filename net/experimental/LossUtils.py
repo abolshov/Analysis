@@ -303,18 +303,31 @@ class PtEtaPhiELoss(tf.keras.losses.Loss):
 class MultiheadLoss(tf.keras.losses.Loss):
     def __init__(self, name="multihead_loss", **kwargs):
         super().__init__(name=name, **kwargs)
+        self.mae = tf.keras.losses.MAE
 
     def call(self, y_true, y_pred):
         # each head outputs num_quantiles predictions for 1 variable
-        # y_true: list of 8 tensors (batch_size, num_quantiles)
+        # y_pred: list of 8 tensors (batch_size, num_quantiles)
         # y_true: list of 8 tensors (batch_size, )
 
         central_pred = y_pred[:, ::3]
 
-        print(y_true.shape)
-        print(central_pred.shape)
+        # take in constructor: num_prediction?
+        # 4 -> num predictions
+        # bc if energy layer is used it will be 3
+        true_hbb = y_true[:, 4:]
+        true_hvv = y_true[:, :4]
+        true_x = true_hbb + true_hvv
+        true_x_mass = tf.sqrt(tf.square(true_x[:, 3]) - tf.reduce_sum(tf.square(true_x[:, :3]), axis=1))
 
-        return 0.0
+        pred_hbb = central_pred[:, 4:]
+        pred_hvv = central_pred[:, :4]
+        pred_x = pred_hbb + pred_hvv
+        pred_x_mass_sqr = tf.square(pred_x[:, 3]) - tf.reduce_sum(tf.square(pred_x[:, :3]), axis=1)
+        pred_x_mass = tf.sign(tf.sqrt(tf.abs(pred_x_mass_sqr)))
+        
+        loss = self.mae(true_x_mass, pred_x_mass)
+        return loss
 
 
         
