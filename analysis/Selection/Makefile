@@ -8,7 +8,7 @@ TARGET   := libSelection.so
 INCLUDE  := -Iinclude/
 SRC      := $(wildcard src/*.cpp)
 
-LIBS     := Readout
+LIBS     := Readout Utils
 LIBS_DIR := $(foreach lib,$(LIBS),../$(lib)/build/libs/)
 INCLUDE  += $(foreach lib,$(LIBS),-I../$(lib)/include/)
 LDFLAGS  += $(foreach dir,$(LIBS_DIR),-L$(dir)) $(foreach lib,$(LIBS),-l$(lib))
