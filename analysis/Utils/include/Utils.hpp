@@ -3,6 +3,9 @@
 
 #include <string>
 
+// implementation taken from https://cpp-optimizations.netlify.app/strings_concatenation/
+// with minor correction
+
 //--- functions to calculate the total size ---
 size_t StrSize(const char* str) 
 {
