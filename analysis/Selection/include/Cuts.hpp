@@ -7,17 +7,7 @@
 class BQuarkAcceptCut final : public Specification<Event>
 {
     public:
-    BQuarkAcceptCut(Float_t pt, Float_t eta)
-    :   m_pt(pt)
-    ,   m_eta(eta)
-    {}
-
-    BQuarkAcceptCut(std::string name, std::string description, Float_t pt, Float_t eta)
-    :   Specification<Event>(name, description)
-    ,   m_pt(pt)
-    ,   m_eta(eta)
-    {}
-
+    BQuarkAcceptCut(Float_t pt, Float_t eta);
     bool IsSatisfied(Event const& event) override;
 
     private:

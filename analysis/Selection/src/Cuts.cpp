@@ -1,5 +1,12 @@
 #include "Cuts.hpp"
 #include "ReadoutConstants.hpp"
+#include "Utils.hpp"
+
+BQuarkAcceptCut::BQuarkAcceptCut(Float_t pt, Float_t eta)
+    :   Specification<Event>("bquark_accept_cut", StrCat("pt > ", std::to_string(pt), " && abs(eta) < ", std::to_string(eta)))
+    ,   m_pt(pt)
+    ,   m_eta(eta)
+    {}
 
 bool BQuarkAcceptCut::IsSatisfied(Event const& event)
 {
