@@ -301,20 +301,26 @@ class PtEtaPhiELoss(tf.keras.losses.Loss):
 
 
 class MultiheadLoss(tf.keras.losses.Loss):
-    def __init__(self, name="multihead_loss", **kwargs):
+    def __init__(self, num_quantiles=1, scales=None, means=None, name="multihead_loss", **kwargs):
         super().__init__(name=name, **kwargs)
         self.mae = tf.keras.losses.MAE
+        self.num_quantiles = num_quantiles
+        self.scales = scales
+        self.means = means
 
     def call(self, y_true, y_pred):
         # each head outputs num_quantiles predictions for 1 variable
-        # y_pred: list of 8 tensors (batch_size, num_quantiles)
-        # y_true: list of 8 tensors (batch_size, )
+        # y_pred: list of 8 tensors (batch_size, num_quantiles) each 
+        # y_true: (batch_size, 8)
 
-        central_pred = y_pred[:, 1::3]
+        # central quantile must be in the middle
+        central_quantile = self.num_quantiles // 2
+        central_pred = y_pred[:, central_quantile::self.num_quantiles]
 
-        # take in constructor: num_prediction?
-        # 4 -> num predictions
-        # bc if energy layer is used it will be 3
+        if self.means and self.scales:
+            central_pred = central_pred*scales + means
+            y_true = y_true*scales + means
+
         true_hbb = y_true[:, 4:]
         true_hvv = y_true[:, :4]
         true_x = true_hbb + true_hvv
@@ -329,5 +335,15 @@ class MultiheadLoss(tf.keras.losses.Loss):
         loss = self.mae(true_x_mass, pred_x_mass)
         return loss
 
+    def get_config(self):
+        config = super().get_config()
+        config.update({'num_quantiles': self.num_quantiles,
+                       'scales': self.scales,
+                       'means': self.means})
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
 
         

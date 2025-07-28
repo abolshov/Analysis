@@ -37,7 +37,7 @@ def main():
     params['input_names'] = input_names
     params['target_names'] = target_names
 
-    standardize = True
+    standardize = False
     params['standardize'] = standardize
     params['target_train_means'] = None
     params['target_train_scales'] = None
@@ -72,21 +72,20 @@ def main():
     input_shape = X_train.shape[1:]
     num_units = 384
     num_layers = 12
-    l2_strength = 0.01
+    l2_strength = 0.1
     quantiles = [0.16, 0.5, 0.84]
-    # quantiles = None
     num_quantiles = len(quantiles) if quantiles else 1
-    epochs = 50
-    batch_size = 512
-    batch_norm = True
+    epochs = 100
+    batch_size = 256
+    batch_norm = False
     momentum = 0.01
     bn_eps = 0.01
-    learning_rate = 1e-4
-    use_energy_layer = False
-    use_quantile_ordering = True
+    learning_rate = 3e-4
+    use_energy_layer = True
+    use_quantile_ordering = False
     use_quantile_width_penalty = True
     num_output_units = num_quantiles
-    add_mass_loss = False
+    add_mass_loss = True
 
     params['input_shape'] = list(input_shape)
     params['num_units'] = num_units
@@ -179,7 +178,8 @@ def main():
             output = tf.keras.layers.Dense(num_output_units, name=target_name)(x)
         outputs.append(output)
 
-        loss_weights[target_name] = 1.0
+        loss_weights[target_name] = 0.675
+        # loss_weights[target_name] = 1.0
 
     if use_energy_layer:
         # energy layer of H->bb takes outputs of heads producing p3 of H->bb, but not the rest of the model
@@ -199,29 +199,35 @@ def main():
             hvv_means = target_scaler.mean_[:4]
             hvv_scales = target_scaler.scale_[:4]
 
+        hbb_energy_input = tf.keras.layers.Concatenate(name='hbb_energy_input')(outputs[3:])
         hbb_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
                                        normalize=batch_norm, 
                                        means=hbb_means,
                                        scales=hbb_scales,
-                                       name='genHbb_E')(tf.concat(outputs[3:], axis=-1))
+                                       name='genHbb_E')(hbb_energy_input)
+        
+        hvv_energy_input = tf.keras.layers.Concatenate(name='hvv_energy_input')(outputs[:3])
         hvv_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
                                        normalize=batch_norm, 
                                        means=hvv_means,
                                        scales=hvv_scales,
-                                       name='genHVV_E')(tf.concat(outputs[:3], axis=-1))
+                                       name='genHVV_E')(hvv_energy_input)
+        
         outputs.insert(hvv_en_idx, hvv_energy_layer)
         outputs.insert(hbb_en_idx, hbb_energy_layer)
 
-        loss_weights['genHbb_E'] = 1.0
-        loss_weights['genHVV_E'] = 1.0
+        # loss_weights['genHbb_E'] = 1.0
+        # loss_weights['genHVV_E'] = 1.0
+        loss_weights['genHbb_E'] = 0.225
+        loss_weights['genHVV_E'] = 0.225
 
     if add_mass_loss:
         # mass loss needs outputs from all heads => concatenate heads into list of tensors and append to outputs
         ys_train.append(y_train)
         combined_outputs = tf.keras.layers.Concatenate(name='combined')(outputs)
         outputs.append(combined_outputs)
-        losses['combined'] = MultiheadLoss()
-        loss_weights['combined'] = 1.0
+        losses['combined'] = MultiheadLoss(num_quantiles=num_quantiles)
+        loss_weights['combined'] = 0.1
 
     params['loss_names'] = loss_names
     params['loss_weights'] = loss_weights
@@ -277,7 +283,7 @@ def main():
                     arr *= target_scaler.scale_[pred_idx]
                     arr += target_scaler.mean_[pred_idx]
 
-    # assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
+    assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
 
     # ys_pred is a list of np arrays of shape (num_events, num_quantiles) if quantile regression
     # or (num_events, 1) if normal regression
@@ -295,42 +301,41 @@ def main():
     pred_df = pd.DataFrame.from_dict(pred_dict)
 
     if quantiles:
-        for quantile in quantiles:
-            q = int(100*quantile)
+        q = int(100*0.5)
 
-            for i, col in enumerate(target_names):
-                ground_truth = y_test[:, i]
-                output = pred_df[f'{col}_q{q}']
-                bin_left = np.min([np.quantile(ground_truth, 0.05), np.quantile(output, 0.05)]) - 1.0
-                bin_right = np.max([np.quantile(ground_truth, 0.95), np.quantile(output, 0.95)]) + 1.0
-                bins = np.linspace(bin_left, bin_right, 100)
-                PlotCompare2D(ground_truth, output, col, bins=bins, quantile=q, plotting_dir=plotting_dir)
+        for i, col in enumerate(target_names):
+            ground_truth = y_test[:, i]
+            output = pred_df[f'{col}_q{q}']
+            bin_left = np.min([np.quantile(ground_truth, 0.01), np.quantile(output, 0.01)]) - 1.0
+            bin_right = np.max([np.quantile(ground_truth, 0.99), np.quantile(output, 0.99)]) + 1.0
+            bins = np.linspace(bin_left, bin_right, 100)
+            PlotCompare2D(ground_truth, output, col, bins=bins, quantile=q, plotting_dir=plotting_dir)
 
-            X_E_pred = pred_df[f"genHbb_E_q{q}"] + pred_df[f"genHVV_E_q{q}"]
-            X_px_pred = pred_df[f"genHbb_px_q{q}"] + pred_df[f"genHVV_px_q{q}"]
-            X_py_pred = pred_df[f"genHbb_py_q{q}"] + pred_df[f"genHVV_py_q{q}"]
-            X_pz_pred = pred_df[f"genHbb_pz_q{q}"] + pred_df[f"genHVV_pz_q{q}"]
+        X_E_pred = pred_df[f"genHbb_E_q{q}"] + pred_df[f"genHVV_E_q{q}"]
+        X_px_pred = pred_df[f"genHbb_px_q{q}"] + pred_df[f"genHVV_px_q{q}"]
+        X_py_pred = pred_df[f"genHbb_py_q{q}"] + pred_df[f"genHVV_py_q{q}"]
+        X_pz_pred = pred_df[f"genHbb_pz_q{q}"] + pred_df[f"genHVV_pz_q{q}"]
 
-            X_mass_pred_sqr = X_E_pred**2 - X_px_pred**2 - X_py_pred**2 - X_pz_pred**2
-            X_mass_sqr_pos = X_mass_pred_sqr[X_mass_pred_sqr > 0.0]
-            print(f"quantile {q}: positive mass fraction: {len(X_mass_sqr_pos)}/{len(X_mass_pred_sqr)}={len(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])/len(X_mass_pred_sqr):.3f}")
+        X_mass_pred_sqr = X_E_pred**2 - X_px_pred**2 - X_py_pred**2 - X_pz_pred**2
+        X_mass_sqr_pos = X_mass_pred_sqr[X_mass_pred_sqr > 0.0]
+        print(f"positive mass fraction: {len(X_mass_sqr_pos)}/{len(X_mass_pred_sqr)}={len(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])/len(X_mass_pred_sqr):.3f}")
 
-            X_mass_pred = np.sqrt(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])
-            PlotHist(data=X_mass_pred, 
-                     bins=np.linspace(0, 2000, 100),
-                     title="Predicted X->HH mass",
-                     ylabel='Count',
-                     xlabel='Mass, [GeV]',
-                     plotting_dir=plotting_dir,
-                     peak=True,
-                     width=True,
-                     count=True,
-                     file_name=f'pred_mass_q{q}')
+        X_mass_pred = np.sqrt(X_mass_pred_sqr[X_mass_pred_sqr > 0.0])
+        PlotHist(data=X_mass_pred, 
+                 bins=np.linspace(0, 2000, 100),
+                 title="Predicted X->HH mass",
+                 ylabel='Count',
+                 xlabel='Mass, [GeV]',
+                 plotting_dir=plotting_dir,
+                 peak=True,
+                 width=True,
+                 count=True,
+                 file_name='pred_mass')
     else:
         for i, col in enumerate(target_names):
                 ground_truth = y_test[:, i]
-                bin_left = np.min([np.quantile(ground_truth, 0.05), np.quantile(pred_df[col], 0.05)]) - 1.0
-                bin_right = np.max([np.quantile(ground_truth, 0.95), np.quantile(pred_df[col], 0.95)]) + 1.0
+                bin_left = np.min([np.quantile(ground_truth, 0.01), np.quantile(pred_df[col], 0.01)]) - 1.0
+                bin_right = np.max([np.quantile(ground_truth, 0.99), np.quantile(pred_df[col], 0.99)]) + 1.0
                 bins = np.linspace(bin_left, bin_right, 100)
                 PlotCompare2D(ground_truth, pred_df[col], col, bins=bins, plotting_dir=plotting_dir)
 
@@ -369,8 +374,8 @@ def main():
             print(f'\tprediction coverage probability: {proba:.2f}')
             print(f'\tquantile crossing fraction: {len(err[err < 0.0])/len(err):.2f}')
 
-            bin_left = np.quantile(err, 0.05) - 1.0
-            bin_right = np.quantile(err, 0.95) + 1.0
+            bin_left = np.quantile(err, 0.01) - 1.0
+            bin_right = np.quantile(err, 0.99) + 1.0
             bins = np.linspace(bin_left, bin_right, 50)
             PlotHist(data=err, 
                     bins=bins,
