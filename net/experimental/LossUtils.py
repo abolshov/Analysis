@@ -324,7 +324,7 @@ class MultiheadLoss(tf.keras.losses.Loss):
         pred_hvv = central_pred[:, :4]
         pred_x = pred_hbb + pred_hvv
         pred_x_mass_sqr = tf.square(pred_x[:, 3]) - tf.reduce_sum(tf.square(pred_x[:, :3]), axis=1)
-        pred_x_mass = tf.sign(tf.sqrt(tf.abs(pred_x_mass_sqr)))
+        pred_x_mass = tf.sign(pred_x_mass_sqr)*(tf.sqrt(tf.abs(pred_x_mass_sqr)))
         
         loss = self.mae(true_x_mass, pred_x_mass)
         return loss
