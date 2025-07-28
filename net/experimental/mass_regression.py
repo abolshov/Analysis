@@ -24,18 +24,20 @@ def main():
     params = {}
 
     files = []
-    with open('dl_train_files.txt', 'r') as file_cfg:
+    # input_files = 'dl_train_files.txt'
+    input_files = 'files_Run3_2022.txt'
+    with open(input_files, 'r') as file_cfg:
         files = [line[:-1] for line in file_cfg.readlines()]
 
     dataloader = Dataloader('dataloader_config.yaml')
-    # dataloader.Load(files)
-    dataloader.Load('../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root')
+    dataloader.Load(files)
+    # dataloader.Load('../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root')
     X_train, input_names, y_train, target_names = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
 
     params['input_names'] = input_names
     params['target_names'] = target_names
 
-    standardize = False
+    standardize = True
     params['standardize'] = standardize
     params['target_train_means'] = None
     params['target_train_scales'] = None
@@ -75,8 +77,8 @@ def main():
     # quantiles = None
     num_quantiles = len(quantiles) if quantiles else 1
     epochs = 50
-    batch_size = 4096
-    batch_norm = False
+    batch_size = 512
+    batch_norm = True
     momentum = 0.01
     bn_eps = 0.01
     learning_rate = 1e-4
@@ -84,7 +86,7 @@ def main():
     use_quantile_ordering = True
     use_quantile_width_penalty = True
     num_output_units = num_quantiles
-    add_mass_loss = True
+    add_mass_loss = False
 
     params['input_shape'] = list(input_shape)
     params['num_units'] = num_units
@@ -155,10 +157,10 @@ def main():
         target_array = y_train[:, idx]
         target_array = np.reshape(target_array, (-1, 1))
 
-        # losses[target_name] = QuantileLoss(quantiles=quantiles, 
-        #                                    width_penalty_rate=width_penalty_rates[target_name], 
-        #                                    name=f'quantile_loss_{target_name}')
-        losses[target_name] = tf.keras.losses.LogCosh()
+        losses[target_name] = QuantileLoss(quantiles=quantiles, 
+                                           width_penalty_rate=width_penalty_rates[target_name], 
+                                           name=f'quantile_loss_{target_name}')
+        # losses[target_name] = tf.keras.losses.LogCosh()
         loss_names[target_name] = losses[target_name].name
 
         # repeat each target array num_quantiles times so that each output node has ground truth value
@@ -275,7 +277,7 @@ def main():
                     arr *= target_scaler.scale_[pred_idx]
                     arr += target_scaler.mean_[pred_idx]
 
-    assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
+    # assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
 
     # ys_pred is a list of np arrays of shape (num_events, num_quantiles) if quantile regression
     # or (num_events, 1) if normal regression
