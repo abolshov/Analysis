@@ -310,7 +310,7 @@ class MultiheadLoss(tf.keras.losses.Loss):
         # y_pred: list of 8 tensors (batch_size, num_quantiles)
         # y_true: list of 8 tensors (batch_size, )
 
-        central_pred = y_pred[:, ::3]
+        central_pred = y_pred[:, 1::3]
 
         # take in constructor: num_prediction?
         # 4 -> num predictions
