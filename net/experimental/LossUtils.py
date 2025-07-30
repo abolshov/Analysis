@@ -112,6 +112,7 @@ class Momentum3DLoss(tf.keras.losses.Loss):
         return cls(**config)
 
 
+@tf.keras.utils.register_keras_serializable('QuantileLoss')
 class QuantileLoss(tf.keras.losses.Loss):
     """
     Loss for predicting array of quantiles for single variable
@@ -143,14 +144,15 @@ class QuantileLoss(tf.keras.losses.Loss):
         This is necessary for saving and loading the model with custom objects.
         """
         config = super().get_config()
-        config.update({'quantiles': self.quantiles.numpy(),
+        config.update({'quantiles': tf.keras.utils.serialize_keras_object(self.quantiles),
                        'order_penalty_rate': self.order_penalty_rate,
                        'width_penalty_rate': self.width_penalty_rate})
         return config
 
     @classmethod
     def from_config(cls, config):
-        return cls(**config)
+        quantiles = config.pop('quantiles')
+        return cls(quantiles=quantiles['config']['value'], **config)
 
 
 class LogPtLoss(tf.keras.losses.Loss):
