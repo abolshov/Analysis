@@ -1,19 +1,29 @@
 import numpy as np
 
 ground_truth_map = {"genHbb_E": "E(H->bb)",
-                    "genHbb_px": "px(H->bb)",
-                    "genHbb_py": "py(H->bb)",
-                    "genHbb_pz": "pz(H->bb)",
-                    "genHbb_pt": "Pt(H->bb)",
-                    "genHbb_eta": "Eta(H->bb)",
-                    "genHbb_phi": "Phi(H->bb)",
+                    "genHbb_px": r"$P_x$(H->bb)",
+                    "genHbb_py": r"$P_y$(H->bb)",
+                    "genHbb_pz": r"$P_z$(H->bb)",
+                    "genHbb_pt": r"$P_T$(H->bb)",
+                    "genHbb_eta": r"$\eta$(H->bb)",
+                    "genHbb_phi": r"$\phi$(H->bb)",
                     "genHVV_E": "E(H->VV)",
-                    "genHVV_px": "px(H->VV)",
-                    "genHVV_py": "py(H->VV)",
-                    "genHVV_pz": "pz(H->VV)",
-                    "genHVV_pt": "Pt(H->VV)",
-                    "genHVV_eta": "Eta(H->VV)",
-                    "genHVV_phi": "Phi(H->VV)" }
+                    "genHVV_px": r"$P_x$(H->VV)",
+                    "genHVV_py": r"$P_y$(H->VV)",
+                    "genHVV_pz": r"$P_z$(H->VV)",
+                    "genHVV_pt": r"$P_T$(H->VV)",
+                    "genHVV_eta": r"$\eta$(H->VV)",
+                    "genHVV_phi": r"$\phi$(H->VV)" }
+
+pretty_vars = {'pt': r'$P_T$',
+               'px': r'$P_x$',
+               'py': r'$P_y$',
+               'pz': r'$P_z$',
+               'eta': r'$\eta$',
+               'phi': r'$\phi$'}
+
+objects = {'genHbb': 'H->bb',
+           'genHVV': 'H->VV'}
 
 
 def PredWidth(arr):
