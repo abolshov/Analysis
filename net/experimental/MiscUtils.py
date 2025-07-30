@@ -16,16 +16,17 @@ ground_truth_map = {"genHbb_E": "E(H->bb)",
                     "genHVV_phi": "Phi(H->VV)" }
 
 
-def PredWidth(pred_mass):
-    q_84 = np.quantile(pred_mass, 0.84)
-    q_16 = np.quantile(pred_mass, 0.16)
+def PredWidth(arr):
+    q_84 = np.quantile(arr, 0.84)
+    q_16 = np.quantile(arr, 0.16)
     width = q_84 - q_16
     return width 
 
 
-def PredPeak(pred_mass):
-    counts = np.bincount(pred_mass)
-    peak = np.argmax(counts)
+def PredPeak(arr, bins='auto'):
+    counts, edges = np.histogram(arr, bins=bins)
+    binmax = np.argmax(counts)
+    peak = (edges[binmax] + edges[binmax + 1])/2
     return peak 
 
 
