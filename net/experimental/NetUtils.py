@@ -3,7 +3,7 @@ import tensorflow as tf
 mh = tf.constant(125.0)
 
 # decorators seem to be unavailable with my version of keras
-# @tf.keras.saving.register_keras_serializable(package="TrainableSiLU")
+@tf.keras.utils.register_keras_serializable('TrainableSiLU')
 class TrainableSiLU(tf.keras.layers.Layer):
     def __init__(self, units=1, **kwargs):
         super(TrainableSiLU, self).__init__(**kwargs)
@@ -11,7 +11,7 @@ class TrainableSiLU(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         self.beta = self.add_weight(
-            # name='beta',
+            name='beta',
             shape=(self.units,),
             initializer='ones',  # Initialize beta to 1.0
             trainable=True,
@@ -28,8 +28,7 @@ class TrainableSiLU(tf.keras.layers.Layer):
         This is necessary for saving and loading the model with custom objects.
         """
         config = super(TrainableSiLU, self).get_config()
-        config.update({"name": "beta", 
-                       "units": self.units})
+        config.update({"units": self.units})
         return config
 
     @classmethod

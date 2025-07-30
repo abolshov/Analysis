@@ -4,7 +4,7 @@ import numpy as np
 mh = tf.constant(125.0)
 pi = tf.constant(np.pi)
 
-# @tf.keras.saving.register_keras_serializable(package="CombinedLoss")
+# @tf.keras.saving.register_keras_serializable
 class CombinedLoss(tf.keras.losses.Loss):
     def __init__(self, strength=0.01, name="combined_loss", **kwargs):
         super().__init__(name=name)
@@ -299,9 +299,9 @@ class PtEtaPhiELoss(tf.keras.losses.Loss):
     def from_config(cls, config):
         return cls(**config)
 
-
+@tf.keras.utils.register_keras_serializable('MultiheadLoss')
 class MultiheadLoss(tf.keras.losses.Loss):
-    def __init__(self, num_quantiles=1, scales=None, means=None, name="multihead_loss", **kwargs):
+    def __init__(self, num_quantiles=1, scales=None, means=None, name='multihead_loss', **kwargs):
         super().__init__(name=name, **kwargs)
         self.mae = tf.keras.losses.MAE
         self.num_quantiles = num_quantiles
@@ -317,9 +317,9 @@ class MultiheadLoss(tf.keras.losses.Loss):
         central_quantile = self.num_quantiles // 2
         central_pred = y_pred[:, central_quantile::self.num_quantiles]
 
-        if self.means and self.scales:
-            central_pred = central_pred*scales + means
-            y_true = y_true*scales + means
+        if self.means is not None and self.scales is not None:
+            central_pred = central_pred*self.scales + self.means
+            y_true = y_true*self.scales + self.means
 
         true_hbb = y_true[:, 4:]
         true_hvv = y_true[:, :4]

@@ -2,7 +2,9 @@ import tensorflow as tf
 import numpy as np
 
 mh = tf.constant(125.0)
+pi = tf.constant(np.pi)
 
+@tf.keras.utils.register_keras_serializable('EnergyLayer')
 class EnergyLayer(tf.keras.layers.Layer):
     def __init__(self, num_quantiles=1, normalize=False, means=None, scales=None, name='energy_layer', **kwargs):
         """
@@ -12,9 +14,13 @@ class EnergyLayer(tf.keras.layers.Layer):
         self.num_quantiles = num_quantiles
         self.normalize = normalize
         
-        self.means = tf.constant(np.zeros(num_quantiles), dtype=tf.float32)
-        self.scales = tf.constant(np.zeros(num_quantiles), dtype=tf.float32)
+        self.means = means
+        self.scales = scales
         if normalize: 
+            if means is None or scales is None:
+                raise RuntimeError(f'EnergyLayer: `means` or `scales` must not be `None` if `normalize` is `True`')
+
+            # convert to tensor to make call happy and be able to automatically infer output shape
             self.means = tf.constant(means, dtype=tf.float32)
             self.scales = tf.constant(scales, dtype=tf.float32)
 
@@ -55,13 +61,22 @@ class EnergyLayer(tf.keras.layers.Layer):
         config = super().get_config()
         config.update({'num_quantiles': self.num_quantiles,
                        'normalize': self.normalize,
-                       'means': self.means.numpy(),
-                       'scales': self.scales.numpy()})
+                       'means': tf.keras.utils.serialize_keras_object(self.means) if self.means is not None else None,
+                       'scales': tf.keras.utils.serialize_keras_object(self.scales) if self.scales is not None else None})
         return config
 
     @classmethod
     def from_config(cls, config):
-        return cls(**config)
+        """
+        This method must be implemented if custom object takes any args other than builtin python types
+        """
+        means = config.pop('means')
+        scales = config.pop('scales')
+        if means:
+            means = means['config']['value']
+        if scales:
+            scales = scales['config']['value']
+        return cls(means=means, scales=scales, **config)
     
 
 class QuantileOrderingLayer(tf.keras.layers.Layer):
@@ -89,7 +104,7 @@ class PtLayer(tf.keras.layers.Layer):
         # inputs: px, py, pz, \delta E
         # inputs: pt
         p2 = inputs[:, :2]
-        return tf.sqrt(tf.square(tf.reduce_sum(p2, axis=1)))
+        return tf.sqrt(tf.reduce_sum(tf.square(p2), axis=1))
 
 
 class EtaLayer(tf.keras.layers.Layer):
@@ -98,11 +113,11 @@ class EtaLayer(tf.keras.layers.Layer):
 
     def call(self, inputs):
         # inputs: px, py, pz, \delta E
-        # inputs: eta
+        # outputs: eta
         p3 = inputs[:, :3]
-        # tf.print(p3)
         mod = tf.sqrt(tf.reduce_sum(tf.square(p3), axis=1))
-        return tf.atanh(p3[:, -1]/mod)
+        output = tf.atanh(p3[:, -1]/mod) 
+        return output
 
 
 class PhiLayer(tf.keras.layers.Layer):
@@ -111,9 +126,11 @@ class PhiLayer(tf.keras.layers.Layer):
 
     def call(self, inputs):
         # inputs: px, py, pz, \delta E
-        # inputs: phi
+        # outputs: phi
         p3 = inputs[:, :3]
-        return tf.atan2(p3[:, 1], p3[:, 0])
+        output = tf.atan2(p3[:, 1], p3[:, 0])
+        output = pi*tf.nn.tanh(output)
+        return output
 
 
 class EnergyErrorLayer(tf.keras.layers.Layer):
@@ -122,7 +139,7 @@ class EnergyErrorLayer(tf.keras.layers.Layer):
 
     def call(self, inputs):
         # inputs: px, py, pz, \delta E
-        # inputs: [E, \delta E]
+        # outputs: [E, \delta E]
         p3 = inputs[:, :3]
         dE = inputs[:, 3]
         dE = tf.nn.softplus(dE)
