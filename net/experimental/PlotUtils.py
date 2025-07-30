@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from MiscUtils import PredPeak, PredWidth, ground_truth_map
+from MiscUtils import PredPeak, PredWidth, ground_truth_map, pretty_vars, objects
 
 
 def PlotMetric(history, model, metric, plotting_dir=None):
@@ -19,28 +19,28 @@ def PlotMetric(history, model, metric, plotting_dir=None):
     plt.clf()
 
 
-def PlotCompare2D(target, output, quantity, quantile=None, plotting_dir=None):
+def PlotCompare2D(target, output, var, obj, bins=None, title='', xlabel='', ylabel='', quantile=None, plotting_dir=None):
     plt.grid(False)
 
-    plot_name_tokens = ['cmp2d', quantity]
+    plot_name_tokens = ['cmp2d', obj, var]
     if quantile:
         plot_name_tokens.append(f'q{quantile}')
     
-    min_target = np.min(target)
-    min_output = np.min(output)
-    bin_left = np.min([min_target, min_output]) - 1.0
+    if bins is None:
+        min_target = np.min(target)
+        min_output = np.min(output)
+        bin_left = np.min([min_target, min_output]) - 1.0
 
-    max_target = np.max(target)
-    max_output = np.max(output)
-    bin_right = np.max([max_target, max_output]) + 1.0
+        max_target = np.max(target)
+        max_output = np.max(output)
+        bin_right = np.max([max_target, max_output]) + 1.0
 
-    bins = np.linspace(bin_left, bin_right, 100)
+        bins = np.linspace(bin_left, bin_right, 100)
 
     plt.hist2d(target, output, bins=bins)
-    var = quantity.split('_')[-1]
-    plt.title(f'{var} comparison')
-    plt.ylabel(f'predicted {ground_truth_map[quantity]}')
-    plt.xlabel(f'true {ground_truth_map[quantity]}')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
 
     plot_name = '_'.join(plot_name_tokens)
     if plotting_dir:
