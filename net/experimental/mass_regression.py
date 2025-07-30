@@ -26,6 +26,7 @@ def main():
     files = []
     # input_files = 'dl_train_files.txt'
     input_files = 'files_Run3_2022.txt'
+    # input_files = 'files_Run3_2022EE.txt'
     with open(input_files, 'r') as file_cfg:
         files = [line[:-1] for line in file_cfg.readlines()]
 
@@ -37,7 +38,7 @@ def main():
     params['input_names'] = input_names
     params['target_names'] = target_names
 
-    standardize = False
+    standardize = True
     params['standardize'] = standardize
     params['target_train_means'] = None
     params['target_train_scales'] = None
@@ -63,7 +64,7 @@ def main():
 
     model_name = 'model'
     params['model_name'] = model_name
-    model_dir = 'miultihead_loss_test'
+    model_dir = 'conversion_test'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -72,18 +73,19 @@ def main():
     input_shape = X_train.shape[1:]
     num_units = 384
     num_layers = 12
-    l2_strength = 0.1
+    l2_strength = 0.01
     quantiles = [0.16, 0.5, 0.84]
+    # quantiles = None
     num_quantiles = len(quantiles) if quantiles else 1
-    epochs = 100
-    batch_size = 256
-    batch_norm = False
+    epochs = 80
+    batch_size = 2048
+    batch_norm = True
     momentum = 0.01
     bn_eps = 0.01
     learning_rate = 3e-4
     use_energy_layer = True
     use_quantile_ordering = False
-    use_quantile_width_penalty = True
+    use_quantile_width_penalty = False
     num_output_units = num_quantiles
     add_mass_loss = True
 
@@ -110,15 +112,15 @@ def main():
     width_penalty_rates = None
     if use_quantile_width_penalty:
         width_penalty_rates = {}
-        width_penalty_rates['genHVV_E'] = 0.05
-        width_penalty_rates['genHVV_px'] = 0.05
-        width_penalty_rates['genHVV_py'] = 0.05
-        width_penalty_rates['genHVV_pz'] = 0.05
+        width_penalty_rates['genHVV_E'] = 0.035
+        width_penalty_rates['genHVV_px'] = 0.035
+        width_penalty_rates['genHVV_py'] = 0.035
+        width_penalty_rates['genHVV_pz'] = 0.03
 
-        width_penalty_rates['genHbb_E'] = 0.065
-        width_penalty_rates['genHbb_px'] = 0.05
-        width_penalty_rates['genHbb_py'] = 0.05
-        width_penalty_rates['genHbb_pz'] = 0.05
+        width_penalty_rates['genHbb_E'] = 0.035
+        width_penalty_rates['genHbb_px'] = 0.035
+        width_penalty_rates['genHbb_py'] = 0.035
+        width_penalty_rates['genHbb_pz'] = 0.03
 
     params['width_penalty_rates'] = width_penalty_rates
 
@@ -163,7 +165,8 @@ def main():
         loss_names[target_name] = losses[target_name].name
 
         # repeat each target array num_quantiles times so that each output node has ground truth value
-        target_array = np.repeat(target_array, repeats=num_quantiles, axis=-1)
+        if num_quantiles > 1:
+            target_array = np.repeat(target_array, repeats=num_quantiles, axis=-1)
         ys_train.append(target_array)
 
         # if custom energy calculation is used, skip energy outputs, they'll be inserted separately
@@ -178,7 +181,8 @@ def main():
             output = tf.keras.layers.Dense(num_output_units, name=target_name)(x)
         outputs.append(output)
 
-        loss_weights[target_name] = 0.675
+        # loss_weights[target_name] = 0.675
+        loss_weights[target_name] = 0.75
         # loss_weights[target_name] = 1.0
 
     if use_energy_layer:
@@ -218,21 +222,30 @@ def main():
 
         # loss_weights['genHbb_E'] = 1.0
         # loss_weights['genHVV_E'] = 1.0
-        loss_weights['genHbb_E'] = 0.225
-        loss_weights['genHVV_E'] = 0.225
+        # loss_weights['genHbb_E'] = 0.225
+        # loss_weights['genHVV_E'] = 0.225
+        loss_weights['genHbb_E'] = 0.25
+        loss_weights['genHVV_E'] = 0.25
 
     if add_mass_loss:
         # mass loss needs outputs from all heads => concatenate heads into list of tensors and append to outputs
         ys_train.append(y_train)
         combined_outputs = tf.keras.layers.Concatenate(name='combined')(outputs)
         outputs.append(combined_outputs)
-        losses['combined'] = MultiheadLoss(num_quantiles=num_quantiles)
-        loss_weights['combined'] = 0.1
+        
+        means = None
+        scales = None
+        if batch_norm and standardize:
+            means = target_scaler.mean_
+            scales = target_scaler.scale_
+
+        losses['combined'] = MultiheadLoss(num_quantiles=num_quantiles, means=means, scales=scales)
+        loss_weights['combined'] = 0.001
 
     params['loss_names'] = loss_names
     params['loss_weights'] = loss_weights
 
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    model = tf.keras.Model(inputs=inputs, outputs=outputs, name=model_name)
     model.compile(loss=losses,
                   loss_weights=loss_weights, 
                   optimizer=tf.keras.optimizers.Adam(learning_rate))
@@ -274,7 +287,7 @@ def main():
     if standardize:
         # each item of ys_pred is a array of shape (n, 3) for 3 quantiles
         # each quantile for given variable should be rescaled back by the same scale
-            for pred_idx, arr in enumerate(ys_pred):
+            for pred_idx, arr in enumerate(ys_pred[:-1]):
                 if quantiles:
                     for q_idx in range(num_quantiles):
                         arr[:, q_idx] *= target_scaler.scale_[pred_idx]
@@ -282,8 +295,6 @@ def main():
                 else:
                     arr *= target_scaler.scale_[pred_idx]
                     arr += target_scaler.mean_[pred_idx]
-
-    assert len(ys_pred) == len(target_names), f"mismatch between number of predicted values and ground truth values: ({len(ys_pred)} vs {len(target_names)})"
 
     # ys_pred is a list of np arrays of shape (num_events, num_quantiles) if quantile regression
     # or (num_events, 1) if normal regression
@@ -374,17 +385,19 @@ def main():
             print(f'\tprediction coverage probability: {proba:.2f}')
             print(f'\tquantile crossing fraction: {len(err[err < 0.0])/len(err):.2f}')
 
-            bin_left = np.quantile(err, 0.01) - 1.0
-            bin_right = np.quantile(err, 0.99) + 1.0
+            bin_left = np.min(err) - 1.0
+            bin_right = np.max(err) + 1.0
             bins = np.linspace(bin_left, bin_right, 50)
             PlotHist(data=err, 
-                    bins=bins,
-                    title=f'Predicted {name} error',
-                    ylabel='Count',
-                    xlabel='Error, [GeV]',
-                    plotting_dir=plotting_dir,
-                    file_name=f'pred_error_{name}')
+                     bins=bins,
+                     title=f'Predicted {name} error',
+                     ylabel='Count',
+                     xlabel='Error, [GeV]',
+                     plotting_dir=plotting_dir,
+                     file_name=f'pred_error_{name}')
 
+            # plot up vs down errors to see if they are symmetric
+            # PlotCompare2D(down, up, name, bins=bins, plotting_dir=plotting_dir)
 
 
 if __name__ == '__main__':
