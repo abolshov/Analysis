@@ -15,7 +15,7 @@ from LossUtils import QuantileLoss, MultiheadLoss
 from LayerUtils import EnergyLayer, QuantileOrderingLayer
 
 
-from MiscUtils import *
+from MiscUtils import ground_truth_map, Scheduler, pretty_vars, objects
 from PlotUtils import PlotMetric, PlotHist, PlotCompare2D
 
 
@@ -64,7 +64,7 @@ def main():
 
     model_name = 'model'
     params['model_name'] = model_name
-    model_dir = 'conversion_test'
+    model_dir = 'test_model'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -85,7 +85,7 @@ def main():
     learning_rate = 3e-4
     use_energy_layer = True
     use_quantile_ordering = False
-    use_quantile_width_penalty = False
+    use_quantile_width_penalty = True
     num_output_units = num_quantiles
     add_mass_loss = True
 
@@ -287,7 +287,7 @@ def main():
     if standardize:
         # each item of ys_pred is a array of shape (n, 3) for 3 quantiles
         # each quantile for given variable should be rescaled back by the same scale
-            for pred_idx, arr in enumerate(ys_pred[:-1]):
+            for pred_idx, arr in enumerate(ys_pred[:-1] if len(ys_pred) > len(target_names) else ys_pred):
                 if quantiles:
                     for q_idx in range(num_quantiles):
                         arr[:, q_idx] *= target_scaler.scale_[pred_idx]
@@ -320,7 +320,19 @@ def main():
             bin_left = np.min([np.quantile(ground_truth, 0.01), np.quantile(output, 0.01)]) - 1.0
             bin_right = np.max([np.quantile(ground_truth, 0.99), np.quantile(output, 0.99)]) + 1.0
             bins = np.linspace(bin_left, bin_right, 100)
-            PlotCompare2D(ground_truth, output, col, bins=bins, quantile=q, plotting_dir=plotting_dir)
+            
+            var = col.split('_')[-1]
+            obj = col.split('_')[0]
+            PlotCompare2D(ground_truth, 
+                          output, 
+                          col.split('_')[-1], 
+                          col.split('_')[0],
+                          bins=bins, 
+                          title=f'{objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} comparison',
+                          xlabel=f'True {ground_truth_map[col]}',
+                          ylabel=f'Predicted {ground_truth_map[col]}',
+                          quantile=q, 
+                          plotting_dir=plotting_dir)
 
         X_E_pred = pred_df[f"genHbb_E_q{q}"] + pred_df[f"genHVV_E_q{q}"]
         X_px_pred = pred_df[f"genHbb_px_q{q}"] + pred_df[f"genHVV_px_q{q}"]
@@ -348,7 +360,18 @@ def main():
                 bin_left = np.min([np.quantile(ground_truth, 0.01), np.quantile(pred_df[col], 0.01)]) - 1.0
                 bin_right = np.max([np.quantile(ground_truth, 0.99), np.quantile(pred_df[col], 0.99)]) + 1.0
                 bins = np.linspace(bin_left, bin_right, 100)
-                PlotCompare2D(ground_truth, pred_df[col], col, bins=bins, plotting_dir=plotting_dir)
+                
+                var = col.split('_')[-1]
+                obj = col.split('_')[0]
+                PlotCompare2D(ground_truth, 
+                              pred_df[col], 
+                              var, 
+                              obj,
+                              bins=bins, 
+                              title=f'{objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} comparison',
+                              xlabel=f'True {ground_truth_map[col]}',
+                              ylabel=f'Predicted {ground_truth_map[col]}',
+                              plotting_dir=plotting_dir)
 
         X_E_pred = pred_df["genHbb_E"] + pred_df["genHVV_E"]
         X_px_pred = pred_df["genHbb_px"] + pred_df["genHVV_px"]
@@ -397,7 +420,20 @@ def main():
                      file_name=f'pred_error_{name}')
 
             # plot up vs down errors to see if they are symmetric
-            # PlotCompare2D(down, up, name, bins=bins, plotting_dir=plotting_dir)
+            var = name.split('_')[-1]
+            obj = name.split('_')[0]
+            xlabel = f'Up {objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} error'
+            ylabel = f'Down {objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} error'
+            title = f'{objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} error comparison'
+            PlotCompare2D(up, 
+                          down, 
+                          f'{var}_error', 
+                          obj,
+                          title=title,
+                          bins=bins, 
+                          xlabel=xlabel,
+                          ylabel=ylabel,
+                          plotting_dir=plotting_dir)
 
 
 if __name__ == '__main__':
