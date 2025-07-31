@@ -78,7 +78,7 @@ def PlotHist(bins=np.linspace(0, 250, 100), **kwargs):
     plt.clf()
 
 
-def PlotCovarMtrx(mtrx, labels, plotdir):
+def PlotCovarMtrx(mtrx, method, labels, plotdir):
     plt.matshow(mtrx)
     plt.xticks(ticks=np.arange(mtrx.shape[0]), labels=labels, fontsize=5, rotation=45)
     plt.yticks(ticks=np.arange(mtrx.shape[0]), labels=labels, fontsize=5, rotation=45)
@@ -86,6 +86,6 @@ def PlotCovarMtrx(mtrx, labels, plotdir):
     plt.title('Covariance Matrix')
     ax = plt.gca()
     ax.xaxis.set_ticks_position('bottom')
-    plt.savefig(os.path.join(plotdir, 'cov_mtrx.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(plotdir, f'{method}_cov_mtrx.pdf'), bbox_inches='tight')
     plt.clf()
     plt.close()
