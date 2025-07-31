@@ -16,7 +16,7 @@ from ModelUtils import LoadModel
 def main():
     # load dataset for model evaluation
     # file = 'DY.root'
-    file = 'nano_0.root'
+    file = '../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
 
@@ -62,6 +62,7 @@ def main():
 
     # extract prediction for central quantile for all targets
     central = ys_pred[:, :, 1]
+    assert y.shape == central.shape
 
     hvv_PtEtaPhiE_pred = ToPtEtaPhiE(central[:, :4])
     hvv_PtEtaPhiE_true = ToPtEtaPhiE(y[:, :4])
@@ -96,25 +97,44 @@ def main():
     pred_errors = ys_pred[:, :, -1] - ys_pred[:, :, 0]
     true_errors = y - central
 
-    assert y.shape == central.shape
+    n_events, n_targets = pred_errors.shape
+    # sigma_mtrx will be used to transform all-dataset correlation matrix to n_events per-event covariance matrices
+    # that are needed for error propagation
+    I = np.eye(n_targets)[None, :, :] # shape (1, n_targets, n_targets)
+    sigma_mtrx = pred_errors[:, :, None]*I # broadcast 
+
+    # PROBLEM: for now some elements of sigma_mtrx are negative (either due to quantile crossing or bc it includes energy)
+    # need to erase energy in case when higgs mass constraint was used for neural net training
+    # erase when fixed
+    assert np.all(sigma_mtrx > 0.0), "Diagonal matrix of variances for event contains negative variances"
 
     normalize_cov_mtrx = True
     # technically normalized covariance matrix is correlation matrix
     # to get it, compute covariance matrix of standardized dataset
+    normalzied_true_errors = None
     if normalize_cov_mtrx:
-        true_errors = StandardScaler().fit_transform(true_errors)
+        normalzied_true_errors = StandardScaler().fit_transform(true_errors)
     
+    # actually this matrix must be computed across entire training dataset
+    # and loaded here from training config
     method = 'empirical'
-    cov = None
+    global_covar = None
     if method == 'empirical':
-        cov = EmpiricalCovariance().fit(true_errors)
+        global_covar = EmpiricalCovariance().fit(normalzied_true_errors if normalize_cov_mtrx else true_errors)
     elif mehtod == 'mcd':
-        cov = MinCovDet().fit(true_errors)
+        global_covar = MinCovDet().fit(normalzied_true_errors if normalize_cov_mtrx else true_errors)
     else:
         raise RuntimeError(f'Illegal covariance matrix estimation method {method}')
 
     pretty_labels = [ground_truth_map[name] for name in target_names]
-    PlotCovarMtrx(cov.covariance_, method, pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
+    global_covar_mtrx = global_covar.covariance_
+    PlotCovarMtrx(global_covar_mtrx, method, pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
+
+    # covariance matrix for each event
+    # will be used for error propagation
+    event_covar_mtrx = np.sqrt(sigma_mtrx)*global_covar_mtrx*np.sqrt(sigma_mtrx)
+
+    assert event_covar_mtrx.shape[1:] == global_covar_mtrx.shape
 
     # pred_dict = {}
     # quantiles = [0.16, 0.5, 0.84]
