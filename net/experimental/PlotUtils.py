@@ -76,3 +76,16 @@ def PlotHist(bins=np.linspace(0, 250, 100), **kwargs):
     else:
         plt.savefig(os.path.join(kwargs['plotting_dir'], f"{kwargs['file_name']}.pdf"), bbox_inches='tight')
     plt.clf()
+
+
+def PlotCovarMtrx(mtrx, labels, plotdir):
+    plt.matshow(mtrx)
+    plt.xticks(ticks=np.arange(mtrx.shape[0]), labels=labels, fontsize=5, rotation=45)
+    plt.yticks(ticks=np.arange(mtrx.shape[0]), labels=labels, fontsize=5, rotation=45)
+    cb = plt.colorbar()
+    plt.title('Covariance Matrix')
+    ax = plt.gca()
+    ax.xaxis.set_ticks_position('bottom')
+    plt.savefig(os.path.join(plotdir, 'cov_mtrx.pdf'), bbox_inches='tight')
+    plt.clf()
+    plt.close()
