@@ -4,7 +4,7 @@ import numpy as np
 import os
 import yaml
 from sklearn.preprocessing import StandardScaler
-from sklearn.covariance import EmpiricalCovariance
+from sklearn.covariance import EmpiricalCovariance, MinCovDet
 
 from Dataloader import Dataloader
 
@@ -98,9 +98,23 @@ def main():
 
     assert y.shape == central.shape
 
-    cov = EmpiricalCovariance().fit(true_errors)
+    normalize_cov_mtrx = True
+    # technically normalized covariance matrix is correlation matrix
+    # to get it, compute covariance matrix of standardized dataset
+    if normalize_cov_mtrx:
+        true_errors = StandardScaler().fit_transform(true_errors)
+    
+    method = 'empirical'
+    cov = None
+    if method == 'empirical':
+        cov = EmpiricalCovariance().fit(true_errors)
+    elif mehtod == 'mcd':
+        cov = MinCovDet().fit(true_errors)
+    else:
+        raise RuntimeError(f'Illegal covariance matrix estimation method {method}')
+
     pretty_labels = [ground_truth_map[name] for name in target_names]
-    PlotCovarMtrx(cov.covariance_, pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
+    PlotCovarMtrx(cov.covariance_, method, pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
 
     # pred_dict = {}
     # quantiles = [0.16, 0.5, 0.84]
