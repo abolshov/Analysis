@@ -132,8 +132,7 @@ def main():
 
     # covariance matrix for each event
     # will be used for error propagation
-    event_covar_mtrx = np.sqrt(sigma_mtrx)*global_covar_mtrx*np.sqrt(sigma_mtrx)
-
+    event_covar_mtrx = np.matmul(np.matmul(np.sqrt(sigma_mtrx), global_covar_mtrx), np.sqrt(sigma_mtrx))
     assert event_covar_mtrx.shape[1:] == global_covar_mtrx.shape
 
     # pred_dict = {}
