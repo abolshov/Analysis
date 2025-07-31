@@ -8,12 +8,10 @@ import yaml
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
-
 from Dataloader import Dataloader
 from NetUtils import TrainableSiLU
 from LossUtils import QuantileLoss, MultiheadLoss
 from LayerUtils import EnergyLayer, QuantileOrderingLayer
-
 
 from MiscUtils import ground_truth_map, Scheduler, pretty_vars, objects
 from PlotUtils import PlotMetric, PlotHist, PlotCompare2D
@@ -64,7 +62,7 @@ def main():
 
     model_name = 'model'
     params['model_name'] = model_name
-    model_dir = 'test_model'
+    model_dir = 'predict_quantiles3D'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -115,12 +113,12 @@ def main():
         width_penalty_rates['genHVV_E'] = 0.035
         width_penalty_rates['genHVV_px'] = 0.035
         width_penalty_rates['genHVV_py'] = 0.035
-        width_penalty_rates['genHVV_pz'] = 0.03
+        width_penalty_rates['genHVV_pz'] = 0.025
 
         width_penalty_rates['genHbb_E'] = 0.035
         width_penalty_rates['genHbb_px'] = 0.035
         width_penalty_rates['genHbb_py'] = 0.035
-        width_penalty_rates['genHbb_pz'] = 0.03
+        width_penalty_rates['genHbb_pz'] = 0.025
 
     params['width_penalty_rates'] = width_penalty_rates
 
@@ -287,7 +285,7 @@ def main():
     if standardize:
         # each item of ys_pred is a array of shape (n, 3) for 3 quantiles
         # each quantile for given variable should be rescaled back by the same scale
-            for pred_idx, arr in enumerate(ys_pred[:-1] if len(ys_pred) > len(target_names) else ys_pred):
+            for pred_idx, arr in enumerate(ys_pred[:-1] if add_mass_loss else ys_pred):
                 if quantiles:
                     for q_idx in range(num_quantiles):
                         arr[:, q_idx] *= target_scaler.scale_[pred_idx]
@@ -425,6 +423,10 @@ def main():
             xlabel = f'Up {objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} error'
             ylabel = f'Down {objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} error'
             title = f'{objects[obj] if obj in objects else obj} {pretty_vars[var] if var in pretty_vars else var} error comparison'
+            
+            bin_left = np.min([up, down]) - 1.0
+            bin_right = np.max([up, down]) + 1.0
+            bins = np.linspace(bin_left, bin_right, 100)
             PlotCompare2D(up, 
                           down, 
                           f'{var}_error', 
