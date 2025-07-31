@@ -1,4 +1,5 @@
 import numpy as np
+import vector
 
 ground_truth_map = {"genHbb_E": "E(H->bb)",
                     "genHbb_px": r"$P_x$(H->bb)",
@@ -47,3 +48,14 @@ def Scheduler(epoch, lr):
         if epoch % 2 == 0:
             return 0.9*lr
         return lr
+
+
+def ToPtEtaPhiE(data):
+    """
+    converts PxPyPzE vector to PtEtaPhiE vector
+    """
+
+    assert data.shape[-1] == 4, f'Wrong dimension {data.shape[-1]} of the input vector'
+
+    p4 = vector.zip({'px': data[:, 0], 'py': data[:, 1], 'pz': data[:, 2], 'E': data[:, 3]})
+    return np.stack([p4.pt.to_numpy(), p4.eta.to_numpy(), p4.phi.to_numpy(), p4.E.to_numpy()], axis=1)
