@@ -4,18 +4,19 @@ import numpy as np
 import os
 import yaml
 from sklearn.preprocessing import StandardScaler
+from sklearn.covariance import EmpiricalCovariance
 
 from Dataloader import Dataloader
 
 from MiscUtils import *
-from PlotUtils import PlotHist, PlotCompare2D
+from PlotUtils import PlotHist, PlotCompare2D, PlotCovarMtrx
 from ModelUtils import LoadModel
 
 
 def main():
     # load dataset for model evaluation
     # file = 'DY.root'
-    file = '../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root'
+    file = 'nano_0.root'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
 
@@ -29,7 +30,6 @@ def main():
     model, training_params = LoadModel('model_cfg.yaml')
     print(model.summary())
 
-    # make predictions and plot them
     ys_pred = None
     if training_params['standardize']:
         input_means = training_params['input_train_means']
@@ -38,33 +38,39 @@ def main():
         X /= input_scales
         ys_pred = model.predict(X)
 
-        pred = np.array(ys_pred[:-1])
-        pred = np.squeeze(pred[:, :, 1]).T
-        pred *= training_params['target_train_scales']
-        pred += training_params['target_train_means']
+        if training_params['add_mass_loss']:
+            # drop dimension containing concatenation of all elements before it
+            ys_pred = ys_pred[:-1]
 
-        ys_pred = pred
+        # now ys_pred has shape (n_heads, n_events, n_quantiles) 
+        ys_pred = np.array(ys_pred)
+        target_scales = np.array(training_params['target_train_scales'])
+        target_means = np.array(training_params['target_train_means'])
 
-        # for i, arr in enumerate(ys_pred[:-1] if training_params['add_mass_loss'] else ys_pred):
-        #     if training_params['quantiles']:
-        #         for q in range(training_params['num_quantiles']):
-        #             arr[:, q] *= training_params['target_train_scales'][i]
-        #             arr[:, q] += training_params['target_train_means'][i]
-        #         else:
-        #             arr *= training_params['target_train_scales'][i]
-        #             arr += training_params['target_train_means'][i]
+        # broadcast arrays with means from shape (n_heads,) to shape of ys_pred by inserting new axes
+        ys_pred *= target_scales[:, None, None]
+        ys_pred += target_means[:, None, None]
+        # swap heads and events dimension so events is first
+        # (n_heads, n_events, n_quantiles) → (n_events, n_heads, n_quantiles)
+        ys_pred = ys_pred.transpose(1, 0, 2)
     else:
         ys_pred = model.predict(X)
+        if training_params['add_mass_loss']:
+            ys_pred = ys_pred[:-1]
+        ys_pred = np.array(ys_pred)
+        ys_pred = ys_pred.transpose(1, 0, 2)
 
-   
-    hvv_PtEtaPhiE_pred = ToPtEtaPhiE(ys_pred[:, :4])
+    # extract prediction for central quantile for all targets
+    central = ys_pred[:, :, 1]
+
+    hvv_PtEtaPhiE_pred = ToPtEtaPhiE(central[:, :4])
     hvv_PtEtaPhiE_true = ToPtEtaPhiE(y[:, :4])
 
-    hbb_PtEtaPhiE_pred = ToPtEtaPhiE(ys_pred[:, 4:])
+    hbb_PtEtaPhiE_pred = ToPtEtaPhiE(central[:, 4:])
     hbb_PtEtaPhiE_true = ToPtEtaPhiE(y[:, 4:])
 
-    PtEtaPhiE_pred = np.concatenate([hvv_PtEtaPhiE_pred, hbb_PtEtaPhiE_pred], axis=-1)
-    PtEtaPhiE_true = np.concatenate([hvv_PtEtaPhiE_true, hbb_PtEtaPhiE_true], axis=-1)
+    pred_PtEtaPhiE = np.concatenate([hvv_PtEtaPhiE_pred, hbb_PtEtaPhiE_pred], axis=-1)
+    true_PtEtaPhiE = np.concatenate([hvv_PtEtaPhiE_true, hbb_PtEtaPhiE_true], axis=-1)
 
     var_names = ['genHVV_pt', 'genHVV_eta', 'genHVV_phi', 'genHVV_E', 
                  'genHbb_pt', 'genHbb_eta', 'genHbb_phi', 'genHbb_E']
@@ -72,12 +78,12 @@ def main():
         var = name.split('_')[-1]
         obj = name.split('_')[0]
 
-        bin_left = np.min([np.quantile(PtEtaPhiE_true[:, i], 0.01), np.quantile(PtEtaPhiE_pred[:, i], 0.01)]) - 1.0
-        bin_right = np.max([np.quantile(PtEtaPhiE_true[:, i], 0.99), np.quantile(PtEtaPhiE_pred[:, i], 0.99)]) + 1.0
+        bin_left = np.min([np.quantile(true_PtEtaPhiE[:, i], 0.01), np.quantile(pred_PtEtaPhiE[:, i], 0.01)]) - 1.0
+        bin_right = np.max([np.quantile(true_PtEtaPhiE[:, i], 0.99), np.quantile(pred_PtEtaPhiE[:, i], 0.99)]) + 1.0
         bins = np.linspace(bin_left, bin_right, 100)
 
-        PlotCompare2D(PtEtaPhiE_true[:, i], 
-                      PtEtaPhiE_pred[:, i], 
+        PlotCompare2D(true_PtEtaPhiE[:, i], 
+                      pred_PtEtaPhiE[:, i], 
                       var,
                       obj,
                       bins=bins, 
@@ -85,6 +91,16 @@ def main():
                       xlabel=f'True {ground_truth_map[name]}',
                       ylabel=f'Predicted {ground_truth_map[name]}',
                       plotting_dir=os.path.join(training_params['model_dir'], 'plots'))
+
+    # compute errors as up quantile (-1) minus down quantile (0)
+    pred_errors = ys_pred[:, :, -1] - ys_pred[:, :, 0]
+    true_errors = y - central
+
+    assert y.shape == central.shape
+
+    cov = EmpiricalCovariance().fit(true_errors)
+    pretty_labels = [ground_truth_map[name] for name in target_names]
+    PlotCovarMtrx(cov.covariance_, pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
 
     # pred_dict = {}
     # quantiles = [0.16, 0.5, 0.84]
