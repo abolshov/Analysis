@@ -8,7 +8,7 @@ import tf2onnx
 
 def LoadModel(cfg_file_name):
     cfg = None
-    with open (cfg_file_name, 'r') as cfg_file:
+    with open(cfg_file_name, 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
 
     model = None
@@ -24,7 +24,12 @@ def LoadModel(cfg_file_name):
 
     path_to_model = os.path.join(model_dir, f'{model_name}.{model_fmt}')
     model = tf.keras.models.load_model(path_to_model, custom_objects=custom_objects)
-    return model
+
+    # load training params if available
+    training_params = None
+    with open(os.path.join(model_dir, 'params.yaml'), 'r') as train_cfg_file:
+        training_params = yaml.safe_load(train_cfg_file)
+    return model, training_params
 
 def ConvertToONNX(model, input_signature, out_path=None, op_set=13):
     """
