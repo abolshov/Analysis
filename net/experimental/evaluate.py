@@ -7,16 +7,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.covariance import EmpiricalCovariance, MinCovDet
 
 from Dataloader import Dataloader
+from ErrorProp import ErrorPropagator
 
 from MiscUtils import *
 from PlotUtils import PlotHist, PlotCompare2D, PlotCovarMtrx
 from ModelUtils import LoadModel
 
-
 def main():
     # load dataset for model evaluation
     # file = 'DY.root'
-    file = 'nano_0.root'
+    file = '../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
 
@@ -97,44 +97,53 @@ def main():
     pred_errors = ys_pred[:, :, -1] - ys_pred[:, :, 0]
     true_errors = y - central
 
-    # if there are negative errors, replace them with max errors observed
-    max_pred_errors = np.max(pred_errors, axis=0)
-    negative_errors = pred_errors < 0.0
-    pred_errors = np.where(negative_errors, max_pred_errors[None, :], pred_errors)
-    assert np.all(pred_errors > 0.0), "Predicted errors must be positive"
+    global_corr_mtrx = np.array(training_params['global_corr_mtrx'])
+    ep = ErrorPropagator(global_corr_mtrx, central[:, :3], central[:, 4:7])
+    prop_errors = ep.Propagate(pred_errors)
 
-    n_events, n_targets = pred_errors.shape
-    # sigma_mtrx will be used to transform all-dataset correlation matrix to n_events per-event covariance matrices
-    # that are needed for error propagation
-    I = np.eye(n_targets)[None, :, :] # shape (1, n_targets, n_targets)
-    sigma_mtrx = pred_errors[:, :, None]*I # broadcast 
+    # # if there are negative errors, replace them with max errors observed
+    # max_pred_errors = np.max(pred_errors, axis=0)
+    # negative_errors = pred_errors < 0.0
+    # pred_errors = np.where(negative_errors, max_pred_errors[None, :], pred_errors)
+    # assert np.all(pred_errors > 0.0), "Predicted errors must be positive"
 
-    normalize_cov_mtrx = True
-    # technically normalized covariance matrix is correlation matrix
-    # to get it, compute covariance matrix of standardized dataset
-    normalzied_true_errors = None
-    if normalize_cov_mtrx:
-        normalzied_true_errors = StandardScaler().fit_transform(true_errors)
+    # n_events, n_targets = pred_errors.shape
+    # # sigma_mtrx will be used to transform all-dataset correlation matrix to n_events per-event covariance matrices
+    # # that are needed for error propagation
+    # I = np.eye(n_targets)[None, :, :] # shape (1, n_targets, n_targets)
+    # sigma_mtrx = pred_errors[:, :, None]*I # broadcast 
+
+    # normalize_cov_mtrx = True
+    # # technically normalized covariance matrix is correlation matrix
+    # # to get it, compute covariance matrix of standardized dataset
+    # normalzied_true_errors = None
+    # if normalize_cov_mtrx:
+    #     normalzied_true_errors = StandardScaler().fit_transform(true_errors)
     
-    # actually this matrix must be computed across entire training dataset
-    # and loaded here from training config
-    method = 'empirical'
-    global_covar = None
-    if method == 'empirical':
-        global_covar = EmpiricalCovariance().fit(normalzied_true_errors if normalize_cov_mtrx else true_errors)
-    elif mehtod == 'mcd':
-        global_covar = MinCovDet().fit(normalzied_true_errors if normalize_cov_mtrx else true_errors)
-    else:
-        raise RuntimeError(f'Illegal covariance matrix estimation method {method}')
+    # # actually this matrix must be computed across entire training dataset
+    # # and loaded here from training config
+    # method = 'empirical'
+    # global_covar = None
+    # if method == 'empirical':
+    #     global_covar = EmpiricalCovariance().fit(normalzied_true_errors if normalize_cov_mtrx else true_errors)
+    # elif mehtod == 'mcd':
+    #     global_covar = MinCovDet().fit(normalzied_true_errors if normalize_cov_mtrx else true_errors)
+    # else:
+    #     raise RuntimeError(f'Illegal covariance matrix estimation method {method}')
 
-    pretty_labels = [ground_truth_map[name] for name in target_names]
-    global_covar_mtrx = global_covar.covariance_
-    PlotCovarMtrx(global_covar_mtrx, method, pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
+    # pretty_labels = [ground_truth_map[name] for name in target_names]
+    # global_covar_mtrx = global_covar.covariance_
+    # PlotCovarMtrx(global_covar_mtrx, method, pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
 
-    # covariance matrix for each event
-    # will be used for error propagation
-    event_covar_mtrx = np.matmul(np.matmul(np.sqrt(sigma_mtrx), global_covar_mtrx), np.sqrt(sigma_mtrx))
-    assert event_covar_mtrx.shape[1:] == global_covar_mtrx.shape
+    # # sanity check
+    # global_corr_mtrx = np.corrcoef(true_errors, rowvar=False)
+    # print(np.linalg.norm(np.abs(global_corr_mtrx - global_covar_mtrx)))
+    # assert np.allclose(global_covar_mtrx, global_corr_mtrx, rtol=1e-8, atol=1e-8)
+
+    # # covariance matrix for each event
+    # # will be used for error propagation
+    # event_covar_mtrx = np.matmul(np.matmul(np.sqrt(sigma_mtrx), global_covar_mtrx), np.sqrt(sigma_mtrx))
+    # assert event_covar_mtrx.shape[1:] == global_covar_mtrx.shape
 
     # pred_dict = {}
     # quantiles = [0.16, 0.5, 0.84]
