@@ -14,7 +14,7 @@ from LossUtils import QuantileLoss, MultiheadLoss
 from LayerUtils import EnergyLayer, QuantileOrderingLayer
 
 from MiscUtils import ground_truth_map, Scheduler, pretty_vars, objects
-from PlotUtils import PlotMetric, PlotHist, PlotCompare2D
+from PlotUtils import PlotMetric, PlotHist, PlotCompare2D, PlotCovarMtrx
 
 
 def main():
@@ -62,7 +62,7 @@ def main():
 
     model_name = 'model'
     params['model_name'] = model_name
-    model_dir = 'predict_quantiles3D'
+    model_dir = 'predict_quantiles3D_v2'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -113,12 +113,12 @@ def main():
         width_penalty_rates['genHVV_E'] = 0.035
         width_penalty_rates['genHVV_px'] = 0.035
         width_penalty_rates['genHVV_py'] = 0.035
-        width_penalty_rates['genHVV_pz'] = 0.025
+        width_penalty_rates['genHVV_pz'] =  0.025
 
         width_penalty_rates['genHbb_E'] = 0.035
         width_penalty_rates['genHbb_px'] = 0.035
         width_penalty_rates['genHbb_py'] = 0.035
-        width_penalty_rates['genHbb_pz'] = 0.025
+        width_penalty_rates['genHbb_pz'] =  0.025
 
     params['width_penalty_rates'] = width_penalty_rates
 
@@ -260,16 +260,50 @@ def main():
     tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
     model.save(os.path.join(model_dir, f"{model_name}.keras"))
 
-    # save training parameters
-    with open(os.path.join(model_dir, 'params.yaml'), 'w') as outfile:
-        yaml.dump(params, outfile, sort_keys=False, default_flow_style=False)
-
     plotting_dir = os.path.join(model_dir, 'plots')
     os.makedirs(plotting_dir, exist_ok=True)
     history_keys = list(history.history.keys())
     drawable_metrics = [key for key in history_keys if 'loss' in key and 'val' not in key]
     for metric in drawable_metrics:
         PlotMetric(history, model_name, metric, plotting_dir=plotting_dir)    
+
+    # compute global correlation matrix of errors
+    if num_quantiles > 1:
+        X, _, y, _ = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 1)
+        if standardize:
+            X = input_scaler.transform(X)
+        ys = model.predict(X)
+
+        # transform predicted data back to normal
+        if standardize:
+            # each item of ys_pred is a array of shape (n, 3) for 3 quantiles
+            # each quantile for given variable should be rescaled back by the same scale
+                for pred_idx, arr in enumerate(ys[:-1] if add_mass_loss else ys):
+                    if quantiles:
+                        for q_idx in range(num_quantiles):
+                            arr[:, q_idx] *= target_scaler.scale_[pred_idx]
+                            arr[:, q_idx] += target_scaler.mean_[pred_idx]
+                    else:
+                        arr *= target_scaler.scale_[pred_idx]
+                        arr += target_scaler.mean_[pred_idx]
+
+        if add_mass_loss:
+            ys = ys[:-1]
+        
+        ys = np.array(ys)
+        ys = ys.transpose(1, 0, 2)
+        errors = ys[:, :, 1] - y
+
+        # replace negative errors by max value
+        max_errors = np.max(errors, axis=0)
+        negative_errors = errors < 0.0
+        errors = np.where(negative_errors, max_errors[None, :], errors)
+
+        global_corr_mtrx = np.corrcoef(errors, rowvar=False)
+        pretty_labels = [ground_truth_map[name] for name in target_names]
+        PlotCovarMtrx(global_corr_mtrx, 'empirical', pretty_labels, os.path.join(model_dir, 'plots'))
+
+        params['global_corr_mtrx'] = global_corr_mtrx.tolist()
 
     # form testing dataloader
     def TestSelection(df, mod, parity, mass, sample_type):
@@ -436,6 +470,10 @@ def main():
                           xlabel=xlabel,
                           ylabel=ylabel,
                           plotting_dir=plotting_dir)
+
+    # save training parameters
+    with open(os.path.join(model_dir, 'params.yaml'), 'w') as outfile:
+        yaml.dump(params, outfile, sort_keys=False, default_flow_style=False)
 
 
 if __name__ == '__main__':
