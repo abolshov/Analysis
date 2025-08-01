@@ -107,4 +107,4 @@ class ErrorPropagator():
         
         negative_mask = mass_error_sqr < 0.0
         mass_error_sqr = np.where(negative_mask, np.max(mass_error_sqr, axis=0), mass_error_sqr)
-        return np.sqrt(mass_error_sqr)
+        return np.sqrt(mass_error_sqr).flatten()
