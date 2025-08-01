@@ -97,9 +97,14 @@ def main():
     pred_errors = ys_pred[:, :, -1] - ys_pred[:, :, 0]
     true_errors = y - central
 
+    if training_params['use_energy_layer']:
+        pred_errors = np.delete(pred_errors, [3, 7], axis=1)
+
     global_corr_mtrx = np.array(training_params['global_corr_mtrx'])
     ep = ErrorPropagator(global_corr_mtrx, central[:, :3], central[:, 4:7])
     prop_errors = ep.Propagate(pred_errors)
+
+    print(prop_errors[:10])
 
     # # if there are negative errors, replace them with max errors observed
     # max_pred_errors = np.max(pred_errors, axis=0)
