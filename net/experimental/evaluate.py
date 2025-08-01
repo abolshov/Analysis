@@ -16,7 +16,7 @@ from ModelUtils import LoadModel
 def main():
     # load dataset for model evaluation
     # file = 'DY.root'
-    file = '../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root'
+    file = 'nano_0.root'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
 
@@ -97,16 +97,17 @@ def main():
     pred_errors = ys_pred[:, :, -1] - ys_pred[:, :, 0]
     true_errors = y - central
 
+    # if there are negative errors, replace them with max errors observed
+    max_pred_errors = np.max(pred_errors, axis=0)
+    negative_errors = pred_errors < 0.0
+    pred_errors = np.where(negative_errors, max_pred_errors[None, :], pred_errors)
+    assert np.all(pred_errors > 0.0), "Predicted errors must be positive"
+
     n_events, n_targets = pred_errors.shape
     # sigma_mtrx will be used to transform all-dataset correlation matrix to n_events per-event covariance matrices
     # that are needed for error propagation
     I = np.eye(n_targets)[None, :, :] # shape (1, n_targets, n_targets)
     sigma_mtrx = pred_errors[:, :, None]*I # broadcast 
-
-    # PROBLEM: for now some elements of sigma_mtrx are negative (either due to quantile crossing or bc it includes energy)
-    # need to erase energy in case when higgs mass constraint was used for neural net training
-    # erase when fixed
-    assert np.all(sigma_mtrx > 0.0), "Diagonal matrix of variances for event contains negative variances"
 
     normalize_cov_mtrx = True
     # technically normalized covariance matrix is correlation matrix
