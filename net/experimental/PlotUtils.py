@@ -78,10 +78,15 @@ def PlotHist(bins=np.linspace(0, 250, 100), **kwargs):
     plt.clf()
 
 
-def PlotCovarMtrx(mtrx, method, labels, plotdir):
+def PlotCovarMtrx(mtrx, method, labels, plotdir, display_values=True):
     plt.matshow(mtrx)
     plt.xticks(ticks=np.arange(mtrx.shape[0]), labels=labels, fontsize=5, rotation=45)
     plt.yticks(ticks=np.arange(mtrx.shape[0]), labels=labels, fontsize=5, rotation=45)
+
+    if display_values:
+        for (i, j), val in np.ndenumerate(mtrx):
+            plt.text(j, i, f'{val:.1e}', ha='center', va='center', color='white', fontsize=5)
+
     cb = plt.colorbar()
     plt.title('Covariance Matrix')
     ax = plt.gca()
