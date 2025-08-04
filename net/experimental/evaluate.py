@@ -4,12 +4,13 @@ import numpy as np
 import os
 import yaml
 from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 from Dataloader import Dataloader
 from ErrorProp import ErrorPropagator
 
 from MiscUtils import *
-from PlotUtils import PlotHist, PlotCompare2D, PlotCovarMtrx
+from PlotUtils import PlotHist, PlotCompare2D, PlotCovarMtrx, PlotHistStack
 from ModelUtils import LoadModel
 
 def PreparePredictions(model, training_params, X_test):
@@ -45,9 +46,24 @@ def PreparePredictions(model, training_params, X_test):
 
     return ys_pred
 
+def ComputeMass(central):
+    hvv_en = central[:, 3]
+    hbb_en = central[:, -1]
+
+    hvv_p3 = central[:, :3]
+    hbb_p3 = central[:, 4:-1]
+
+    x_en = hvv_en + hbb_en
+    x_p3 = hvv_p3 + hbb_p3
+    x_mass_sqr = np.square(x_en) - np.sum(np.square(x_p3), axis=1)
+    neg_mass = x_mass_sqr <= 0.0
+    x_mass = np.sqrt(np.abs(x_mass_sqr))
+    x_mass = np.where(neg_mass, -1.0, x_mass)
+    return x_mass
+
 def main():
     # load signal data
-    file = 'nano_0.root'
+    file = '../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
 
@@ -107,13 +123,13 @@ def main():
     ep = ErrorPropagator(global_corr_mtrx, central_sig[:, :3], central_sig[:, 4:7])
     prop_errors_sig = ep.Propagate(pred_errors_sig)
 
-    # pretty_labels = [ground_truth_map[name] for name in target_names if 'E' not in name]
-    # PlotCovarMtrx(global_corr_mtrx, 'empirical', pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
+    pretty_labels = [ground_truth_map[name] for name in target_names if 'E' not in name]
+    PlotCovarMtrx(global_corr_mtrx, 'empirical', pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
 
     bin_left = np.min(prop_errors_sig) - 1.0
     bin_right = np.max(prop_errors_sig) + 1.0
     bins = np.linspace(bin_left, bin_right, 50)
-    PlotHist(data=pred_errors_sig, 
+    PlotHist(data=prop_errors_sig, 
              bins=bins,
              title="Predicted X->HH mass errors",
              ylabel='Count',
@@ -123,7 +139,7 @@ def main():
 
 
     # load bkg data
-    file = 'DY.root'
+    file = 'TTbar.root'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
 
@@ -150,14 +166,60 @@ def main():
              plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
              file_name='bkg_mx_error')
 
-    plt.hist(pred_errors_sig, bins=np.linspace(0, 250, 50), density=True, color='blue', label='sig', histtype='step', linewidth=3)
-    plt.hist(prop_errors_bkg, bins=np.linspace(0, 250, 50), density=True, color='red', label='bkg', histtype='step', linewidth=3)
-    plt.xlabel('Mass error, [GeV]')
-    plt.ylabel('Density')
-    plt.title('Signal vs Background Mass errors')
-    plt.legend()
-    plt.grid()
-    plt.savefig('sig_vs_bkg_mx_error.pdf', bbox_inches='tight')
+    PlotHistStack([prop_errors_sig, prop_errors_bkg], 
+                  {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
+                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
+                  'sig_vs_ttbar_mx_error',
+                  bins=np.linspace(0, 250, 50),
+                  plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
+                  density=True,
+                  xlabel='Mass error, [GeV]',
+                  ylabel='Density',
+                  title='Signal vs Background mass errors')
+
+    mass_sig = ComputeMass(central_sig)
+    mass_bkg = ComputeMass(central_bkg)
+
+    rel_sig_err = prop_errors_sig/mass_sig
+    rel_bkg_err = prop_errors_bkg/mass_bkg
+
+    PlotHistStack([rel_sig_err, rel_bkg_err], 
+                  {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
+                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
+                  'sig_vs_ttbar_rel_mx_error',
+                  val_range=(0, 0.5),
+                  plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
+                  density=True,
+                  xlabel='Mass relative error',
+                  ylabel='Density',
+                  title='Signal vs Background relative mass errors')
+
+    mass_low = np.quantile(mass_sig, 0.16)
+    mass_high = np.quantile(mass_sig, 0.84)
+    sig_core_mask = np.logical_and(mass_sig > mass_low, mass_sig < mass_high)
+    bkg_core_mask = np.logical_and(mass_bkg > mass_low, mass_bkg < mass_high)
+
+    PlotHistStack([prop_errors_sig[sig_core_mask], prop_errors_bkg[bkg_core_mask]], 
+                  {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
+                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
+                  'core_sig_vs_ttbar_mx_error',
+                  bins=np.linspace(0, 250, 50),
+                  plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
+                  density=True,
+                  xlabel='Mass error, [GeV]',
+                  ylabel='Density',
+                  title='Signal vs Background mass errors')
+
+    PlotHistStack([rel_sig_err[sig_core_mask], rel_bkg_err[bkg_core_mask]], 
+                  {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
+                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
+                  'core_sig_vs_ttbar_rel_mx_error',
+                  val_range=(0, 0.5),
+                  plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
+                  density=True,
+                  xlabel='Mass relative error',
+                  ylabel='Density',
+                  title='Signal vs Background mass errors')
 
 if __name__ == '__main__':
     main()

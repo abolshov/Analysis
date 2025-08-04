@@ -94,3 +94,35 @@ def PlotCovarMtrx(mtrx, method, labels, plotdir, display_values=True):
     plt.savefig(os.path.join(plotdir, f'{method}_cov_mtrx.pdf'), bbox_inches='tight')
     plt.clf()
     plt.close()
+
+def PlotHistStack(data, hist_params, file_name, density=False, val_range=None, bins=None, title='', xlabel='', ylabel='', plotting_dir=None):
+    assert isinstance(data, list) and isinstance(data[0], np.ndarray), 'Input data must be list of np.arrays'
+    assert len(data) == len(hist_params), f'Mismatch between number of input arrays ({len(data)}) and sets of parameters ({len(hist_params)})'
+    assert bins is not None or val_range is not None, 'Must provide bins as array or integer or range'
+
+    if bins is None and val_range is not None:
+        begin, end = val_range
+        bins = np.linspace(begin, end, 50)
+
+    for i, (label, params) in enumerate(hist_params.items()):
+        plt.hist(data[i], 
+                 label=label, 
+                 bins=bins, 
+                 density=density,
+                 range=val_range,
+                 color=params['color'],
+                 histtype='step',
+                 linewidth=params['linewidth'])
+
+    plt.title(title)
+    plt.ylabel(ylabel)
+    plt.xlabel(xlabel)
+    plt.grid(True)
+    plt.legend()
+
+    if plotting_dir:
+        plt.savefig(os.path.join(plotting_dir, f'{file_name}.pdf'), bbox_inches='tight')
+    else:
+        plt.savefig(f'{file_name}.pdf', bbox_inches='tight')
+    plt.clf()
+    plt.close()
