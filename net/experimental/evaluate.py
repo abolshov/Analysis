@@ -1,6 +1,8 @@
 import tensorflow as tf
 import pandas as pd
 import numpy as np
+import vector
+import awkward as ak
 import os
 import yaml
 from sklearn.preprocessing import StandardScaler
@@ -20,6 +22,9 @@ def PreparePredictions(model, training_params, X_test):
         input_scales = training_params['input_train_scales']
         X_test -= input_means
         X_test /= input_scales
+
+        print(X_test.shape)
+
         ys_pred = model.predict(X_test)
 
         if training_params['add_mass_loss']:
@@ -70,7 +75,22 @@ def main():
     def TestSelection(df, mod, parity, mass, sample_type):
         tmp = np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
         return np.logical_and(tmp, df['sample_type'] == sample_type)
-        
+
+    # def SignalRegionSelection(df, mod, parity, mass, sample_type):
+    #     selection = np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
+    #     selection = np.logical_and(selection, df['sample_type'] == sample_type)
+    #     two_btagged_jets = np.logical_and(df['centralJet_1_btagPNetB'] > 0.245, df['centralJet_2_btagPNetB'] > 0.245)
+    #     lep1_p4 = vector.zip({'px': df['lep1_px'], 'py': df['lep1_py'], 'pz': df['lep1_pz'], 'E': df['lep1_E']})
+    #     lep2_p4 = vector.zip({'px': df['lep2_px'], 'py': df['lep2_py'], 'pz': df['lep2_pz'], 'E': df['lep2_E']})
+    #     same_flavor = df['lep1_legType'] == df['lep2_legType']
+    #     mll = (lep1_p4 + lep2_p4).mass.to_numpy()
+    #     z_peak_veto = np.logical_and(same_flavor, np.abs(mll - 90.0) < 10.0)
+    #     selection = np.logical_and(selection, two_btagged_jets)
+    #     # selection = np.logical_and(selection, mll < 12.0)
+    #     selection = np.logical_and(selection, z_peak_veto)
+    #     return selection
+
+    # X_sig, input_names, y_sig, target_names = dataloader.Get(SignalRegionSelection, 2, 1, 800, 1)  
     X_sig, input_names, y_sig, target_names = dataloader.Get(TestSelection, 2, 1, 800, 1)
 
     # load model
@@ -140,8 +160,22 @@ def main():
 
     # load bkg data
     file = 'TTbar.root'
+    # file = 'DY.root'
+    bkg_latex = '$T\\bar{T}$'
+    bkg_name = 'ttbar'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
+
+    # def SignalRegionSelection(df):
+    #     selection = np.logical_and(df['centralJet_1_btagPNetB'] > 0.245, df['centralJet_2_btagPNetB'] > 0.245)
+    #     lep1_p4 = vector.zip({'px': df['lep1_px'], 'py': df['lep1_py'], 'pz': df['lep1_pz'], 'E': df['lep1_E']})
+    #     lep2_p4 = vector.zip({'px': df['lep2_px'], 'py': df['lep2_py'], 'pz': df['lep2_pz'], 'E': df['lep2_E']})
+    #     same_flavor = df['lep1_legType'] == df['lep2_legType']
+    #     mll = (lep1_p4 + lep2_p4).mass.to_numpy()
+    #     z_peak_veto = np.logical_and(same_flavor, np.abs(mll - 90.0) < 10.0)
+    #     # selection = np.logical_and(selection, mll < 12.0)
+    #     selection = np.logical_and(selection, z_peak_veto)
+    #     return selection
 
     X_bkg, input_names, y_bkg, target_names = dataloader.Get()
     ys_pred_bkg = PreparePredictions(model, training_params, X_bkg)
@@ -168,14 +202,15 @@ def main():
 
     PlotHistStack([prop_errors_sig, prop_errors_bkg], 
                   {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
-                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
-                  'sig_vs_ttbar_mx_error',
+                   f'{bkg_latex}': {'linewidth': 2, 'color': 'red'}},
+                  f'sig_vs_{bkg_name}_mx_error',
                   bins=np.linspace(0, 250, 50),
                   plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
                   density=True,
                   xlabel='Mass error, [GeV]',
                   ylabel='Density',
                   title='Signal vs Background mass errors')
+
 
     mass_sig = ComputeMass(central_sig)
     mass_bkg = ComputeMass(central_bkg)
@@ -185,8 +220,8 @@ def main():
 
     PlotHistStack([rel_sig_err, rel_bkg_err], 
                   {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
-                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
-                  'sig_vs_ttbar_rel_mx_error',
+                   f'{bkg_latex}': {'linewidth': 2, 'color': 'red'}},
+                  f'sig_vs_{bkg_name}_rel_mx_error',
                   val_range=(0, 0.5),
                   plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
                   density=True,
@@ -201,8 +236,8 @@ def main():
 
     PlotHistStack([prop_errors_sig[sig_core_mask], prop_errors_bkg[bkg_core_mask]], 
                   {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
-                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
-                  'core_sig_vs_ttbar_mx_error',
+                   f'{bkg_latex}': {'linewidth': 2, 'color': 'red'}},
+                  f'core_sig_vs_{bkg_name}_mx_error',
                   bins=np.linspace(0, 250, 50),
                   plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
                   density=True,
@@ -212,8 +247,8 @@ def main():
 
     PlotHistStack([rel_sig_err[sig_core_mask], rel_bkg_err[bkg_core_mask]], 
                   {'Radion $M_X=800$': {'linewidth': 2, 'color': 'blue'},
-                   '$T\\bar{T}$': {'linewidth': 2, 'color': 'red'}},
-                  'core_sig_vs_ttbar_rel_mx_error',
+                   f'{bkg_latex}': {'linewidth': 2, 'color': 'red'}},
+                  f'core_sig_vs_{bkg_name}_rel_mx_error',
                   val_range=(0, 0.5),
                   plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
                   density=True,
