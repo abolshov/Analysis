@@ -25,6 +25,7 @@ def main():
         return np.logical_and(tmp, df['sample_type'] == sample_type)
         
     X, input_names, y, target_names = dataloader.Get(TestSelection, 2, 1, 800, 1)
+    # X, input_names, y, target_names = dataloader.Get()
 
     # load model
     model, training_params = LoadModel('model_cfg.yaml')
@@ -101,10 +102,19 @@ def main():
         pred_errors = np.delete(pred_errors, [3, 7], axis=1)
 
     global_corr_mtrx = np.array(training_params['global_corr_mtrx'])
-    ep = ErrorPropagator(global_corr_mtrx, central[:, :3], central[:, 4:7])
+    ep = ErrorPropagator(global_corr_mtrx, central[:, :4], central[:, 4:])
     prop_errors = ep.Propagate(pred_errors)
 
-    print(prop_errors[:10])
+    bin_left = np.min(prop_errors) - 1.0
+    bin_right = np.max(prop_errors) + 1.0
+    bins = np.linspace(bin_left, bin_right, 50)
+    PlotHist(data=prop_errors, 
+             bins=bins,
+             title="Predicted X->HH mass errors",
+             ylabel='Count',
+             xlabel='Mass error, [GeV]',
+             plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
+             file_name='dy_mx_error')
 
     # # if there are negative errors, replace them with max errors observed
     # max_pred_errors = np.max(pred_errors, axis=0)
