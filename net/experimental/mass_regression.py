@@ -62,7 +62,7 @@ def main():
 
     model_name = 'model'
     params['model_name'] = model_name
-    model_dir = 'predict_quantiles3D_v2'
+    model_dir = 'predict_quantiles3D_v3'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -86,6 +86,7 @@ def main():
     use_quantile_width_penalty = True
     num_output_units = num_quantiles
     add_mass_loss = True
+    compute_corr_mtrx = True
 
     params['input_shape'] = list(input_shape)
     params['num_units'] = num_units
@@ -104,6 +105,7 @@ def main():
     params['use_quantile_width_penalty'] = use_quantile_width_penalty
     params['num_output_units'] = num_output_units
     params['add_mass_loss'] = add_mass_loss
+    params['compute_corr_mtrx'] = compute_corr_mtrx
     
     # individual width penalty rates
     # some errors are overestimated, others are underestimated
@@ -113,7 +115,7 @@ def main():
         width_penalty_rates['genHVV_E'] = 0.035
         width_penalty_rates['genHVV_px'] = 0.035
         width_penalty_rates['genHVV_py'] = 0.035
-        width_penalty_rates['genHVV_pz'] =  0.025
+        width_penalty_rates['genHVV_pz'] =  0.02
 
         width_penalty_rates['genHbb_E'] = 0.035
         width_penalty_rates['genHbb_px'] = 0.035
@@ -157,7 +159,7 @@ def main():
         target_array = np.reshape(target_array, (-1, 1))
 
         losses[target_name] = QuantileLoss(quantiles=quantiles, 
-                                           width_penalty_rate=width_penalty_rates[target_name], 
+                                           width_penalty_rate=width_penalty_rates[target_name] if use_quantile_width_penalty else None, 
                                            name=f'quantile_loss_{target_name}')
         # losses[target_name] = tf.keras.losses.LogCosh()
         loss_names[target_name] = losses[target_name].name
@@ -268,7 +270,7 @@ def main():
         PlotMetric(history, model_name, metric, plotting_dir=plotting_dir)    
 
     # compute global correlation matrix of errors
-    if num_quantiles > 1:
+    if compute_corr_mtrx:
         X, _, y, _ = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 1)
         if standardize:
             X = input_scaler.transform(X)
@@ -292,7 +294,10 @@ def main():
         
         ys = np.array(ys)
         ys = ys.transpose(1, 0, 2)
-        errors = ys[:, :, 1] - y
+        errors = ys[:, :, num_quantiles // 2] - y
+
+        if use_energy_layer:
+            errors = np.delete(errors, [3, 7], axis=1)
 
         # replace negative errors by max value
         max_errors = np.max(errors, axis=0)
@@ -300,8 +305,8 @@ def main():
         errors = np.where(negative_errors, max_errors[None, :], errors)
 
         global_corr_mtrx = np.corrcoef(errors, rowvar=False)
-        pretty_labels = [ground_truth_map[name] for name in target_names]
-        PlotCovarMtrx(global_corr_mtrx, 'empirical', pretty_labels, os.path.join(model_dir, 'plots'))
+        pretty_labels = [ground_truth_map[name] for name in target_names if 'E' not in name] if use_energy_layer else [ground_truth_map[name] for name in target_names]
+        PlotCovarMtrx(global_corr_mtrx, 'empirical', pretty_labels, plotting_dir)
 
         params['global_corr_mtrx'] = global_corr_mtrx.tolist()
 
@@ -343,7 +348,9 @@ def main():
 
     pred_df = pd.DataFrame.from_dict(pred_dict)
 
-    if quantiles:
+    has_central_quantile = 0.5 in quantiles
+    is_quantile = quantiles is not None
+    if is_quantile and has_central_quantile:
         q = int(100*0.5)
 
         for i, col in enumerate(target_names):
@@ -386,7 +393,8 @@ def main():
                  width=True,
                  count=True,
                  file_name='pred_mass')
-    else:
+    elif not is_quantile:
+        # not quantiles <=> model contains single output for central value without quantile loss
         for i, col in enumerate(target_names):
                 ground_truth = y_test[:, i]
                 bin_left = np.min([np.quantile(ground_truth, 0.01), np.quantile(pred_df[col], 0.01)]) - 1.0
@@ -472,7 +480,7 @@ def main():
                           plotting_dir=plotting_dir)
 
     # save training parameters
-    with open(os.path.join(model_dir, 'params.yaml'), 'w') as outfile:
+    with open(os.path.join(model_dir, f'params_{model_name}.yaml'), 'w') as outfile:
         yaml.dump(params, outfile, sort_keys=False, default_flow_style=False)
 
 
