@@ -1,47 +1,3 @@
-file_names: [../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_1000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_1200/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_1400/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_1600/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_1800/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_2000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_250/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_2500/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_260/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_270/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_280/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_300/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_3000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_350/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_4000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_450/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_5000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_550/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_600/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_650/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_700/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoBulkGravitontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_1000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_1200/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_1400/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_1600/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_1800/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_2000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_250/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_2500/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_260/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_270/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_280/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_300/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_3000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_350/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_4000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_450/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_5000/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_550/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_600/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_650/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_700/nano_0.root,
-  ../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root]
 tree_name: Events
 
 objects:
@@ -49,7 +5,6 @@ objects:
     centralJet:
       target_shape: 10
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: True
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -66,7 +21,6 @@ objects:
     SelectedFatJet:
       target_shape: 3
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: True
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -80,7 +34,6 @@ objects:
     lep1:
       target_shape: 1
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: False
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -89,7 +42,6 @@ objects:
     lep2:
       target_shape: 1
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: False
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -98,7 +50,6 @@ objects:
     met:
       target_shape: 1
       kinematics_output_format: ['px', 'py']
-      compute_num_valid: False
       branches_to_load:
         - 'pt'
         - 'phi'
@@ -107,7 +58,6 @@ objects:
     genHVV:
       target_shape: 1
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: False
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -116,7 +66,6 @@ objects:
     genHbb:
       target_shape: 1
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: False
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -127,7 +76,6 @@ objects:
     genb1:
       target_shape: 1
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: False
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -136,7 +84,6 @@ objects:
     genb2:
       target_shape: 1
       kinematics_output_format: ['px', 'py', 'pz', 'E']
-      compute_num_valid: False
       branches_to_load:
         - 'pt'
         - 'eta'
@@ -154,9 +101,15 @@ auxilliary_branches:
   - 'lep1_gen_kind'
   - 'lep2_legType'
   - 'lep2_gen_kind'
+  - 'genV1prod1_pt'
+  - 'genV2prod1_pt'
 
-apply_selections: True
-plot_cutflow: False
+selection_config: 
+  gen_level: True
+  reco_level: True
+  gen_reco_matching: True
+  signal_region: False
+plot_cutflow: True
 plot_dir: 'cutflow_plots'
 use_percentages: False
 use_topology: mixed

@@ -135,18 +135,18 @@ class Dataloader:
                 df = pd.concat([df, obj_df], axis=1)
         return df     
 
-    def Load(self, loadable, append=True, apply_selections=None):
+    def Load(self, loadable, append=True, selection_cfg=None):
         print(f'Loading data...')
         start = time.perf_counter()
 
-        if apply_selections is None:
-            apply_selections = self.loader_cfg['apply_selections']
+        if selection_cfg is None:
+            selection_cfg = self.loader_cfg['selection_config']
 
         if isinstance(loadable, list):
             for file_name in loadable:
-                self.LoadFile(file_name, append=append, apply_selections=apply_selections)
+                self.LoadFile(file_name, append=append, selection_cfg=selection_cfg)
         elif isinstance(loadable, str):
-                self.LoadFile(loadable, append=append, apply_selections=apply_selections)
+                self.LoadFile(loadable, append=append, selection_cfg=selection_cfg)
         else:
             raise TypeError(f'Illegal type {type(loadable)} passed. Only str or list are allowed')
 
@@ -157,14 +157,14 @@ class Dataloader:
         print(f'Done in {elapsed:.2f}s')
         print(f'Shape: {self.df.shape}')
 
-    def LoadFile(self, file_name, append=True, apply_selections=True):
+    def LoadFile(self, file_name, append=True, selection_cfg=None):
         tree_name = self.loader_cfg['tree_name']
         tree = uproot.open(f'{file_name}:{tree_name}')
         df = pd.concat([self.LoadObjects(tree), self.LoadBranches(tree)], axis=1)
 
-        if apply_selections:
+        if selection_cfg:
             is_bkg = np.all(df['sample_type'] > 4)
-            cuts_df = self.ComputeCutflow(df, is_bkg)
+            cuts_df = self.ComputeCutflow(df, is_bkg, selection_cfg)
             df = self.ApplySelections(df, cuts_df, self.loader_cfg['plot_cutflow'])
 
         if append:
@@ -245,15 +245,18 @@ class Dataloader:
         cuts['successful_lep_reco'] = np.logical_and(reco_lep1, reco_lep2)
         return cuts
 
-    def ComputeCutflow(self, df, is_bkg):
+    def ComputeCutflow(self, df, is_bkg, selection_cfg):
         # I want it to return list of cuts it computed in certain order for plotting cutflow
+        assert selection_cfg is not None, 'Selection config must be provided to compute cutflow'
+        
         cut_dict = {}
-        if not is_bkg:
+        if not is_bkg and selection_cfg['gen_level']:
             cut_dict = self.ComputeGenLevelCuts(df, cut_dict)
         
-        cut_dict.update(self.ComputeRecoLevelCuts(df, cut_dict))
+        if selection_cfg['reco_level']:
+            cut_dict.update(self.ComputeRecoLevelCuts(df, cut_dict))
 
-        if not is_bkg:
+        if not is_bkg and selection_cfg['gen_reco_matching']:
             cut_dict.update(self.ComputeGenRecoMatchingCuts(df, cut_dict))
     
         cut_df = pd.DataFrame.from_dict(cut_dict)
