@@ -151,27 +151,84 @@ class EnergyErrorLayer(tf.keras.layers.Layer):
         return output
 
 
-class TransformerEncoder(tf.keras.layers.Layer):
-    def __init__(self, 
+class Attention(tf.keras.layers.Layer):
+    def __init__(self, **kwargs):
+        super(Attention, self).__init__()
+        self.mha = tf.keras.layers.MultiHeadAttention(**kwargs)
+        self.layernorm = tf.keras.layers.LayerNormalization()
+        self.add = tf.keras.layers.Add()
+
+    def call(self, x):
+        attn_output = self.mha(query=x, value=x, key=x)
+        print(attn_output.shape) # Expected: (batch_size, seq_length, key_dim) seq_length = 1, key_dim = d_model
+        x = self.add([x, attn_output])
+        x = self.layernorm(x)
+        print(x.shape) # Expected: (batch_size, seq_length, key_dim) seq_length = 1, key_dim = d_model
+        return x
+
+
+class FeedForward(tf.keras.layers.Layer):
+    def __init__(self, d_model, dff, dropout_rate=0.1):
+        super(FeedForward, self).__init__(**kwargs)
+        self.seq = tf.keras.Sequential([
+            tf.keras.layers.Dense(dff, activation='gelu'),
+            tf.keras.layers.Dense(d_model),
+            tf.keras.layers.Dropout(dropout_rate)
+        ])
+        self.add = tf.keras.layers.Add()
+        self.layer_norm = tf.keras.layers.LayerNormalization()
+
+    def call(self, x):
+        x = self.add([x, self.seq(x)])
+        x = self.layer_norm(x) 
+        return x
+
+
+class EncoderLayer(tf.keras.layers.Layer):
+    def __init__(self, *, d_model, num_heads, dff, dropout_rate=0.1):
+        super(EncoderLayer, self).__init__(**kwargs)
+
+    self.self_attention = Attention(num_heads=num_heads, key_dim=d_model, dropout=dropout_rate)
+    self.feedforward = FeedForward(d_model, dff)
+
+    def call(self, x):
+        print('EncoderLayer')
+        x = self.self_attention(x) # Expected x.shape = (batch_size, seq_length, key_dim) = (batch_size, 1, key_dim)
+        print(x.shape)
+        x = self.feedforward(x)
+        return x
+
+
+class Embedding(tf.keras.layers.Layer):
+    def __init__(self, *, dim_embedding, **kwargs):
+        super(Embedding, self).__init__(**kwargs)
+        pass
+
+
+class Encoder(tf.keras.layers.Layer):
+    def __init__(self, *,
                  num_layers=6, 
-                 key_query_dim=512, 
+                 d_model=512,
                  num_heads=8, 
-                 dim_feedforward=2048, 
-                 dropout=0.1, 
-                 name='transformer_encoder', 
+                 dff=2048,
+                 dropout_rate=0.1, 
+                 name='encoder', 
                  **kwargs): 
         """
         Implements encoder part of transformer. Consists of num_layers identical layers. Each layer contains
         MultihedAttention layer and feedforward network (2 dense layers)
 
         Args:
-            key_query_dim: dimension of keys and queries
+            d_model: dimension of keys and queries
             num_heads: number of attention heads
-            dim_feedforward: number of units in the dense layer following attention heads
+            dff: number of units in the first dense layer of the feed-froward network following attention heads
             dropout: dropout rate applied in feedforward network
         """
+        super(Encoder, self).__init__(name=name, **kwargs)
+        
+        self.encoder_layers = [EncoderLayer(d_model=d_model, num_heads=num_heads, dff=dff, dropout_rate=dropout_rate) for _ in range(num_layers)]
+        self.dropout = tf.keras.layers.Dropout(dropout_rate)
 
-        super(TransformerEncoder, self).__init__(name=name, **kwargs)
 
     def call(self, inputs):
         pass
