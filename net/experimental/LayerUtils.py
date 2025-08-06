@@ -149,3 +149,29 @@ class EnergyErrorLayer(tf.keras.layers.Layer):
         energy = tf.expand_dims(energy, axis=-1) 
         output = tf.concat([energy, dE], axis=-1)
         return output
+
+
+class TransformerEncoder(tf.keras.layers.Layer):
+    def __init__(self, 
+                 num_layers=6, 
+                 key_query_dim=512, 
+                 num_heads=8, 
+                 dim_feedforward=2048, 
+                 dropout=0.1, 
+                 name='transformer_encoder', 
+                 **kwargs): 
+        """
+        Implements encoder part of transformer. Consists of num_layers identical layers. Each layer contains
+        MultihedAttention layer and feedforward network (2 dense layers)
+
+        Args:
+            key_query_dim: dimension of keys and queries
+            num_heads: number of attention heads
+            dim_feedforward: number of units in the dense layer following attention heads
+            dropout: dropout rate applied in feedforward network
+        """
+
+        super(TransformerEncoder, self).__init__(name=name, **kwargs)
+
+    def call(self, inputs):
+        pass
