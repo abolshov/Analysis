@@ -153,23 +153,23 @@ class EnergyErrorLayer(tf.keras.layers.Layer):
 
 class Attention(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
-        super(Attention, self).__init__()
+        super().__init__()
         self.mha = tf.keras.layers.MultiHeadAttention(**kwargs)
         self.layernorm = tf.keras.layers.LayerNormalization()
         self.add = tf.keras.layers.Add()
 
     def call(self, x):
         attn_output = self.mha(query=x, value=x, key=x)
-        print(attn_output.shape) # Expected: (batch_size, seq_length, key_dim) seq_length = 1, key_dim = d_model
+        # print(attn_output.shape) # Expected: (batch_size, seq_length, key_dim)
         x = self.add([x, attn_output])
         x = self.layernorm(x)
-        print(x.shape) # Expected: (batch_size, seq_length, key_dim) seq_length = 1, key_dim = d_model
+        # print(x.shape) # Expected: (batch_size, seq_length, key_dim)
         return x
 
 
 class FeedForward(tf.keras.layers.Layer):
-    def __init__(self, d_model, dff, dropout_rate=0.1):
-        super(FeedForward, self).__init__(**kwargs)
+    def __init__(self, *, d_model, dff, dropout_rate, **kwargs):
+        super().__init__()
         self.seq = tf.keras.Sequential([
             tf.keras.layers.Dense(dff, activation='gelu'),
             tf.keras.layers.Dense(d_model),
@@ -185,50 +185,81 @@ class FeedForward(tf.keras.layers.Layer):
 
 
 class EncoderLayer(tf.keras.layers.Layer):
-    def __init__(self, *, d_model, num_heads, dff, dropout_rate=0.1):
-        super(EncoderLayer, self).__init__(**kwargs)
+    def __init__(self, *, d_model, num_heads, dff, dropout_rate, **kwargs):
+        super().__init__()
 
-    self.self_attention = Attention(num_heads=num_heads, key_dim=d_model, dropout=dropout_rate)
-    self.feedforward = FeedForward(d_model, dff)
+        self.self_attention = Attention(num_heads=num_heads, key_dim=d_model, dropout=dropout_rate)
+        self.feedforward = FeedForward(d_model=d_model, dff=dff, dropout_rate=dropout_rate)
 
     def call(self, x):
-        print('EncoderLayer')
-        x = self.self_attention(x) # Expected x.shape = (batch_size, seq_length, key_dim) = (batch_size, 1, key_dim)
-        print(x.shape)
+        x = self.self_attention(x) # Expected x.shape = (batch_size, seq_length, key_dim)
         x = self.feedforward(x)
         return x
 
 
 class Embedding(tf.keras.layers.Layer):
-    def __init__(self, *, dim_embedding, **kwargs):
-        super(Embedding, self).__init__(**kwargs)
-        pass
+    def __init__(self, *, num_layers, dim_layer, dim_embedding, **kwargs):
+        # I am not sure about this class: currently it is mapping (batch_size, num_features) to (batch_size, dim_embedding, 1)
+        # i.e. as if I have sequence of length dim_embedding of 1D vectors vectors
+        # maybe it instead should be mapping (batch_size, num_features) to (batch_size, num_features, dim_embedding)
+        # i.e. sequence length will be num_features (take in constructor) and each feature will then be mapped to vector of dimension dim_embedding
+        """
+        Args:
+            num_layers: number of layers in embedding perceptron
+            dim_layer: number of units in layers
+            dim_embedding: dimension of the embdedding vector
+        """
+        super().__init__()
+        
+        assert num_layers > 1, 'Embedding must have at least one layer'
+        self.seq = tf.keras.Sequential([tf.keras.layers.Dense(dim_layer, activation='silu') for _ in range(num_layers - 1)])
+        self.seq.add(tf.keras.layers.Dense(dim_embedding))
+
+    def call(self, x):
+        x = self.seq(x)
+        out = tf.expand_dims(x, axis=-1) # each input feature will be projected to dim_embedding dimensional vector
+        # print(f'Embedding shape: {x.shape}')
+        return out
 
 
 class Encoder(tf.keras.layers.Layer):
-    def __init__(self, *,
-                 num_layers=6, 
-                 d_model=512,
-                 num_heads=8, 
-                 dff=2048,
+    def __init__(self, *, 
+                 num_encoder_layers, 
+                 num_proj_layers,
+                 dim_proj_layer,
+                 d_model,
+                 num_heads, 
+                 dff,
                  dropout_rate=0.1, 
                  name='encoder', 
                  **kwargs): 
         """
-        Implements encoder part of transformer. Consists of num_layers identical layers. Each layer contains
+        Implements encoder part of transformer. Consists of num_encoder_layers identical layers. Each layer contains
         MultihedAttention layer and feedforward network (2 dense layers)
 
         Args:
+            num_proj_layers: number of dense layers in the embedding
+            dim_proj_layer: number of units in projection layers
             d_model: dimension of keys and queries
             num_heads: number of attention heads
             dff: number of units in the first dense layer of the feed-froward network following attention heads
             dropout: dropout rate applied in feedforward network
         """
-        super(Encoder, self).__init__(name=name, **kwargs)
+        super().__init__()
+        self.num_encoder_layers = num_encoder_layers
+
+        # project input to "vector representation" (batch_size, n_features) -> (batch_size1, 1, d_model)
+        self.embedding = Embedding(num_layers=num_proj_layers, dim_layer=num_proj_layers, dim_embedding=d_model)
         
-        self.encoder_layers = [EncoderLayer(d_model=d_model, num_heads=num_heads, dff=dff, dropout_rate=dropout_rate) for _ in range(num_layers)]
+        self.encoder_layers = [EncoderLayer(d_model=d_model, 
+                                            num_heads=num_heads, 
+                                            dff=dff, 
+                                            dropout_rate=dropout_rate) for _ in range(num_encoder_layers)]
         self.dropout = tf.keras.layers.Dropout(dropout_rate)
 
-
-    def call(self, inputs):
-        pass
+    def call(self, x):
+        x = self.embedding(x)
+        x = self.dropout(x)
+        for i in range(self.num_encoder_layers):
+            x = self.encoder_layers[i](x)
+        return x
