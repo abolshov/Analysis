@@ -55,7 +55,7 @@ class Dataloader:
         self.p4_cache.clear()
 
     def LoadObject(self, obj_name, obj_cfg, tree):
-        
+
         object_present = len([bn for bn in tree.keys() if obj_name in bn]) > 1
         if not object_present:
             # fill dataframe with nans and return
@@ -93,10 +93,12 @@ class Dataloader:
 
         momentum_branches = {}
         other_branches = {}
+        obj_max_depth = None
         for var in obj_cfg['branches_to_load']:
             branch_name = f'{obj_name}_{var}'
             min_depth, max_depth = arrays[branch_name].layout.minmax_depth
             array = arrays[branch_name]
+            obj_max_depth = max_depth
             
             # add inner dimension to 1D arrays to treat them the same way as branches with nested arrays
             if max_depth == 1:
@@ -109,7 +111,7 @@ class Dataloader:
             
         p4 = vector.zip(momentum_branches)
         p4 = p4[:, :target_shape]
-        self.p4_cache[obj_name] = p4 if target_shape > 1 else ak.flatten(p4)
+        self.p4_cache[obj_name] = p4 if target_shape > 1 or obj_max_depth > 1 else ak.flatten(p4)
 
         tmp_dict = {}
         # flattening arrays for each variable if needed
