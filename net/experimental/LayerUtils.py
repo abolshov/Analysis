@@ -197,7 +197,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         return x
 
 
-class Embedding(tf.keras.layers.Layer):
+class EmbeddingLayer(tf.keras.layers.Layer):
     def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
         """
         Args:
@@ -207,7 +207,6 @@ class Embedding(tf.keras.layers.Layer):
         """
         super().__init__()
         
-        # assert num_layers > 1, 'Embedding must have at least one layer'
         self.seq = tf.keras.Sequential([tf.keras.layers.Dense(dim_embedding, activation='gelu')])
         self.seq.add(tf.keras.layers.LayerNormalization())
         if dropout_rate and dropout_rate > 0.0:
@@ -218,13 +217,37 @@ class Embedding(tf.keras.layers.Layer):
         return out
 
 
+class Embedding(tf.keras.layers.Layer):
+    def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
+        """
+        Args:
+            dim_embedding: dimension of the hidden respresentation vector
+            dropout_rate: probability of dropout
+        """
+        super().__init__()
+
+        self.lep_embedding = EmbeddingLayer(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
+        self.met_embedding = EmbeddingLayer(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
+        self.jet_embedding = EmbeddingLayer(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
+        self.fatjet_embedding = EmbeddingLayer(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
+
+    def call(self, inputs):
+        lep_input, met_input, jet_input, fatjet_input = inputs
+        lep_out = self.lep_embedding(lep_input)
+        met_out = self.met_embedding(met_input)
+        jet_out = self.jet_embedding(jet_input)
+        fatjet_out = self.fatjet_embedding(fatjet_input)
+        out = tf.stack([lep_out, met_out, jet_out, fatjet_out], axis=1)
+        return out
+
+
 class Encoder(tf.keras.layers.Layer):
     def __init__(self, *, 
                  num_encoder_layers, 
                  d_model,
                  num_heads, 
                  dff,
-                 dropout_rate=0.1, 
+                 dropout_rate=0.01, 
                  name='encoder', 
                  **kwargs): 
         """
@@ -240,7 +263,8 @@ class Encoder(tf.keras.layers.Layer):
         super().__init__()
         self.num_encoder_layers = num_encoder_layers
 
-        # project input to "vector representation" (batch_size, n_features) -> (batch_size1, 1, d_model)
+        # project input to "vector representation" (batch_size, n_features) -> (batch_size1, seq_len, d_model)
+        # for us seq_len = 4 (leptons, met, ak4_jets, ak8_jets)
         self.embedding = Embedding(dim_embedding=d_model, dropout_rate=dropout_rate)
         
         self.encoder_layers = [EncoderLayer(d_model=d_model, 
@@ -255,27 +279,3 @@ class Encoder(tf.keras.layers.Layer):
         for i in range(self.num_encoder_layers):
             x = self.encoder_layers[i](x)
         return x
-
-
-class ParticleEmbedding(tf.keras.layers.Layer):
-    def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
-        """
-        Args:
-            dim_embedding: dimension of the hidden respresentation vector
-            dropout_rate: probability of dropout
-        """
-        super().__init__()
-
-        self.lep_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
-        self.met_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
-        self.jet_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
-        self.fatjet_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
-
-    def call(self, inputs):
-        lep_input, met_input, jet_input, fatjet_input = inputs
-        lep_out = self.lep_embedding(lep_input)
-        met_out = self.met_embedding(met_input)
-        jet_out = self.jet_embedding(jet_input)
-        fatjet_out = self.fatjet_embedding(fatjet_input)
-        out = tf.stack([lep_out, met_out, jet_out, fatjet_out], axis=1)
-        return out
