@@ -198,11 +198,7 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class Embedding(tf.keras.layers.Layer):
-    def __init__(self, *, num_layers, num_units, dim_embedding, **kwargs):
-        # I am not sure about this class: currently it is mapping (batch_size, num_features) to (batch_size, dim_embedding, 1)
-        # i.e. as if I have sequence of length dim_embedding of 1D vectors vectors
-        # maybe it instead should be mapping (batch_size, num_features) to (batch_size, num_features, dim_embedding)
-        # i.e. sequence length will be num_features (take in constructor) and each feature will then be mapped to vector of dimension dim_embedding
+    def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
         """
         Args:
             num_layers: number of layers in embedding perceptron
@@ -212,21 +208,19 @@ class Embedding(tf.keras.layers.Layer):
         super().__init__()
         
         # assert num_layers > 1, 'Embedding must have at least one layer'
-        self.seq = tf.keras.Sequential([tf.keras.layers.Dense(num_units, activation='silu') for _ in range(num_layers - 1)])
-        self.seq.add(tf.keras.layers.Dense(dim_embedding))
+        self.seq = tf.keras.Sequential([tf.keras.layers.Dense(dim_embedding, activation='gelu')])
+        self.seq.add(tf.keras.layers.LayerNormalization())
+        if dropout_rate and dropout_rate > 0.0:
+            self.seq.add(tf.keras.layers.Dropout(dropout_rate))
 
     def call(self, x):
         out = self.seq(x)
-        # out = tf.expand_dims(x, axis=-1) # each input feature will be projected to dim_embedding dimensional vector
-        # print(f'Embedding shape: {x.shape}')
         return out
 
 
 class Encoder(tf.keras.layers.Layer):
     def __init__(self, *, 
                  num_encoder_layers, 
-                 num_proj_layers,
-                 dim_proj_layer,
                  d_model,
                  num_heads, 
                  dff,
@@ -238,8 +232,6 @@ class Encoder(tf.keras.layers.Layer):
         MultihedAttention layer and feedforward network (2 dense layers)
 
         Args:
-            num_proj_layers: number of dense layers in the embedding
-            dim_proj_layer: number of units in projection layers
             d_model: dimension of keys and queries
             num_heads: number of attention heads
             dff: number of units in the first dense layer of the feed-froward network following attention heads
@@ -249,7 +241,7 @@ class Encoder(tf.keras.layers.Layer):
         self.num_encoder_layers = num_encoder_layers
 
         # project input to "vector representation" (batch_size, n_features) -> (batch_size1, 1, d_model)
-        self.embedding = Embedding(num_layers=num_proj_layers, dim_layer=num_proj_layers, dim_embedding=d_model)
+        self.embedding = Embedding(dim_embedding=d_model, dropout_rate=dropout_rate)
         
         self.encoder_layers = [EncoderLayer(d_model=d_model, 
                                             num_heads=num_heads, 
@@ -266,19 +258,18 @@ class Encoder(tf.keras.layers.Layer):
 
 
 class ParticleEmbedding(tf.keras.layers.Layer):
-    def __init__(self, *, num_layers, num_units, dim_embedding, **kwargs):
+    def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
         """
         Args:
-            num_layers: number of layers in embedding perceptron
-            num_units: number of units in layers
-            dim_embedding: dimension of the embdedding vector
+            dim_embedding: dimension of the hidden respresentation vector
+            dropout_rate: probability of dropout
         """
         super().__init__()
 
-        self.lep_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
-        self.met_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
-        self.jet_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
-        self.fatjet_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
+        self.lep_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
+        self.met_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
+        self.jet_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
+        self.fatjet_embedding = Embedding(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
 
     def call(self, inputs):
         lep_input, met_input, jet_input, fatjet_input = inputs
