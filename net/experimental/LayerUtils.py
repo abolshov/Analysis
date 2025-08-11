@@ -198,7 +198,7 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class Embedding(tf.keras.layers.Layer):
-    def __init__(self, *, num_layers, dim_layer, dim_embedding, **kwargs):
+    def __init__(self, *, num_layers, num_units, dim_embedding, **kwargs):
         # I am not sure about this class: currently it is mapping (batch_size, num_features) to (batch_size, dim_embedding, 1)
         # i.e. as if I have sequence of length dim_embedding of 1D vectors vectors
         # maybe it instead should be mapping (batch_size, num_features) to (batch_size, num_features, dim_embedding)
@@ -206,18 +206,18 @@ class Embedding(tf.keras.layers.Layer):
         """
         Args:
             num_layers: number of layers in embedding perceptron
-            dim_layer: number of units in layers
+            num_units: number of units in layers
             dim_embedding: dimension of the embdedding vector
         """
         super().__init__()
         
-        assert num_layers > 1, 'Embedding must have at least one layer'
-        self.seq = tf.keras.Sequential([tf.keras.layers.Dense(dim_layer, activation='silu') for _ in range(num_layers - 1)])
+        # assert num_layers > 1, 'Embedding must have at least one layer'
+        self.seq = tf.keras.Sequential([tf.keras.layers.Dense(num_units, activation='silu') for _ in range(num_layers - 1)])
         self.seq.add(tf.keras.layers.Dense(dim_embedding))
 
     def call(self, x):
-        x = self.seq(x)
-        out = tf.expand_dims(x, axis=-1) # each input feature will be projected to dim_embedding dimensional vector
+        out = self.seq(x)
+        # out = tf.expand_dims(x, axis=-1) # each input feature will be projected to dim_embedding dimensional vector
         # print(f'Embedding shape: {x.shape}')
         return out
 
@@ -263,3 +263,28 @@ class Encoder(tf.keras.layers.Layer):
         for i in range(self.num_encoder_layers):
             x = self.encoder_layers[i](x)
         return x
+
+
+class ParticleEmbedding(tf.keras.layers.Layer):
+    def __init__(self, *, num_layers, num_units, dim_embedding, **kwargs):
+        """
+        Args:
+            num_layers: number of layers in embedding perceptron
+            num_units: number of units in layers
+            dim_embedding: dimension of the embdedding vector
+        """
+        super().__init__()
+
+        self.lep_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
+        self.met_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
+        self.jet_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
+        self.fatjet_embedding = Embedding(num_layers=num_layers, num_units=num_units, dim_embedding=dim_embedding, **kwargs)
+
+    def call(self, inputs):
+        lep_input, met_input, jet_input, fatjet_input = inputs
+        lep_out = self.lep_embedding(lep_input)
+        met_out = self.met_embedding(met_input)
+        jet_out = self.jet_embedding(jet_input)
+        fatjet_out = self.fatjet_embedding(fatjet_input)
+        out = tf.stack([lep_out, met_out, jet_out, fatjet_out], axis=1)
+        return out
