@@ -28,6 +28,8 @@ class Dataloader:
         self.loader_cfg = None
         self.df = pd.DataFrame()
         self.p4_cache = {}
+        self.object_feature_names = {}
+        # self.objects = {} # maps object name -> df with features of htat object
         with open (branch_loading_cfg, 'r') as branch_loading_cfg_file:
             self.loader_cfg = yaml.safe_load(branch_loading_cfg_file)
         assert self.loader_cfg, "Must contain mapping of branches to load for each object"
@@ -55,6 +57,14 @@ class Dataloader:
         self.p4_cache.clear()
 
     def LoadObject(self, obj_name, obj_cfg, tree):
+
+        # fill dict with object name -> object feature names
+        if obj_cfg['target_shape'] > 1:
+            self.object_feature_names[obj_name] = [f'{obj_name}_{idx + 1}_{branch}' for branch in obj_cfg['branches_to_load'] if not IsKinematic(branch) for idx in range(obj_cfg['target_shape'])]
+            self.object_feature_names[obj_name].extend([f'{obj_name}_{idx + 1}_{branch}' for branch in obj_cfg['kinematics_output_format'] for idx in range(obj_cfg['target_shape'])])
+        else:
+            self.object_feature_names[obj_name] = [f'{obj_name}_{branch}' for branch in obj_cfg['branches_to_load'] if not IsKinematic(branch)]
+            self.object_feature_names[obj_name].extend([f'{obj_name}_{branch}' for branch in obj_cfg['kinematics_output_format']])
 
         object_present = len([bn for bn in tree.keys() if obj_name in bn]) > 1
         if not object_present:
@@ -163,6 +173,8 @@ class Dataloader:
         tree_name = self.loader_cfg['tree_name']
         tree = uproot.open(f'{file_name}:{tree_name}')
         df = pd.concat([self.LoadObjects(tree), self.LoadBranches(tree)], axis=1)
+
+        print(self.loader_cfg['objects']['input_objects'].keys())
 
         if selection_cfg:
             is_bkg = np.all(df['sample_type'] > 4)
@@ -316,3 +328,21 @@ class Dataloader:
         if 'df' in kwargs and kwargs['df']:
             return self.df
         return self.df[self.input_names].values, self.input_names, self.df[self.target_names].values, self.target_names
+
+    def GetObjData(self, objects=None, as_df=True, selector=None, *args, **kwargs):
+        """
+        Args:
+            objects: list of particles whose data to return
+            as_df: bool controlling return format
+            filter: callable describing how to filter rows from df by event id
+        if as_df is True returns dict obj_name -> df with this object's data
+        else returns dict obj_name -> (obj_feature_names, obj_feature_arrays)
+        """
+        obj_dict = self.object_feature_names if objects is None else {obj: self.object_feature_names[obj] for obj in objects}
+        df = self.df[selector(self.df, *args)] if selector else self.df
+
+        if as_df:
+            out = {obj_name: df[obj_features] for obj_name, obj_features in obj_dict.items()}
+        else:
+            out = {obj_name: (obj_features, df[obj_features].values) for obj_name, obj_features in obj_dict.items()}
+        return out
