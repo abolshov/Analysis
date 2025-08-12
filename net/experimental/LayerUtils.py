@@ -279,3 +279,65 @@ class Encoder(tf.keras.layers.Layer):
         for i in range(self.num_encoder_layers):
             x = self.encoder_layers[i](x)
         return x
+
+
+class MultiheadQuantileRegressor(tf.keras.layers.Layer):
+    def __init__(self, *, 
+                 num_quantiles, 
+                 target_names, 
+                 use_energy_layer, 
+                 use_quantile_ordering,
+                 means=None,
+                 scales=None,
+                 **kwargs):
+        super().__init__()
+
+        self.heads = []
+        for idx, target_name in enumerate(target_names):
+            if use_energy_layer and 'E' in target_name:
+                continue
+
+            if use_quantile_ordering:
+                self.heads.append(tf.keras.Sequential([tf.keras.layers.Dense(num_quantiles),
+                                                       QuantileOrderingLayer(name=target_name)]))
+            else:
+                self.heads.append(tf.keras.layers.Dense(num_quantiles, name=target_name))
+
+        self.hbb_energy_layer = None
+        self.hvv_energy_layer = None
+        self.hvv_en_idx = None
+        self.hbb_en_idx = None
+
+        if use_energy_layer:
+            self.hvv_en_idx = target_names.index('genHVV_E')
+            self.hbb_en_idx = target_names.index('genHbb_E')
+
+            normalize = means is not None and scales is not None
+            self.hbb_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
+                                                normalize=normalize, 
+                                                means=means[4:] if normalize else None,
+                                                scales=scales[4:] if normalize else None,
+                                                name='genHbb_E')
+            
+            self.hvv_energy_layer = EnergyLayer(num_quantiles=num_quantiles, 
+                                                normalize=normalize, 
+                                                means=means[:4] if normalize else None,
+                                                scales=scales[:4] if normalize else None,
+                                                name='genHVV_E')
+
+    def call(self, inputs): 
+        # inputs: (batch_size, num_objects * d_model)
+        # outputs: (batch_size, num_quantiles)
+        outputs = []
+        for i in range(len(self.heads)):
+            out = self.heads[i](inputs)
+            outputs.append(out)
+
+        if self.hvv_en_idx and self.hbb_en_idx:
+            hbb_input = tf.concat(outputs[3:], axis=-1)
+            hvv_input = tf.concat(outputs[:3], axis=-1)
+
+            outputs.insert(self.hvv_en_idx, self.hvv_energy_layer(hvv_input))
+            outputs.insert(self.hbb_en_idx, self.hbb_energy_layer(hbb_input))
+
+        return outputs
