@@ -263,8 +263,8 @@ class Encoder(tf.keras.layers.Layer):
         super().__init__()
         self.num_encoder_layers = num_encoder_layers
 
-        # project input to "vector representation" (batch_size, n_features) -> (batch_size1, seq_len, d_model)
-        # for us seq_len = 4 (leptons, met, ak4_jets, ak8_jets)
+        # project input to "vector representation" (batch_size, n_features) -> (batch_size, seq_len, d_model)
+        # for us seq_len = 4 [leptons, met, ak4_jets, ak8_jets]
         self.embedding = Embedding(dim_embedding=d_model, dropout_rate=dropout_rate)
         
         self.encoder_layers = [EncoderLayer(d_model=d_model, 
