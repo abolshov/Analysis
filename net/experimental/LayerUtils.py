@@ -326,8 +326,8 @@ class MultiheadQuantileRegressor(tf.keras.layers.Layer):
                                                 name='genHVV_E')
 
     def call(self, inputs): 
-        # inputs: (batch_size, num_objects * d_model)
-        # outputs: (batch_size, num_quantiles)
+        # inputs: list of (batch_size, num_objects * d_model), len = len(self.heads)
+        # outputs: list of (batch_size, num_quantiles)
         outputs = []
         for i in range(len(self.heads)):
             out = self.heads[i](inputs)
