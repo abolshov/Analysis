@@ -335,6 +335,7 @@ class Dataloader:
         Args:
             objects: list of particles whose data to return
             as_df: bool controlling return format
+            unravel: if true, if target shape > 1, arrays will be separated 
             filter: callable describing how to filter rows from df by event id
         if as_df is True returns dict obj_name -> df with this object's data
         else returns dict obj_name -> (obj_feature_names, obj_feature_arrays)
@@ -347,13 +348,17 @@ class Dataloader:
             out = {obj_name: df[obj_features] for obj_name, obj_features in obj_dict.items()}
         else:
             if unravel:
-                for obj_name, target_shape in self.target_shape.items():
-                    features = obj_dict[obj_name]
-                    if target_shape == 1:
-                        out[obj_name] = (features, df[features].values)
+                for obj_name, obj_features in obj_dict.items():
+                    shape = self.obj_shapes[obj_name]
+                    if shape == 1:
+                        out[obj_name] = (obj_features, df[obj_features].values)
                     else:
-                        for idx in range(target_shape):
-                            pass 
+                        for i in range(shape):
+                            # format of features is objname_id_feature
+                            # for jets, there is centralJet_1_* and centralJet_10_*
+                            # condition f'{obj_name}_{i + 1}' in f (without trailing underscore) is not working correctly
+                            features = [f for f in obj_features if f'{obj_name}_{i + 1}_' in f]
+                            out[f'{obj_name}_{i + 1}'] = (features, df[features].values) 
             else:
                 out = {obj_name: (obj_features, df[obj_features].values) for obj_name, obj_features in obj_dict.items()}
         return out
