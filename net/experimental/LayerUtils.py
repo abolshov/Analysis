@@ -151,6 +151,7 @@ class EnergyErrorLayer(tf.keras.layers.Layer):
         return output
 
 
+@tf.keras.utils.register_keras_serializable('Attention')
 class Attention(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__()
@@ -167,6 +168,7 @@ class Attention(tf.keras.layers.Layer):
         return x
 
 
+@tf.keras.utils.register_keras_serializable('FeedForward')
 class FeedForward(tf.keras.layers.Layer):
     def __init__(self, *, d_model, dff, dropout_rate, **kwargs):
         super().__init__()
@@ -184,6 +186,7 @@ class FeedForward(tf.keras.layers.Layer):
         return x
 
 
+@tf.keras.utils.register_keras_serializable('EncoderLayer')
 class EncoderLayer(tf.keras.layers.Layer):
     def __init__(self, *, d_model, num_heads, dff, dropout_rate, **kwargs):
         super().__init__()
@@ -197,6 +200,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         return x
 
 
+@tf.keras.utils.register_keras_serializable('EmbeddingLayer')
 class EmbeddingLayer(tf.keras.layers.Layer):
     def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
         """
@@ -217,6 +221,7 @@ class EmbeddingLayer(tf.keras.layers.Layer):
         return out
 
 
+@tf.keras.utils.register_keras_serializable('Embedding')
 class Embedding(tf.keras.layers.Layer):
     def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
         """
@@ -241,6 +246,7 @@ class Embedding(tf.keras.layers.Layer):
         return out
 
 
+@tf.keras.utils.register_keras_serializable('Encoder')
 class Encoder(tf.keras.layers.Layer):
     def __init__(self, *, 
                  num_encoder_layers, 
@@ -281,6 +287,7 @@ class Encoder(tf.keras.layers.Layer):
         return x
 
 
+@tf.keras.utils.register_keras_serializable('MultiheadQuantileRegressor')
 class MultiheadQuantileRegressor(tf.keras.layers.Layer):
     def __init__(self, *, 
                  num_quantiles, 
