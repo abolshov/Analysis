@@ -343,6 +343,9 @@ class Dataloader:
         obj_dict = self.object_feature_names if objects is None else {obj: self.object_feature_names[obj] for obj in objects}
         df = self.df[selector(self.df, *args)] if selector else self.df
 
+        if as_df and unravel:
+            raise RuntimeError(f'Incompatible arguments: `as_df`={as_df} and `unravel`={unravel} cannot be true simultaneously')
+
         out = {}
         if as_df:
             out = {obj_name: df[obj_features] for obj_name, obj_features in obj_dict.items()}
