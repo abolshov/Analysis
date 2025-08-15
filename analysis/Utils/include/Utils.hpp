@@ -3,16 +3,14 @@
 
 #include <string>
 
-// implementation taken from https://cpp-optimizations.netlify.app/strings_concatenation/
-// with minor correction
-
 //--- functions to calculate the total size ---
-size_t StrSize(const char* str) 
+// inline needed to avoid multiple definitions
+inline size_t StrSize(const char* str) 
 {
     return strlen(str);
 }
 
-size_t StrSize(const std::string& str) 
+inline size_t StrSize(const std::string& str) 
 {
     return str.size();
 }
