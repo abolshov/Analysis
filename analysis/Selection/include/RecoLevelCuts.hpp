@@ -3,10 +3,6 @@
 
 #include "Specification.hpp"
 #include "Event.hpp"
-#include "Utils.hpp"
-
-// template <class... Args> 
-// std::string StrCat(Args const&... args);
 
 class AK4JetAcceptCut final : public Specification<Event>
 {

@@ -3,7 +3,6 @@
 
 #include "Specification.hpp"
 #include "Event.hpp"
-#include "Utils.hpp"
 
 class BQuarkAcceptCut final : public Specification<Event>
 {

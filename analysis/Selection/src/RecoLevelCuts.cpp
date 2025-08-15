@@ -1,4 +1,5 @@
 #include "RecoLevelCuts.hpp"
+#include "Utils.hpp"
 
 AK4JetAcceptCut::AK4JetAcceptCut(Float_t pt, Float_t eta, Int_t num_jets)
 :   Specification<Event>("ak4_accept_cut", StrCat("pt > ", std::to_string(pt), " && abs(eta) < ", std::to_string(eta), " && n >= ", std::to_string(num_jets)))
