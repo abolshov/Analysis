@@ -1,6 +1,5 @@
 #include "GenLevelCuts.hpp"
 #include "ReadoutConstants.hpp"
-#include "Utils.hpp"
 
 #include "Math/GenVector/LorentzVector.h"
 #include "Math/Vector4D.h"
@@ -24,7 +23,7 @@ bool BQuarkAcceptCut::IsSatisfied(Event const& event)
 }
 
 Resolved2bCut::Resolved2bCut(Float_t dr_thresh)
-    :   Specification<Event>("resolved_2b_cut", StrCat("dR(b1, b2) > ", std::to_string(dr_thresh)))
+    :   Specification<Event>("res2b_cut ", StrCat("dR(b1, b2) > ", std::to_string(dr_thresh)))
     ,   m_threshold(dr_thresh)
     {}
 
@@ -40,4 +39,15 @@ bool Resolved2bCut::IsSatisfied(Event const& event)
                         event.gen_quark_phi[static_cast<size_t>(Quark::b2)],
                         event.gen_quark_mass[static_cast<size_t>(Quark::b2)]};
     return DeltaR(b1, b2) >= m_threshold;
+}
+
+LeptonAcceptCutDL::LeptonAcceptCutDL(Float_t pt)
+    :   Specification<Event>("lepton_accept_DL", StrCat("pt(l1) > ", std::to_string(pt), ", pt(l2) > ", std::to_string(pt)))
+    ,   m_pt(pt)
+    {}
+
+bool LeptonAcceptCutDL::IsSatisfied(Event const& event)
+{
+    using Lep = ReadConst::Lep;
+    return event.gen_lep_pt[static_cast<size_t>(Lep::lep1)] > m_pt && event.gen_lep_pt[static_cast<size_t>(Lep::lep2)];
 }

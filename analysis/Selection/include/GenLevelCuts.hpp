@@ -3,11 +3,13 @@
 
 #include "Specification.hpp"
 #include "Event.hpp"
+#include "Utils.hpp"
 
 class BQuarkAcceptCut final : public Specification<Event>
 {
     public:
     BQuarkAcceptCut(Float_t pt, Float_t eta);
+    ~BQuarkAcceptCut() = default;
     bool IsSatisfied(Event const& event) override;
 
     private:
@@ -19,11 +21,22 @@ class Resolved2bCut final : public Specification<Event>
 {
     public:
     explicit Resolved2bCut(Float_t dr_thresh);
+    ~Resolved2bCut() = default;
     bool IsSatisfied(Event const& event) override;
 
     private:
     Float_t m_threshold{};
 };
 
+class LeptonAcceptCutDL final : public Specification<Event>
+{
+    public:
+    explicit LeptonAcceptCutDL(Float_t pt);
+    ~LeptonAcceptCutDL() = default;
+    bool IsSatisfied(Event const& event) override;
+
+    private:
+    Float_t m_pt{};
+};
 
 #endif

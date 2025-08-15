@@ -14,6 +14,7 @@ class Specification
     ,   m_description(std::move(description))
     {}
 
+    virtual ~Specification() = default;
     virtual bool IsSatisfied(T const& item) = 0;
 
     template <typename U>
