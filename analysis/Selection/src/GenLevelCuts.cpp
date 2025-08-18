@@ -23,12 +23,12 @@ bool BQuarkAcceptCut::IsSatisfied(Event const& event)
     return b1_cut && b2_cut;
 }
 
-Resolved2bCut::Resolved2bCut(Float_t dr_thresh)
+ResolvedBQuarksCut::ResolvedBQuarksCut(Float_t dr_thresh)
     :   Specification<Event>("res2b_cut ", StrCat("dR(b1, b2) > ", std::to_string(dr_thresh)))
     ,   m_threshold(dr_thresh)
     {}
 
-bool Resolved2bCut::IsSatisfied(Event const& event)
+bool ResolvedBQuarksCut::IsSatisfied(Event const& event)
 {
     using Quark = ReadConst::Quark;
     LorentzVectorF_t b1{event.gen_quark_pt[static_cast<size_t>(Quark::b1)],
@@ -40,6 +40,25 @@ bool Resolved2bCut::IsSatisfied(Event const& event)
                         event.gen_quark_phi[static_cast<size_t>(Quark::b2)],
                         event.gen_quark_mass[static_cast<size_t>(Quark::b2)]};
     return DeltaR(b1, b2) >= m_threshold;
+}
+
+BoostedBQuarksCut::BoostedBQuarksCut(Float_t dr_thresh)
+    :   Specification<Event>("boosted_cut ", StrCat("dR(b1, b2) < ", std::to_string(dr_thresh)))
+    ,   m_threshold(dr_thresh)
+    {}
+
+bool BoostedBQuarksCut::IsSatisfied(Event const& event)
+{
+    using Quark = ReadConst::Quark;
+    LorentzVectorF_t b1{event.gen_quark_pt[static_cast<size_t>(Quark::b1)],
+                        event.gen_quark_eta[static_cast<size_t>(Quark::b1)],
+                        event.gen_quark_phi[static_cast<size_t>(Quark::b1)],
+                        event.gen_quark_mass[static_cast<size_t>(Quark::b1)]};
+    LorentzVectorF_t b2{event.gen_quark_pt[static_cast<size_t>(Quark::b2)],
+                        event.gen_quark_eta[static_cast<size_t>(Quark::b2)],
+                        event.gen_quark_phi[static_cast<size_t>(Quark::b2)],
+                        event.gen_quark_mass[static_cast<size_t>(Quark::b2)]};
+    return DeltaR(b1, b2) < m_threshold;
 }
 
 LeptonAcceptCutDL::LeptonAcceptCutDL(Float_t pt)

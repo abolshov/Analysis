@@ -16,11 +16,22 @@ class BQuarkAcceptCut final : public Specification<Event>
     Float_t m_eta{};
 };
 
-class Resolved2bCut final : public Specification<Event>
+class ResolvedBQuarksCut final : public Specification<Event>
 {
     public:
-    explicit Resolved2bCut(Float_t dr_thresh);
-    ~Resolved2bCut() = default;
+    explicit ResolvedBQuarksCut(Float_t dr_thresh);
+    ~ResolvedBQuarksCut() = default;
+    bool IsSatisfied(Event const& event) override;
+
+    private:
+    Float_t m_threshold{};
+};
+
+class BoostedBQuarksCut final : public Specification<Event>
+{
+    public:
+    explicit BoostedBQuarksCut(Float_t dr_thresh);
+    ~BoostedBQuarksCut() = default;
     bool IsSatisfied(Event const& event) override;
 
     private:
