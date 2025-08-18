@@ -164,7 +164,7 @@ class Attention(tf.keras.layers.Layer):
         # print(attn_output.shape) # Expected: (batch_size, seq_length, key_dim)
         x = self.add([x, attn_output])
         x = self.layernorm(x)
-        # print(x.shape) # Expected: (batch_size, seq_length, key_dim)
+        # print(f'Attention shape: {x.shape}') # Expected: (batch_size, seq_length, key_dim)
         return x
 
 
@@ -268,6 +268,7 @@ class Encoder(tf.keras.layers.Layer):
         """
         super().__init__()
         self.num_encoder_layers = num_encoder_layers
+        self.d_model = d_model
 
         # project input to "vector representation" (batch_size, n_features) -> (batch_size, seq_len, d_model)
         # for us seq_len = 4 [leptons, met, ak4_jets, ak8_jets]
@@ -286,6 +287,10 @@ class Encoder(tf.keras.layers.Layer):
             x = self.encoder_layers[i](x)
         return x
 
+    def compute_output_shape(self, input_shape):
+        # (batch_size, seq_length, embedding_dim)
+        return (None, len(input_shape), self.d_model)
+
 
 @tf.keras.utils.register_keras_serializable('MultiheadQuantileRegressor')
 class MultiheadQuantileRegressor(tf.keras.layers.Layer):
@@ -298,6 +303,7 @@ class MultiheadQuantileRegressor(tf.keras.layers.Layer):
                  scales=None,
                  **kwargs):
         super().__init__()
+        self.num_quantiles = num_quantiles
 
         self.heads = []
         for idx, target_name in enumerate(target_names):
@@ -348,3 +354,7 @@ class MultiheadQuantileRegressor(tf.keras.layers.Layer):
             outputs.insert(self.hbb_en_idx, self.hbb_energy_layer(hbb_input))
 
         return outputs
+
+    # def compute_output_shape(self, input_shape):
+    #     # (batch_size, num_heads, num_quantiles)
+    #     return (None, len(self.heads), self.num_quantiles)
