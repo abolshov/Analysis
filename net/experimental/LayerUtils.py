@@ -223,11 +223,16 @@ class EmbeddingLayer(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable('Embedding')
 class Embedding(tf.keras.layers.Layer):
-    def __init__(self, *, dim_embedding, dropout_rate, **kwargs):
+    def __init__(self, *, dim_embedding, dropout_rate, input_mapping, **kwargs):
         """
         Args:
             dim_embedding: dimension of the hidden respresentation vector
             dropout_rate: probability of dropout
+            input_mapping: lsit showing which embdedding layers to call on ith sequence element; has same length as input
+                1: lep_embedding
+                2: met_embedding
+                3: jet_embedding
+                4: fatjet_embedding
         """
         super().__init__()
 
@@ -236,13 +241,34 @@ class Embedding(tf.keras.layers.Layer):
         self.jet_embedding = EmbeddingLayer(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
         self.fatjet_embedding = EmbeddingLayer(dim_embedding=dim_embedding, dropout_rate=dropout_rate)
 
+        self.input_mapping = input_mapping
+
     def call(self, inputs):
-        lep_input, met_input, jet_input, fatjet_input = inputs
-        lep_out = self.lep_embedding(lep_input)
-        met_out = self.met_embedding(met_input)
-        jet_out = self.jet_embedding(jet_input)
-        fatjet_out = self.fatjet_embedding(fatjet_input)
-        out = tf.stack([lep_out, met_out, jet_out, fatjet_out], axis=1)
+        # lep_input, met_input, jet_input, fatjet_input = inputs
+        # lep_out = self.lep_embedding(lep_input)
+        # met_out = self.met_embedding(met_input)
+        # jet_out = self.jet_embedding(jet_input)
+        # fatjet_out = self.fatjet_embedding(fatjet_input)
+        # out = tf.stack([lep_out, met_out, jet_out, fatjet_out], axis=1)
+
+        assert len(inputs) == len(self.input_mapping), f'Lengths of input sequence ({len(inputs)}) and input mapping ({len(self.input_mapping)}) must be equal'
+
+        embedded_inputs = []
+        for i in range(len(inputs)):
+            input_type = self.input_mapping[i]
+            match input_type:
+                case 1:
+                    embedded_inputs.append(self.lep_embedding(inputs[i]))
+                case 2:
+                    embedded_inputs.append(self.met_embedding(inputs[i]))
+                case 3:
+                    embedded_inputs.append(self.jet_embedding(inputs[i]))
+                case 4:
+                    embedded_inputs.append(self.fatjet_embedding(inputs[i]))
+                case _:
+                    raise RuntimeError(f'Illegal input type {input_type}, only values 1, 2, 3, 4 are allowed')
+        
+        out = tf.stack(embedded_inputs, axis=1)
         return out
 
 
@@ -253,6 +279,7 @@ class Encoder(tf.keras.layers.Layer):
                  d_model,
                  num_heads, 
                  dff,
+                 input_mapping,
                  dropout_rate=0.01, 
                  name='encoder', 
                  **kwargs): 
@@ -264,15 +291,17 @@ class Encoder(tf.keras.layers.Layer):
             d_model: dimension of keys and queries
             num_heads: number of attention heads
             dff: number of units in the first dense layer of the feed-froward network following attention heads
+            input_mapping: lsit showing which embdedding layers to call on ith sequence element; has same length as input
             dropout: dropout rate applied in feedforward network
         """
         super().__init__()
         self.num_encoder_layers = num_encoder_layers
         self.d_model = d_model
+        self.input_mapping = input_mapping
 
         # project input to "vector representation" (batch_size, n_features) -> (batch_size, seq_len, d_model)
         # for us seq_len = 4 [leptons, met, ak4_jets, ak8_jets]
-        self.embedding = Embedding(dim_embedding=d_model, dropout_rate=dropout_rate)
+        self.embedding = Embedding(dim_embedding=d_model, dropout_rate=dropout_rate, input_mapping=input_mapping)
         
         self.encoder_layers = [EncoderLayer(d_model=d_model, 
                                             num_heads=num_heads, 
