@@ -64,9 +64,78 @@ def ComputeMass(central):
     x_mass = np.where(neg_mass, -1.0, x_mass)
     return x_mass
 
+def ComputeVisMass(df, channel):
+    b1 = vector.zip({'px': df['centralJet_1_px'],
+                     'py': df['centralJet_1_py'],
+                     'pz': df['centralJet_1_pz'],
+                     'E': df['centralJet_1_E']})
+
+    b2 = vector.zip({'px': df['centralJet_2_px'],
+                     'py': df['centralJet_2_py'],
+                     'pz': df['centralJet_2_pz'],
+                     'E': df['centralJet_2_E']})
+
+    hbb = b1+ b2
+    
+    lep1 = vector.zip({'px': df['lep1_px'], 'py': df['lep1_py'], 'pz': df['lep1_pz'], 'E': df['lep1_E']})
+    met_E = np.sqrt(df['met_px']**2 + df['met_py']**2)
+    met = vector.zip({'px': df['met_px'], 'py': df['met_py'], 'pz': 0.0, 'E': met_E})
+
+    hvv = None
+    match channel:
+        case 'DL':
+            lep2 = vector.zip({'px': df['lep2_px'], 'py': df['lep2_py'], 'pz': df['lep2_pz'], 'E': df['lep2_E']})
+            hvv = lep1 + lep2 + met
+        case 'SL':
+            light_scores = df[[f'centralJet_{i + 1}_btagPNetQvG' for i in range(2, 10)]]
+            light_scores = light_scores.values
+            light_indices = np.argsort(light_scores, axis=1)
+            light_jet_1_idx = light_indices[:, 0] + 2
+            light_jet_2_idx = light_indices[:, 1] + 2
+
+            momentum_comp = ['px', 'py', 'pz', 'E']
+            jet1_dict = {}
+            jet2_dict = {}
+            for comp in momentum_comp:
+                names1 = [f'centralJet_{i}_{comp}' for i in light_jet_1_idx]
+                names2 = [f'centralJet_{i}_{comp}' for i in light_jet_2_idx]
+
+                jet1_dict[comp] = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(names1)]
+                jet2_dict[comp] = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(names2)]
+
+            light_jet_1 = vector.zip(jet1_dict)
+            light_jet_2 = vector.zip(jet2_dict)
+
+            # jet_1_px_names = [f'centralJet_{i}_px' for i in light_jet_1_idx]
+            # jet_1_py_names = [f'centralJet_{i}_py' for i in light_jet_1_idx]
+            # jet_1_pz_names = [f'centralJet_{i}_pz' for i in light_jet_1_idx]
+            # jet_1_E_names = [f'centralJet_{i}_E' for i in light_jet_1_idx]
+            # jet_1_px = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_1_px_names)]
+            # jet_1_py = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_1_py_names)]
+            # jet_1_pz = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_1_pz_names)]
+            # jet_1_E = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_1_E_names)]
+            # light_jet_1 = vector.zip({'px': jet_1_px, 'py': jet_1_py, 'pz': jet_1_pz, 'E': jet_1_E})
+
+            # jet_2_px_names = [f'centralJet_{i}_px' for i in light_jet_2_idx]
+            # jet_2_py_names = [f'centralJet_{i}_py' for i in light_jet_2_idx]
+            # jet_2_pz_names = [f'centralJet_{i}_pz' for i in light_jet_2_idx]
+            # jet_2_E_names = [f'centralJet_{i}_E' for i in light_jet_2_idx]
+            # jet_2_px =  df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_2_px_names)]
+            # jet_2_py = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_2_py_names)]
+            # jet_2_pz = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_2_pz_names)]
+            # jet_2_E = df.to_numpy()[np.arange(len(df)), df.columns.get_indexer(jet_2_E_names)]
+            # light_jet_2 = vector.zip({'px': jet_2_px, 'py': jet_2_py, 'pz': jet_2_pz, 'E': jet_2_E})
+            
+            hvv = light_jet_1 + light_jet_2 + lep1 + met
+
+    return (hbb + hvv).mass
+
 def main():
+    channel = 'SL'
+    masspoint = 800
     # load signal data
-    file = '../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root'
+    suffix = '2B2Vto2B2JLNu' if channel == 'SL' else '2B2Vto2B2L2Nu'
+    file = f'../train_data/Run3_2022/GluGlutoRadiontoHHto{suffix}_M_{masspoint}/nano_0.root'
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(file)
 
@@ -86,10 +155,12 @@ def main():
     assert y_sig.shape == central_sig.shape
 
     pred_mass = ComputeMass(central_sig)
-    with uproot.recreate(os.path.join(training_params['model_dir'], 'nn_out_M800.root')) as output_file:
+    with uproot.recreate(os.path.join(training_params['model_dir'], f'nn_out_{channel}_M{masspoint}.root')) as output_file:
         df = dataloader.Get(TestSelection, 2, 1, 1, df=True)
-        
+        vis_mass = ComputeVisMass(df, channel)
+
         data = {'nn_mass': pred_mass,
+                'vis_mass': vis_mass,   
                 'event': df['event']}
 
         output_file['Events'] = data
@@ -106,18 +177,18 @@ def main():
     prop_errors_sig = ep.Propagate(pred_errors_sig)
 
     pretty_labels = [ground_truth_map[name] for name in target_names if 'E' not in name]
-    PlotCovarMtrx(global_corr_mtrx, 'empirical', pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
+    # PlotCovarMtrx(global_corr_mtrx, 'empirical', pretty_labels, os.path.join(training_params['model_dir'], 'plots'))
 
-    bin_left = np.min(prop_errors_sig) - 1.0
-    bin_right = np.max(prop_errors_sig) + 1.0
-    bins = np.linspace(bin_left, bin_right, 50)
-    PlotHist(data=prop_errors_sig, 
-             bins=bins,
-             title="Predicted X->HH mass errors",
-             ylabel='Count',
-             xlabel='Mass error, [GeV]',
-             plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
-             file_name='sig_mx_error')
+    # bin_left = np.min(prop_errors_sig) - 1.0
+    # bin_right = np.max(prop_errors_sig) + 1.0
+    # bins = np.linspace(bin_left, bin_right, 50)
+    # PlotHist(data=prop_errors_sig, 
+    #          bins=bins,
+    #          title="Predicted X->HH mass errors",
+    #          ylabel='Count',
+    #          xlabel='Mass error, [GeV]',
+    #          plotting_dir=os.path.join(training_params['model_dir'], 'plots'),
+    #          file_name='sig_mx_error')
 
 
     # # load bkg data
