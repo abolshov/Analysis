@@ -41,6 +41,9 @@ class Dataloader:
         if self.loader_cfg['plot_cutflow']:
             os.makedirs(self.loader_cfg['plot_dir'], exist_ok=True)
 
+        # should it be provided in cfg or calculated based on how many lep objects are specified?
+        self.channel = self.loader_cfg['channel']
+
     def MakeNameCollection(self, category):
         res = []
         obj_cfg = self.loader_cfg['objects'][category]
@@ -213,7 +216,13 @@ class Dataloader:
         b2_accept_eta = np.abs(self.p4_cache['genb2'].eta) < 2.5
         cuts['b2_accept'] = np.logical_and(b2_accept_pt, b2_accept_eta)
 
-        cuts['lep_accept'] = np.logical_and(df['genV1prod1_pt'] > 5.0, df['genV2prod1_pt'] > 5.0)
+        match self.channel:
+            case 'DL':
+                cuts['lep_accept'] = np.logical_and(df['genV1prod1_pt'] > 5.0, df['genV2prod1_pt'] > 5.0)
+            case 'SL':
+                cuts['lep_accept'] = df['genV1prod1_pt'] > 5.0
+            case _:
+                raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
         return cuts
 
     def ComputeRecoLevelCuts(self, df, cuts):
@@ -223,7 +232,13 @@ class Dataloader:
         ak8_selection = np.logical_and(self.p4_cache['SelectedFatJet'].pt > 200.0, np.abs(self.p4_cache['SelectedFatJet'].eta) < 2.5)
         has_ak8_jets = ak.count_nonzero(ak8_selection, axis=1) >= 1
         cuts['has_reco_jets'] = np.logical_or(has_ak8_jets, has_ak4_jets)
-        cuts['has_reco_leptons'] = np.logical_and(self.p4_cache['lep1'].pt > 0.0, self.p4_cache['lep2'].pt > 0.0)
+        match self.channel:
+            case 'DL':
+                cuts['has_reco_leptons'] = np.logical_and(self.p4_cache['lep1'].pt > 0.0, self.p4_cache['lep2'].pt > 0.0)
+            case 'SL':
+                cuts['has_reco_leptons'] = self.p4_cache['lep1'].pt > 0.0
+            case _:
+                raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
         return cuts
 
     def ComputeGenRecoMatchingCuts(self, df, cuts):
@@ -255,9 +270,16 @@ class Dataloader:
                 raise RuntimeError(f'Illegal use_topology value: {topology}')
 
         # lepton matching
-        reco_lep1 = df['lep1_legType'] == df['lep1_gen_kind']
-        reco_lep2 = df['lep2_legType'] == df['lep2_gen_kind']
-        cuts['successful_lep_reco'] = np.logical_and(reco_lep1, reco_lep2)
+        match self.channel:
+            case 'DL':
+                reco_lep1 = df['lep1_legType'] == df['lep1_gen_kind']
+                reco_lep2 = df['lep2_legType'] == df['lep2_gen_kind']
+                cuts['successful_lep_reco'] = np.logical_and(reco_lep1, reco_lep2)
+            case 'SL':
+                reco_lep1 = df['lep1_legType'] == df['lep1_gen_kind']
+                cuts['successful_lep_reco'] = reco_lep1
+            case _:
+                raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
         return cuts
 
     def ComputeCutflow(self, df, is_bkg, selection_cfg):
@@ -299,7 +321,7 @@ class Dataloader:
             sample_type = sample_type_map[df['sample_type'].iloc[0]]
             mp = df['X_mass'].iloc[0]
             mass = int(mp) if not np.isnan(mp) else None
-            title = f"Cutflow {sample_type} M={mass}" if mp and mp > 0 else f"Cutflow {sample_type}"
+            title = f"Cutflow {self.channel} {sample_type} M={mass}" if mp and mp > 0 else f"Cutflow  {self.channel} {sample_type}"
             ax.set(ylabel='Number of events passed', title=title)
             if self.loader_cfg['use_percentages']:
                 ax.bar_label(bar_container, fmt=lambda x: f"{x:.1f}%", fontsize=8)
@@ -307,7 +329,7 @@ class Dataloader:
                 ax.bar_label(bar_container, fmt=lambda x: int(x), fontsize=8)
             plt.xticks(rotation=45, ha='right')
 
-            cutlfow_name = f"cutflow_{sample_type}"
+            cutlfow_name = f"cutflow_{self.channel}_{sample_type}"
             if mp > 0:
                 cutlfow_name += f'_{mp}'
             plt.savefig(os.path.join(self.loader_cfg['plot_dir'], f"{cutlfow_name}.pdf"), format='pdf', bbox_inches='tight')

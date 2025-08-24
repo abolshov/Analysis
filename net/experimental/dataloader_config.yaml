@@ -1,4 +1,5 @@
 tree_name: Events
+channel: SL
 
 objects:
   input_objects:
@@ -39,14 +40,14 @@ objects:
         - 'eta'
         - 'phi'
         - 'mass'
-    lep2:
-      target_shape: 1
-      kinematics_output_format: ['px', 'py', 'pz', 'E']
-      branches_to_load:
-        - 'pt'
-        - 'eta'
-        - 'phi'
-        - 'mass'
+    # lep2:
+    #   target_shape: 1
+    #   kinematics_output_format: ['px', 'py', 'pz', 'E']
+    #   branches_to_load:
+    #     - 'pt'
+    #     - 'eta'
+    #     - 'phi'
+    #     - 'mass'
     met:
       target_shape: 1
       kinematics_output_format: ['px', 'py']
@@ -99,17 +100,17 @@ auxilliary_branches:
   - 'nSelectedFatJet'
   - 'lep1_legType'
   - 'lep1_gen_kind'
-  - 'lep2_legType'
-  - 'lep2_gen_kind'
+  # - 'lep2_legType'
+  # - 'lep2_gen_kind'
   - 'genV1prod1_pt'
-  - 'genV2prod1_pt'
+  # - 'genV2prod1_pt'
 
 selection_config: 
   gen_level: True
   reco_level: True
   gen_reco_matching: True
   signal_region: False
-plot_cutflow: True
+plot_cutflow: False
 plot_dir: 'cutflow_plots'
 use_percentages: False
 use_topology: mixed
