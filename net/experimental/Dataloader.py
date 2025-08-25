@@ -221,6 +221,14 @@ class Dataloader:
                 cuts['lep_accept'] = np.logical_and(df['genV1prod1_pt'] > 5.0, df['genV2prod1_pt'] > 5.0)
             case 'SL':
                 cuts['lep_accept'] = df['genV1prod1_pt'] > 5.0
+
+                q1_accept_pt = self.p4_cache['genV2prod1'].pt > 20
+                q1_accept_eta = np.abs(self.p4_cache['genV2prod1'].eta) < 5.0
+                cuts['q1_accept'] = np.logical_and(q1_accept_pt, q1_accept_eta)
+                
+                q2_accept_pt = self.p4_cache['genV2prod2'].pt > 20
+                q2_accept_eta = np.abs(self.p4_cache['genV2prod2'].eta) < 5.0
+                cuts['q2_accept'] = np.logical_and(q2_accept_pt, q2_accept_eta)
             case _:
                 raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
         return cuts
@@ -265,7 +273,7 @@ class Dataloader:
             case 'mixed':
                 as_fat = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
                 as_slim = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
-                cuts['successful_jet_reco'] = np.logical_or(as_fat, as_slim)
+                cuts['successful_b_jet_reco'] = np.logical_or(as_fat, as_slim)
             case _:
                 raise RuntimeError(f'Illegal use_topology value: {topology}')
 
@@ -276,6 +284,21 @@ class Dataloader:
                 reco_lep2 = df['lep2_legType'] == df['lep2_gen_kind']
                 cuts['successful_lep_reco'] = np.logical_and(reco_lep1, reco_lep2)
             case 'SL':
+                # qq_dr = self.p4_cache['genV2prod1'].deltaR(self.p4_cache['genV2prod2'])
+                # is_boosted = qq_dr < 0.8
+
+                # mindR_q1_Jet = ak.min(self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet']), axis=1)
+                # mindR_q2_Jet = ak.min(self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet']), axis=1)
+                # q1_match_idx = ak.argmin(self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet']), axis=1)
+                # q2_match_idx = ak.argmin(self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet']), axis=1)
+                # has_two_matches = np.logical_and(mindR_q1_Jet < 0.4, mindR_q2_Jet < 0.4)
+                # reco_2q = np.logical_and(has_two_matches, q1_match_idx != q2_match_idx)
+                # mindR_HVV_FatJet = ak.min(self.p4_cache['genV2'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
+
+                # as_fat = np.logical_and(mindR_HVV_FatJet < 0.8, df['nSelectedFatJet'] >= 2)
+                # as_slim = np.logical_and(reco_2q, df['ncentralJet'] >= 4)
+                # cuts['successful_light_jet_reco'] = np.logical_or(as_fat, as_slim)
+
                 reco_lep1 = df['lep1_legType'] == df['lep1_gen_kind']
                 cuts['successful_lep_reco'] = reco_lep1
             case _:
