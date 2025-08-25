@@ -220,8 +220,6 @@ class Dataloader:
             case 'DL':
                 cuts['lep_accept'] = np.logical_and(df['genV1prod1_pt'] > 5.0, df['genV2prod1_pt'] > 5.0)
             case 'SL':
-                cuts['lep_accept'] = df['genV1prod1_pt'] > 5.0
-
                 q1_accept_pt = self.p4_cache['genV2prod1'].pt > 20
                 q1_accept_eta = np.abs(self.p4_cache['genV2prod1'].eta) < 5.0
                 cuts['q1_accept'] = np.logical_and(q1_accept_pt, q1_accept_eta)
@@ -229,24 +227,52 @@ class Dataloader:
                 q2_accept_pt = self.p4_cache['genV2prod2'].pt > 20
                 q2_accept_eta = np.abs(self.p4_cache['genV2prod2'].eta) < 5.0
                 cuts['q2_accept'] = np.logical_and(q2_accept_pt, q2_accept_eta)
+
+                cuts['lep_accept'] = df['genV1prod1_pt'] > 5.0
             case _:
                 raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
         return cuts
 
     def ComputeRecoLevelCuts(self, df, cuts):
         # compute signal specific cuts on gen level objects in order they will be applied
-        ak4_selection = np.logical_and(self.p4_cache['centralJet'].pt > 20.0, np.abs(self.p4_cache['centralJet'].eta) < 2.5)
-        has_ak4_jets = ak.count_nonzero(ak4_selection, axis=1) >= 2
-        ak8_selection = np.logical_and(self.p4_cache['SelectedFatJet'].pt > 200.0, np.abs(self.p4_cache['SelectedFatJet'].eta) < 2.5)
-        has_ak8_jets = ak.count_nonzero(ak8_selection, axis=1) >= 1
-        cuts['has_reco_jets'] = np.logical_or(has_ak8_jets, has_ak4_jets)
+        has_ak4_jets = None
+        has_ak8_jets = None
         match self.channel:
             case 'DL':
+                ak4_selection = np.logical_and(self.p4_cache['centralJet'].pt > 20.0, np.abs(self.p4_cache['centralJet'].eta) < 2.5)
+                has_ak4_jets = ak.count_nonzero(ak4_selection, axis=1) >= 2
+                ak8_selection = np.logical_and(self.p4_cache['SelectedFatJet'].pt > 200.0, np.abs(self.p4_cache['SelectedFatJet'].eta) < 2.5)
+                has_ak8_jets = ak.count_nonzero(ak8_selection, axis=1) >= 1
                 cuts['has_reco_leptons'] = np.logical_and(self.p4_cache['lep1'].pt > 0.0, self.p4_cache['lep2'].pt > 0.0)
             case 'SL':
+                # should implement following logic:
+                # >= 2 ak4 b jet cand with pt > 20 and eta < 2.5 and >= 2 ak4 light cand with pt > 20 and eta < 5  
+                # >= 2 ak4 b jet cand with pt > 20 and eta < 2.5 and >= 1 ak8 light cand with pt > 200 and eta < 5
+                # >= 1 ak8 b jet cand with pt > 200 and eta < 2.5 and >= 2 ak4 light cand with pt > 20 and eta < 5 
+                # >= 1 ak8 b jet cand with pt > 200 and eta < 2.5 and >= 1 ak8 light cand with pt > 200 and eta < 5
+
+                # ak4_jet_pt_spec = self.p4_cache['centralJet'].pt > 20.0
+                # ak4_bjet_eta_spec = np.abs(self.p4_cache['centralJet'].eta) < 2.5
+                # ak4_light_jet_eta_spec = np.abs(self.p4_cache['centralJet'].eta) < 5.0
+                # valid_ak4_b_cand = np.logical_and(ak4_jet_pt_spec, ak4_bjet_eta_spec)
+                # valid_ak4_light_cand = np.logical_and(ak4_jet_pt_spec, ak4_light_jet_eta_spec)
+                # ak4_selection = np.logical_or(valid_ak4_b_cand, valid_ak4_light_cand)
+                # has_ak4_jets = ak.count_nonzero(ak4_selection, axis=1) >= 4
+
+                # ak8_jet_pt_spec = self.p4_cache['SelectedFatJet'].pt > 200.0
+                # ak8_bjet_eta_spec = np.abs(self.p4_cache['SelectedFatJet'].eta) < 2.5
+                # ak8_light_jet_eta_spec = np.abs(self.p4_cache['SelectedFatJet'].eta) < 5.0
+                # valid_ak8_b_cand = np.logical_and(ak4_jet_pt_spec, ak4_bjet_eta_spec)
+                # valid_ak8_light_cand = np.logical_and(ak4_jet_pt_spec, ak4_light_jet_eta_spec)
+                # ak8_selection = np.logical_or(valid_ak8_b_cand, valid_ak8_light_cand)
+                # has_ak8_jets = ak.count_nonzero(ak8_selection, axis=1) >= 2
+
                 cuts['has_reco_leptons'] = self.p4_cache['lep1'].pt > 0.0
             case _:
                 raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
+        
+        assert has_ak4_jets is not None and has_ak8_jets is not None
+        cuts['has_reco_jets'] = np.logical_or(has_ak8_jets, has_ak4_jets)
         return cuts
 
     def ComputeGenRecoMatchingCuts(self, df, cuts):
