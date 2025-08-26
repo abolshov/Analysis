@@ -219,25 +219,49 @@ class Dataloader:
         # compute signal specific cuts on gen level objects in order they will be applied
         b1_accept_pt = self.p4_cache['genb1'].pt > 20
         b1_accept_eta = np.abs(self.p4_cache['genb1'].eta) < 2.5
-        cuts['b1_accept'] = np.logical_and(b1_accept_pt, b1_accept_eta)
+        cuts['genb1_accept'] = np.logical_and(b1_accept_pt, b1_accept_eta)
         
         b2_accept_pt = self.p4_cache['genb2'].pt > 20
         b2_accept_eta = np.abs(self.p4_cache['genb2'].eta) < 2.5
-        cuts['b2_accept'] = np.logical_and(b2_accept_pt, b2_accept_eta)
+        cuts['genb2_accept'] = np.logical_and(b2_accept_pt, b2_accept_eta)
+
+        bb_dr = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
+        boosted_bb = bb_dr < 0.8
+        match self.bb_topology:
+            case 'boosted':
+                cuts['genbb_boosted'] = boosted_bb
+            case 'resolved':
+                cuts['genbb_resolved'] = ~boosted_bb
+            case 'mixed':
+                pass
+            case _:
+                raise RuntimeError(f'Illegal `qq_topology` value: {self.qq_topology}')
 
         match self.channel:
             case 'DL':
-                cuts['lep_accept'] = np.logical_and(df['genV1prod1_pt'] > 5.0, df['genV2prod1_pt'] > 5.0)
+                cuts['genlep_accept'] = np.logical_and(df['genV1prod1_pt'] > 5.0, df['genV2prod1_pt'] > 5.0)
             case 'SL':
                 q1_accept_pt = self.p4_cache['genV2prod1'].pt > 20
                 q1_accept_eta = np.abs(self.p4_cache['genV2prod1'].eta) < 5.0
-                cuts['q1_accept'] = np.logical_and(q1_accept_pt, q1_accept_eta)
+                cuts['genq1_accept'] = np.logical_and(q1_accept_pt, q1_accept_eta)
                 
                 q2_accept_pt = self.p4_cache['genV2prod2'].pt > 20
                 q2_accept_eta = np.abs(self.p4_cache['genV2prod2'].eta) < 5.0
-                cuts['q2_accept'] = np.logical_and(q2_accept_pt, q2_accept_eta)
+                cuts['genq2_accept'] = np.logical_and(q2_accept_pt, q2_accept_eta)
 
-                cuts['lep_accept'] = df['genV1prod1_pt'] > 5.0
+                qq_dr = self.p4_cache['genV2prod1'].deltaR(self.p4_cache['genV2prod2'])
+                boosted_qq = qq_dr < 0.8
+                match self.qq_topology:
+                    case 'boosted':
+                        cuts['genqq_boosted'] = boosted_qq
+                    case 'resolved':
+                        cuts['genqq_resolved'] = ~boosted_qq
+                    case 'mixed':
+                        pass
+                    case _:
+                        raise RuntimeError(f'Illegal `qq_topology` value: {self.qq_topology}')
+
+                cuts['genlep_accept'] = df['genV1prod1_pt'] > 5.0
             case _:
                 raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
         return cuts
@@ -265,7 +289,7 @@ class Dataloader:
                 valid_ak8q = np.logical_and(ak8_jet_pt_spec, ak8_light_jet_eta_spec)
                 valid_ak8b = np.logical_and(ak8_jet_pt_spec, ak8_bjet_eta_spec)
                 valid_ak4q = np.logical_and(ak4_jet_pt_spec, ak4_light_jet_eta_spec)
-                valid_ak4b = np.logical_and(ak4_jet_pt_spec, ak4_b_jet_eta_spec)
+                valid_ak4b = np.logical_and(ak4_jet_pt_spec, ak4_bjet_eta_spec)
                 num_valid_ak4q = ak.count_nonzero(valid_ak4q, axis=1)
                 num_valid_ak4b = ak.count_nonzero(valid_ak4b, axis=1)
                 num_valid_ak8q = ak.count_nonzero(valid_ak8q, axis=1)
@@ -302,9 +326,6 @@ class Dataloader:
         """
         bquark_cuts = {}
 
-        bb_dr = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
-        boosted_bb = bb_dr < 0.8
-
         dR_b1_jet = self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet'])
         dR_b2_jet = self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet'])
         mindR_b1_idx = ak.argmin(dR_b1_jet, axis=1)
@@ -324,10 +345,8 @@ class Dataloader:
 
         match self.bb_topology:
             case 'resolved':
-                bquark_cuts['resolved_bb'] = ~boosted_bb
                 bquark_cuts['reco_resolved_bb'] = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
             case 'boosted':
-                bquark_cuts['boosted_bb'] = boosted_bb
                 bquark_cuts['reco_boosted_bb'] = np.logical_and(mindR_Hbb_fatjet < 0.8, df['nSelectedFatJet'] >= 1)
             case 'mixed':
                 as_fat = np.logical_and(mindR_Hbb_fatjet < 0.8, df['nSelectedFatJet'] >= 1)
@@ -337,15 +356,11 @@ class Dataloader:
                 raise RuntimeError(f'Illegal `bb_topology` value: {self.bb_topology}')
         return bquark_cuts
 
-
     def _MatchLightQuarks(self, df):
         """
             returns dictionary cut_name -> array of bools indicating passed (True) or not (False)
         """
         light_quark_cuts = {}
-
-        qq_dr = self.p4_cache['genV2prod1'].deltaR(self.p4_cache['genV2prod2'])
-        boosted_qq = qq_dr < 0.8
 
         dR_q1_jet = self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet'])
         dR_q2_jet = self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet'])
@@ -356,7 +371,7 @@ class Dataloader:
         q1_match_idx = np.where(mindR_q1_jet < 0.4, mindR_q1_idx, -1)
         q2_match_idx = np.where(mindR_q2_jet < 0.4, mindR_q2_idx, -1)
 
-        has_two_matches = np.logical_and(mindR_q1_Jet < 0.4, mindR_q2_Jet < 0.4)
+        has_two_matches = np.logical_and(mindR_q1_jet < 0.4, mindR_q2_jet < 0.4)
         overlaps = np.stack([q1_match_idx != self._b1_match_idx, 
                              q1_match_idx != self._b2_match_idx, 
                              q2_match_idx != self._b1_match_idx, 
@@ -373,21 +388,18 @@ class Dataloader:
 
         match self.qq_topology:
             case 'resolved':
-                bquark_cuts['resolved_qq'] = ~boosted_qq
-                bquark_cuts['reco_resolved_qq'] = np.logical_and(reco_2q, df['ncentralJet'] >= 2)
+                light_quark_cuts['reco_resolved_qq'] = np.logical_and(reco_2q, df['ncentralJet'] >= 2)
             case 'boosted':
-                bquark_cuts['boosted_qq'] = boosted_qq
-                bquark_cuts['reco_boosted_qq'] = np.logical_and(reco_fatW, df['nSelectedFatJet'] >= 1)
+                light_quark_cuts['reco_boosted_qq'] = np.logical_and(reco_fatW, df['nSelectedFatJet'] >= 1)
             case 'mixed':
                 as_fat = np.logical_and(reco_fatW, df['nSelectedFatJet'] >= 1)
                 as_slim = np.logical_and(reco_2q, df['ncentralJet'] >= 2)
-                bquark_cuts['reco_qq'] = np.logical_or(as_fat, as_slim)
+                light_quark_cuts['reco_qq'] = np.logical_or(as_fat, as_slim)
             case _:
                 raise RuntimeError(f'Illegal `qq_topology` value: {self.qq_topology}')
 
         return light_quark_cuts
         
-
     def ComputeGenRecoMatchingCuts(self, df, cuts):       
         match self.channel:
             case 'DL':
@@ -423,8 +435,8 @@ class Dataloader:
 
     def ApplySelections(self, df, cut_df, plot_cutflow):
         cutflow = {}
-        valid = np.full(len(cut_df), True)
-        cutflow['total'] = len(cut_df)
+        valid = np.full(len(df), True)
+        cutflow['total'] = len(df)
         for cut_name in cut_df.columns:
             cut = cut_df[cut_name]
             valid = np.logical_and(cut, valid)

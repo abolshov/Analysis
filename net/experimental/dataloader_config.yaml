@@ -1,5 +1,5 @@
 tree_name: Events
-channel: SL
+channel: DL
 
 objects:
   input_objects:
@@ -130,11 +130,12 @@ auxilliary_branches:
   - 'genV2prod1_pt'
 
 selection_config: 
-  # gen_level: True
-  # reco_level: True
-  # gen_reco_matching: True
-  # signal_region: False
+  gen_level: True
+  reco_level: True
+  gen_reco_matching: True
+  signal_region: False
 plot_cutflow: False
 plot_dir: 'cutflow_plots'
 use_percentages: False
-use_topology: mixed
+bb_topology: mixed
+qq_topology: mixed
