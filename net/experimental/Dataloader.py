@@ -334,7 +334,7 @@ class Dataloader:
                 as_slim = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
                 bquark_cuts['reco_bb'] = np.logical_or(as_fat, as_slim)
             case _:
-                raise RuntimeError(f'Illegal use_topology value: {self.bb_topology}')
+                raise RuntimeError(f'Illegal `bb_topology` value: {self.bb_topology}')
         return bquark_cuts
 
 
@@ -383,7 +383,7 @@ class Dataloader:
                 as_slim = np.logical_and(reco_2q, df['ncentralJet'] >= 2)
                 bquark_cuts['reco_qq'] = np.logical_or(as_fat, as_slim)
             case _:
-                raise RuntimeError(f'Illegal use_topology value: {topology}')
+                raise RuntimeError(f'Illegal `qq_topology` value: {self.qq_topology}')
 
         return light_quark_cuts
         
