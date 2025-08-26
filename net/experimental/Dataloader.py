@@ -22,6 +22,13 @@ def IsKinematic(var):
         return True
     return False
 
+def MaskIndices(indices, array_to_slice):
+    """
+    https://stackoverflow.com/questions/40894594/extract-elements-from-numpy-array-that-are-not-in-list-of-indexes
+    """
+    whole_set, in_set = ak.unzip(ak.cartesian([ak.local_index(array_to_slice), indices], nested=True))
+    return ak.any(whole_set == in_set, axis=-1)
+
 
 class Dataloader:
     def __init__(self, branch_loading_cfg):
@@ -290,19 +297,30 @@ class Dataloader:
         return cuts
 
     def _MatchBQuarks(self, df):
+        """
+            returns dictionary cut_name -> array of bools indicating passed (True) or not (False)
+        """
         bquark_cuts = {}
 
         bb_dr = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
         boosted_bb = bb_dr < 0.8
 
-        mindR_b1_Jet = ak.min(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        mindR_b2_Jet = ak.min(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        self._b1_match_idx = ak.argmin(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1) 
-        self._b2_match_idx = ak.argmin(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        has_two_matches = np.logical_and(mindR_b1_Jet < 0.4, mindR_b2_Jet < 0.4)
+        dR_b1_jet = self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet'])
+        dR_b2_jet = self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet'])
+        mindR_b1_idx = ak.argmin(dR_b1_jet, axis=1)
+        mindR_b2_idx = ak.argmin(dR_b2_jet, axis=1)
+        mindR_b1_jet = np.ravel(dR_b1_jet[MaskIndices(mindR_b1_idx, dR_b1_jet)])
+        mindR_b2_jet = np.ravel(dR_b2_jet[MaskIndices(mindR_b2_idx, dR_b2_jet)])
+        self._b1_match_idx = np.where(mindR_b1_jet < 0.4, mindR_b1_idx, -1)
+        self._b2_match_idx = np.where(mindR_b2_jet < 0.4, mindR_b2_idx, -1)
+
+        has_two_matches = np.logical_and(mindR_b1_jet < 0.4, mindR_b2_jet < 0.4)
         reco_2b = np.logical_and(has_two_matches, self._b1_match_idx != self._b2_match_idx)
-        mindR_Hbb_FatJet = ak.min(self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
-        self._fatbb_idx = ak.argmin(self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet']), axis=1) 
+
+        dR_Hbb_fatjet = self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet'])
+        mindR_Hbb_fatjet_idx = ak.argmin(dR_Hbb_fatjet, axis=1)
+        mindR_Hbb_fatjet = np.ravel(dR_Hbb_fatjet[MaskIndices(mindR_Hbb_fatjet_idx, dR_Hbb_fatjet)])
+        self._fatbb_match_idx = np.where(mindR_Hbb_fatjet < 0.8, mindR_Hbb_fatjet_idx, -1)
 
         match self.bb_topology:
             case 'resolved':
@@ -310,9 +328,9 @@ class Dataloader:
                 bquark_cuts['reco_resolved_bb'] = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
             case 'boosted':
                 bquark_cuts['boosted_bb'] = boosted_bb
-                bquark_cuts['reco_boosted_bb'] = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
+                bquark_cuts['reco_boosted_bb'] = np.logical_and(mindR_Hbb_fatjet < 0.8, df['nSelectedFatJet'] >= 1)
             case 'mixed':
-                as_fat = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
+                as_fat = np.logical_and(mindR_Hbb_fatjet < 0.8, df['nSelectedFatJet'] >= 1)
                 as_slim = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
                 bquark_cuts['reco_bb'] = np.logical_or(as_fat, as_slim)
             case _:
@@ -321,114 +339,67 @@ class Dataloader:
 
 
     def _MatchLightQuarks(self, df):
+        """
+            returns dictionary cut_name -> array of bools indicating passed (True) or not (False)
+        """
         light_quark_cuts = {}
 
         qq_dr = self.p4_cache['genV2prod1'].deltaR(self.p4_cache['genV2prod2'])
         boosted_qq = qq_dr < 0.8
 
-        mindR_q1_Jet = ak.min(self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        mindR_q2_Jet = ak.min(self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        q1_match_idx = ak.argmin(self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet']), axis=1) 
-        q2_match_idx = ak.argmin(self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet']), axis=1)
+        dR_q1_jet = self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet'])
+        dR_q2_jet = self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet'])
+        mindR_q1_idx = ak.argmin(dR_q1_jet, axis=1)
+        mindR_q2_idx = ak.argmin(dR_q2_jet, axis=1)
+        mindR_q1_jet = np.ravel(dR_q1_jet[MaskIndices(mindR_q1_idx, dR_q1_jet)])
+        mindR_q2_jet = np.ravel(dR_q2_jet[MaskIndices(mindR_q2_idx, dR_q2_jet)])
+        q1_match_idx = np.where(mindR_q1_jet < 0.4, mindR_q1_idx, -1)
+        q2_match_idx = np.where(mindR_q2_jet < 0.4, mindR_q2_idx, -1)
+
         has_two_matches = np.logical_and(mindR_q1_Jet < 0.4, mindR_q2_Jet < 0.4)
-        reco_2q = np.logical_and(has_two_matches, q1_match_idx != q2_match_idx)
-        mindR_Hvv_FatJet = ak.min(self.p4_cache['genV2'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
-        fatW_idx = ak.argmin(self.p4_cache['genV2'].deltaR(self.p4_cache['SelectedFatJet']), axis=1) 
+        overlaps = np.stack([q1_match_idx != self._b1_match_idx, 
+                             q1_match_idx != self._b2_match_idx, 
+                             q2_match_idx != self._b1_match_idx, 
+                             q2_match_idx != self._b2_match_idx], axis=1)
+        no_overlap_with_b = np.all(overlaps, axis=1)
+        reco_2q = np.all(np.stack([has_two_matches, no_overlap_with_b, q1_match_idx != q2_match_idx], axis=1), axis=1)
+
+        dR_Hvv_fatjet = self.p4_cache['genV2'].deltaR(self.p4_cache['SelectedFatJet'])
+        mindR_Hvv_fatjet_idx = ak.argmin(dR_Hvv_fatjet, axis=1)
+        mindR_Hvv_fatjet = np.ravel(dR_Hvv_fatjet[MaskIndices(mindR_Hvv_fatjet_idx, dR_Hvv_fatjet)])
+        fatW_match_idx = np.where(mindR_Hvv_fatjet < 0.8, mindR_Hvv_fatjet_idx, -1)
+        not_fatbb = fatW_match_idx != self._fatbb_match_idx
+        reco_fatW = np.logical_and(not_fatbb, mindR_Hvv_fatjet < 0.8)
 
         match self.qq_topology:
             case 'resolved':
                 bquark_cuts['resolved_qq'] = ~boosted_qq
                 bquark_cuts['reco_resolved_qq'] = np.logical_and(reco_2q, df['ncentralJet'] >= 2)
             case 'boosted':
-                bquark_cuts['boosted_bb'] = boosted_bb
-                bquark_cuts['reco_boosted_bb'] = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
+                bquark_cuts['boosted_qq'] = boosted_qq
+                bquark_cuts['reco_boosted_qq'] = np.logical_and(reco_fatW, df['nSelectedFatJet'] >= 1)
             case 'mixed':
-                as_fat = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
-                as_slim = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
-                bquark_cuts['reco_bb'] = np.logical_or(as_fat, as_slim)
+                as_fat = np.logical_and(reco_fatW, df['nSelectedFatJet'] >= 1)
+                as_slim = np.logical_and(reco_2q, df['ncentralJet'] >= 2)
+                bquark_cuts['reco_qq'] = np.logical_or(as_fat, as_slim)
             case _:
                 raise RuntimeError(f'Illegal use_topology value: {topology}')
 
         return light_quark_cuts
         
 
-    def ComputeGenRecoMatchingCuts(self, df, cuts):
-        topology = self.loader_cfg['use_topology']
-        bb_dr = self.p4_cache['genb1'].deltaR(self.p4_cache['genb2'])
-        is_boosted = bb_dr < 0.8
-
-        mindR_b1_Jet = ak.min(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        mindR_b2_Jet = ak.min(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        b1_match_idx = ak.argmin(self.p4_cache['genb1'].deltaR(self.p4_cache['centralJet']), axis=1)
-        b2_match_idx = ak.argmin(self.p4_cache['genb2'].deltaR(self.p4_cache['centralJet']), axis=1)
-        has_two_matches = np.logical_and(mindR_b1_Jet < 0.4, mindR_b2_Jet < 0.4)
-        reco_2b = np.logical_and(has_two_matches, b1_match_idx != b2_match_idx)
-
-        mindR_Hbb_FatJet = ak.min(self.p4_cache['genHbb'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
-
-        match self.channel:
-            case 'DL':   
-                match self.bb_topology:
-                    case 'resolved':
-                        cuts['is_resolved'] = ~is_boosted
-                        cuts['reco_as_resolved'] = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
-                    case 'boosted':
-                        cuts['is_boosted'] = is_boosted
-                        cuts['reco_as_boosted'] = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
-                    case 'mixed':
-                        as_fat = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
-                        as_slim = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
-                        cuts['successful_b_jet_reco'] = np.logical_or(as_fat, as_slim)
-                    case _:
-                        raise RuntimeError(f'Illegal use_topology value: {topology}')
-
-                reco_lep1 = df['lep1_legType'] == df['lep1_gen_kind']
-                reco_lep2 = df['lep2_legType'] == df['lep2_gen_kind']
-                cuts['successful_lep_reco'] = np.logical_and(reco_lep1, reco_lep2)
-            case 'SL':
-                match (self.bb_topology, self.qq_topology):
-                    pass
-            case _:
-                raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
-
-        match topology:
-            case 'resolved':
-                cuts['is_resolved'] = ~is_boosted
-                cuts['reco_as_resolved'] = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
-            case 'boosted':
-                cuts['is_boosted'] = is_boosted
-                cuts['reco_as_boosted'] = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
-            case 'mixed':
-                as_fat = np.logical_and(mindR_Hbb_FatJet < 0.8, df['nSelectedFatJet'] >= 1)
-                as_slim = np.logical_and(reco_2b, df['ncentralJet'] >= 2)
-                cuts['successful_b_jet_reco'] = np.logical_or(as_fat, as_slim)
-            case _:
-                raise RuntimeError(f'Illegal use_topology value: {topology}')
-
-        # lepton matching
+    def ComputeGenRecoMatchingCuts(self, df, cuts):       
         match self.channel:
             case 'DL':
                 reco_lep1 = df['lep1_legType'] == df['lep1_gen_kind']
                 reco_lep2 = df['lep2_legType'] == df['lep2_gen_kind']
                 cuts['successful_lep_reco'] = np.logical_and(reco_lep1, reco_lep2)
+                cuts.update(self._MatchBQuarks(df))
             case 'SL':
-                # qq_dr = self.p4_cache['genV2prod1'].deltaR(self.p4_cache['genV2prod2'])
-                # is_boosted = qq_dr < 0.8
-
-                # mindR_q1_Jet = ak.min(self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet']), axis=1)
-                # mindR_q2_Jet = ak.min(self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet']), axis=1)
-                # q1_match_idx = ak.argmin(self.p4_cache['genV2prod1'].deltaR(self.p4_cache['centralJet']), axis=1)
-                # q2_match_idx = ak.argmin(self.p4_cache['genV2prod2'].deltaR(self.p4_cache['centralJet']), axis=1)
-                # has_two_matches = np.logical_and(mindR_q1_Jet < 0.4, mindR_q2_Jet < 0.4)
-                # reco_2q = np.logical_and(has_two_matches, q1_match_idx != q2_match_idx)
-                # mindR_HVV_FatJet = ak.min(self.p4_cache['genV2'].deltaR(self.p4_cache['SelectedFatJet']), axis=1)
-
-                # as_fat = np.logical_and(mindR_HVV_FatJet < 0.8, df['nSelectedFatJet'] >= 2)
-                # as_slim = np.logical_and(reco_2q, df['ncentralJet'] >= 4)
-                # cuts['successful_light_jet_reco'] = np.logical_or(as_fat, as_slim)
-
                 reco_lep1 = df['lep1_legType'] == df['lep1_gen_kind']
                 cuts['successful_lep_reco'] = reco_lep1
+                cuts.update(self._MatchBQuarks(df))
+                cuts.update(self._MatchLightQuarks(df))
             case _:
                 raise RuntimeError(f'Illegal channel {self.channel}, only SL or DL are allowed')
         return cuts
@@ -446,7 +417,7 @@ class Dataloader:
 
         if not is_bkg and selection_cfg['gen_reco_matching']:
             cut_dict.update(self.ComputeGenRecoMatchingCuts(df, cut_dict))
-    
+
         cut_df = pd.DataFrame.from_dict(cut_dict)
         return cut_df
 
