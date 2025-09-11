@@ -22,16 +22,25 @@ def main():
     params = {}
 
     files = []
-    # input_files = 'dl_train_files.txt'
-    input_files = 'files_Run3_2022.txt'
+    input_files = 'dl_train_files.txt'
+    # input_files = 'sl_train_files.txt'
+    # input_files = 'files_Run3_2022.txt'
     # input_files = 'files_Run3_2022EE.txt'
     with open(input_files, 'r') as file_cfg:
         files = [line[:-1] for line in file_cfg.readlines()]
 
+    mod = 2
+    train_parity = 0
+    test_parity = 1
+
+    params['train_parity'] = train_parity
+    params['test_parity'] = test_parity
+
     dataloader = Dataloader('dataloader_config.yaml')
     dataloader.Load(files)
     # dataloader.Load('../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root')
-    X_train, input_names, y_train, target_names = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 0)
+    # dataloader.Load('../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2JLNu_M_800/nano_0.root')
+    X_train, input_names, y_train, target_names = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, mod, train_parity)
 
     params['input_names'] = input_names
     params['target_names'] = target_names
@@ -60,9 +69,10 @@ def main():
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
     tf.random.set_seed(42)
 
-    model_name = 'model'
+    suffix = 'odd' if train_parity == 1 else 'even'
+    model_name = f'predict_quantiles3D_DL_v9_{suffix}'
     params['model_name'] = model_name
-    model_dir = 'predict_quantiles3D_v3'
+    model_dir = 'predict_quantiles3D_DL_v9'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -75,14 +85,14 @@ def main():
     quantiles = [0.16, 0.5, 0.84]
     # quantiles = None
     num_quantiles = len(quantiles) if quantiles else 1
-    epochs = 80
+    epochs = 60
     batch_size = 2048
     batch_norm = True
     momentum = 0.01
     bn_eps = 0.01
     learning_rate = 3e-4
     use_energy_layer = True
-    use_quantile_ordering = False
+    use_quantile_ordering = True
     use_quantile_width_penalty = True
     num_output_units = num_quantiles
     add_mass_loss = True
@@ -112,15 +122,15 @@ def main():
     width_penalty_rates = None
     if use_quantile_width_penalty:
         width_penalty_rates = {}
-        width_penalty_rates['genHVV_E'] = 0.035
+        width_penalty_rates['genHVV_E'] = 0.0
         width_penalty_rates['genHVV_px'] = 0.035
         width_penalty_rates['genHVV_py'] = 0.035
-        width_penalty_rates['genHVV_pz'] =  0.02
+        width_penalty_rates['genHVV_pz'] =  0.01
 
-        width_penalty_rates['genHbb_E'] = 0.035
+        width_penalty_rates['genHbb_E'] = 0.0
         width_penalty_rates['genHbb_px'] = 0.035
         width_penalty_rates['genHbb_py'] = 0.035
-        width_penalty_rates['genHbb_pz'] =  0.025
+        width_penalty_rates['genHbb_pz'] =  0.01
 
     params['width_penalty_rates'] = width_penalty_rates
 
@@ -182,8 +192,8 @@ def main():
         outputs.append(output)
 
         # loss_weights[target_name] = 0.675
-        loss_weights[target_name] = 0.75
-        # loss_weights[target_name] = 1.0
+        # loss_weights[target_name] = 0.75
+        loss_weights[target_name] = 1.0
 
     if use_energy_layer:
         # energy layer of H->bb takes outputs of heads producing p3 of H->bb, but not the rest of the model
@@ -220,12 +230,12 @@ def main():
         outputs.insert(hvv_en_idx, hvv_energy_layer)
         outputs.insert(hbb_en_idx, hbb_energy_layer)
 
-        # loss_weights['genHbb_E'] = 1.0
-        # loss_weights['genHVV_E'] = 1.0
+        loss_weights['genHbb_E'] = 1.0
+        loss_weights['genHVV_E'] = 1.0
         # loss_weights['genHbb_E'] = 0.225
         # loss_weights['genHVV_E'] = 0.225
-        loss_weights['genHbb_E'] = 0.25
-        loss_weights['genHVV_E'] = 0.25
+        # loss_weights['genHbb_E'] = 0.25
+        # loss_weights['genHVV_E'] = 0.25
 
     if add_mass_loss:
         # mass loss needs outputs from all heads => concatenate heads into list of tensors and append to outputs
@@ -245,10 +255,12 @@ def main():
     params['loss_names'] = loss_names
     params['loss_weights'] = loss_weights
 
+    optim = tf.keras.optimizers.Nadam(learning_rate=learning_rate)
+
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name=model_name)
     model.compile(loss=losses,
                   loss_weights=loss_weights, 
-                  optimizer=tf.keras.optimizers.Adam(learning_rate))
+                  optimizer=optim)
 
     history = model.fit(X_train,
                         ys_train,
@@ -262,7 +274,7 @@ def main():
     tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
     model.save(os.path.join(model_dir, f"{model_name}.keras"))
 
-    plotting_dir = os.path.join(model_dir, 'plots')
+    plotting_dir = os.path.join(model_dir, f'plots_{suffix}')
     os.makedirs(plotting_dir, exist_ok=True)
     history_keys = list(history.history.keys())
     drawable_metrics = [key for key in history_keys if 'loss' in key and 'val' not in key]
@@ -271,7 +283,7 @@ def main():
 
     # compute global correlation matrix of errors
     if compute_corr_mtrx:
-        X, _, y, _ = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, 2, 1)
+        X, _, y, _ = dataloader.Get(lambda df, mod, parity: df['event'] % mod == parity, mod, test_parity)
         if standardize:
             X = input_scaler.transform(X)
         ys = model.predict(X)
@@ -315,7 +327,7 @@ def main():
         tmp = np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
         return np.logical_and(tmp, df['sample_type'] == sample_type)
 
-    X_test, _, y_test, _ = dataloader.Get(TestSelection, 2, 1, 800, 1)
+    X_test, _, y_test, _ = dataloader.Get(TestSelection, mod, test_parity, 800, 1)
     if standardize:
         X_test = input_scaler.transform(X_test)
     ys_pred = model.predict(X_test)
@@ -348,9 +360,9 @@ def main():
 
     pred_df = pd.DataFrame.from_dict(pred_dict)
 
-    has_central_quantile = 0.5 in quantiles
     is_quantile = quantiles is not None
-    if is_quantile and has_central_quantile:
+    has_central_quantile = is_quantile and 0.5 in quantiles
+    if has_central_quantile:
         q = int(100*0.5)
 
         for i, col in enumerate(target_names):
