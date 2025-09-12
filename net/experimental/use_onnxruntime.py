@@ -71,16 +71,18 @@ def main():
     outputs_even = session_odd.run(output_names, {input_name: X_even.astype(np.float32)})
     central_odd = np.array([out[:, 1] for out in outputs_odd[:-1]]).T
     central_even = np.array([out[:, 1] for out in outputs_even[:-1]]).T
-    
-    target_scales_odd = np.array(params_odd['target_train_scales'])
-    target_means_odd = np.array(params_odd['target_train_means'])
-    target_scales_even = np.array(params_even['target_train_scales'])
-    target_means_even = np.array(params_even['target_train_means'])
 
-    central_odd *= target_scales_odd
-    central_odd += target_means_odd
-    central_even *= target_scales_even
-    central_even += target_means_even
+    if standardize:
+        target_scales_odd = np.array(params_odd['target_train_scales'])
+        target_means_odd = np.array(params_odd['target_train_means'])
+        target_scales_even = np.array(params_even['target_train_scales'])
+        target_means_even = np.array(params_even['target_train_means'])
+
+        central_odd *= target_scales_odd
+        central_odd += target_means_odd
+        central_even *= target_scales_even
+        central_even += target_means_even
+
     central = np.concatenate((central_even, central_odd))
 
     mass = ComputeMass(central)
