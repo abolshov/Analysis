@@ -76,6 +76,7 @@ def PlotHist(bins=np.linspace(0, 250, 100), **kwargs):
     else:
         plt.savefig(os.path.join(kwargs['plotting_dir'], f"{kwargs['file_name']}.pdf"), bbox_inches='tight')
     plt.clf()
+    plt.close()
 
 
 def PlotCovarMtrx(mtrx, method, labels, plotdir, display_values=True):
