@@ -8,6 +8,18 @@ TARGET   := libSelection.so
 INCLUDE  := -Iinclude/
 SRC      := $(wildcard src/*.cpp)
 
+ifneq ($(MODE),)
+  ifeq ($(MODE), debug)
+    CXXFLAGS += -DDEBUG -g -fsanitize=address,undefined,leak
+  endif
+  ifeq ($(MODE), release)
+    CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt
+  endif
+  ifeq ($(MODE), dev)
+    CXXFLAGS += -O2
+  endif
+endif
+
 LIBS     := Readout Utils
 LIBS_DIR := $(foreach lib,$(LIBS),../$(lib)/build/libs/)
 INCLUDE  += $(foreach lib,$(LIBS),-I../$(lib)/include/)
@@ -34,12 +46,6 @@ $(LIB_DIR)/$(TARGET): $(OBJECTS)
 build:
 	@mkdir -p $(LIB_DIR)
 	@mkdir -p $(OBJ_DIR)
-
-debug: CXXFLAGS += -DDEBUG -g -fsanitize=address,undefined,leak
-debug: all
-
-release: CXXFLAGS += -O3 -march=native -flto=auto
-release: all
 
 clean:
 	-@rm -rvf $(OBJ_DIR)/*

@@ -17,6 +17,18 @@ LDFLAGS  += $(foreach dir,$(LIBS_DIR),-Wl,-rpath,$(dir))
 OBJECTS  := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 DEPENDENCIES := $(OBJECTS:.o=.d)
 
+ifneq ($(MODE),)
+  ifeq ($(MODE), debug)
+    CXXFLAGS += -DDEBUG -g -fsanitize=address,undefined,leak
+  endif
+  ifeq ($(MODE), release)
+    CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt
+  endif
+  ifeq ($(MODE), dev)
+    CXXFLAGS += -O2
+  endif
+endif
+
 all: build $(APP_DIR)/$(TARGET)
 
 $(OBJ_DIR)/%.o: %.cpp
@@ -34,12 +46,6 @@ $(APP_DIR)/$(TARGET): $(OBJECTS)
 build:
 	@mkdir -p $(APP_DIR)
 	@mkdir -p $(OBJ_DIR)
-
-debug: CXXFLAGS += -DDEBUG -g -fsanitize=address,undefined,leak
-debug: all
-
-release: CXXFLAGS += -O3 -march=native -flto=auto
-release: all
 
 clean:
 	-@rm -rvf $(OBJ_DIR)/*
