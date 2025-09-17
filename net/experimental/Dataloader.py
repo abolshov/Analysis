@@ -274,15 +274,28 @@ class Dataloader:
     def ComputeRecoLevelCuts(self, df, cuts):
         cfg = self.selection_config['reco_level']
 
+        # btag cuts on b jets do not depend on channel
+        ak4_btags = df[[col for col in df.columns if 'btagPNetB' in col]].values
+        ak8_btags = df[[col for col in df.columns if 'particleNet_XbbVsQCD' in col]].values
+        ak4_jet_btag_spec = ak4_btags > cfg['ak4_btag']
+        ak8_jet_btag_spec = ak8_btags > cfg['ak8_btag']
+
         # compute signal specific cuts on gen level objects in order they will be applied
         has_reco_jets = None
         match self.channel:
             case 'DL':
-                ak4_selection = np.logical_and(self.p4_cache['centralJet'].pt > cfg['ak4_pt'], np.abs(self.p4_cache['centralJet'].eta) < cfg['ak4_b_eta'])
-                has_ak4_jets = ak.count_nonzero(ak4_selection, axis=1) >= 2
-                ak8_selection = np.logical_and(self.p4_cache['SelectedFatJet'].pt > cfg['ak8_pt'], np.abs(self.p4_cache['SelectedFatJet'].eta) < cfg['ak4_b_eta'])
-                has_ak8_jets = ak.count_nonzero(ak8_selection, axis=1) >= 1
-                has_reco_jets = np.logical_or(has_ak8_jets, has_ak4_jets)
+                ak4_jet_pt_spec = self.p4_cache['centralJet'].pt > cfg['ak4_pt']
+                ak4_bjet_eta_spec = np.abs(self.p4_cache['centralJet'].eta) < cfg['ak4_b_eta']
+                valid_ak4 = ak4_jet_pt_spec & ak4_bjet_eta_spec & ak4_jet_btag_spec
+
+                ak8_jet_pt_spec = self.p4_cache['SelectedFatJet'].pt > cfg['ak8_pt']
+                ak8_bjet_eta_spec = np.abs(self.p4_cache['SelectedFatJet'].eta) < cfg['ak4_b_eta']
+                valid_ak8 = ak8_jet_pt_spec & ak8_bjet_eta_spec & ak8_jet_btag_spec
+
+                num_valid_ak4 = ak.count_nonzero(valid_ak4, axis=1)
+                num_valid_ak8 = ak.count_nonzero(valid_ak8, axis=1)
+                has_reco_jets = np.logical_or(num_valid_ak4 >= 2, num_valid_ak8 >= 1)
+                
                 cuts['has_reco_leptons'] = np.logical_and(self.p4_cache['lep1'].pt > cfg['lep_pt'], self.p4_cache['lep2'].pt > cfg['lep_pt'])
             case 'SL':
                 ak4_jet_pt_spec = self.p4_cache['centralJet'].pt > cfg['ak4_pt']
@@ -292,13 +305,6 @@ class Dataloader:
                 ak8_jet_pt_spec = self.p4_cache['SelectedFatJet'].pt > cfg['ak8_pt']
                 ak8_bjet_eta_spec = np.abs(self.p4_cache['SelectedFatJet'].eta) < cfg['ak4_b_eta']
                 ak8_light_jet_eta_spec = np.abs(self.p4_cache['SelectedFatJet'].eta) < cfg['ak4_light_eta']
-
-                # implement btag cuts here
-                ak4_btags = df[[col for col in df.columns if 'btagPNetB' in col]].values
-                ak4_jet_btag_spec = ak4_btags > cfg['ak4_btag']
-
-                ak8_btags = df[[col for col in df.columns if 'particleNet_XbbVsQCD' in col]].values
-                ak8_jet_btag_spec = ak8_btags > cfg['ak8_btag']
 
                 valid_ak8q = np.logical_and(ak8_jet_pt_spec, ak8_light_jet_eta_spec)
                 valid_ak8b = ak8_jet_pt_spec & ak8_bjet_eta_spec & ak8_jet_btag_spec
