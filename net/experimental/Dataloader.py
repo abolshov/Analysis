@@ -294,13 +294,16 @@ class Dataloader:
                 ak8_light_jet_eta_spec = np.abs(self.p4_cache['SelectedFatJet'].eta) < cfg['ak4_light_eta']
 
                 # implement btag cuts here
-                # ak4_btags = df[[col for col in df.columns if 'btagPNetB' in col]].values
-                # ak4_jet_btag_spec = ak4_btags > 
+                ak4_btags = df[[col for col in df.columns if 'btagPNetB' in col]].values
+                ak4_jet_btag_spec = ak4_btags > cfg['ak4_btag']
+
+                ak8_btags = df[[col for col in df.columns if 'particleNet_XbbVsQCD' in col]].values
+                ak8_jet_btag_spec = ak8_btags > cfg['ak8_btag']
 
                 valid_ak8q = np.logical_and(ak8_jet_pt_spec, ak8_light_jet_eta_spec)
-                valid_ak8b = np.logical_and(ak8_jet_pt_spec, ak8_bjet_eta_spec)
+                valid_ak8b = ak8_jet_pt_spec & ak8_bjet_eta_spec & ak8_jet_btag_spec
                 valid_ak4q = np.logical_and(ak4_jet_pt_spec, ak4_light_jet_eta_spec)
-                valid_ak4b = np.logical_and(ak4_jet_pt_spec, ak4_bjet_eta_spec)
+                valid_ak4b = ak4_jet_pt_spec & ak4_bjet_eta_spec & ak4_jet_btag_spec
                 num_valid_ak4q = ak.count_nonzero(valid_ak4q, axis=1)
                 num_valid_ak4b = ak.count_nonzero(valid_ak4b, axis=1)
                 num_valid_ak8q = ak.count_nonzero(valid_ak8q, axis=1)
@@ -397,7 +400,7 @@ class Dataloader:
         mindR_hadrW_fatjet = np.ravel(dR_hadrW_fatjet[MaskIndices(mindR_hadrW_fatjet_idx, dR_hadrW_fatjet)])
         fatW_match_idx = np.where(mindR_hadrW_fatjet < cfg['match_ak8_thresh'], mindR_hadrW_fatjet_idx, -1)
         not_fatbb = fatW_match_idx != self._fatbb_match_idx
-        reco_fatW = np.logical_and(not_fatbb, mindR_Hvv_fatjet < cfg['match_ak8_thresh'])
+        reco_fatW = np.logical_and(not_fatbb, mindR_hadrW_fatjet < cfg['match_ak8_thresh'])
 
         match self.qq_topology:
             case 'resolved':
