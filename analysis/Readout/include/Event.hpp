@@ -6,7 +6,7 @@
 #include "TTree.h"
 #include "ReadoutConstants.hpp"
 
-struct Event
+struct alignas(ULong64_t) Event
 {   
     void ConnectTree(TTree* tree);
 
