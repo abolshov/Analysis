@@ -22,8 +22,8 @@ def main():
     params = {}
 
     files = []
-    input_files = 'dl_train_files.txt'
-    # input_files = 'sl_train_files.txt'
+    # input_files = 'dl_train_files.txt'
+    input_files = 'sl_train_files.txt'
     # input_files = 'files_Run3_2022.txt'
     # input_files = 'files_Run3_2022EE.txt'
     with open(input_files, 'r') as file_cfg:
@@ -36,7 +36,7 @@ def main():
     params['train_parity'] = train_parity
     params['test_parity'] = test_parity
 
-    dataloader = Dataloader('dataloader_config.yaml')
+    dataloader = Dataloader('dataloader_cfg_SL.yaml')
     dataloader.Load(files)
     # dataloader.Load('../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2L2Nu_M_800/nano_0.root')
     # dataloader.Load('../train_data/Run3_2022/GluGlutoRadiontoHHto2B2Vto2B2JLNu_M_800/nano_0.root')
@@ -70,9 +70,9 @@ def main():
     tf.random.set_seed(42)
 
     suffix = 'odd' if train_parity == 1 else 'even'
-    model_name = f'predict_quantiles3D_DL_v9_{suffix}'
+    model_name = f'predict_quantiles3D_SL_v6_{suffix}'
     params['model_name'] = model_name
-    model_dir = 'predict_quantiles3D_DL_v9'
+    model_dir = 'predict_quantiles3D_SL_v6'
     params['model_dir'] = model_dir
     os.makedirs(model_dir, exist_ok=True)
 
@@ -86,7 +86,7 @@ def main():
     # quantiles = None
     num_quantiles = len(quantiles) if quantiles else 1
     epochs = 60
-    batch_size = 2048
+    batch_size = 4096
     batch_norm = True
     momentum = 0.01
     bn_eps = 0.01
@@ -123,13 +123,13 @@ def main():
     if use_quantile_width_penalty:
         width_penalty_rates = {}
         width_penalty_rates['genHVV_E'] = 0.0
-        width_penalty_rates['genHVV_px'] = 0.035
+        width_penalty_rates['genHVV_px'] = 0.025
         width_penalty_rates['genHVV_py'] = 0.035
-        width_penalty_rates['genHVV_pz'] =  0.01
+        width_penalty_rates['genHVV_pz'] =  0.008
 
         width_penalty_rates['genHbb_E'] = 0.0
-        width_penalty_rates['genHbb_px'] = 0.035
-        width_penalty_rates['genHbb_py'] = 0.035
+        width_penalty_rates['genHbb_px'] = 0.025
+        width_penalty_rates['genHbb_py'] = 0.02
         width_penalty_rates['genHbb_pz'] =  0.01
 
     params['width_penalty_rates'] = width_penalty_rates
@@ -250,12 +250,12 @@ def main():
             scales = target_scaler.scale_
 
         losses['combined'] = MultiheadLoss(num_quantiles=num_quantiles, means=means, scales=scales)
-        loss_weights['combined'] = 0.001
+        loss_weights['combined'] = 0.003
 
     params['loss_names'] = loss_names
     params['loss_weights'] = loss_weights
 
-    optim = tf.keras.optimizers.Nadam(learning_rate=learning_rate)
+    optim = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name=model_name)
     model.compile(loss=losses,
