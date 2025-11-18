@@ -155,7 +155,12 @@ selection_config:
     ak8_btag: 0.8
   gen_reco_matching:
     match_ak4_thresh: 0.4
-    match_ak8_thresh: 0.8    
+    match_ak8_thresh: 0.8
+
+augmentation_policy: 
+  - 300
+  - 350
+  - 450    
 
 plot_cutflow: False
 plot_dir: 'cutflow_plots'

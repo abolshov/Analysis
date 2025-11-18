@@ -22,6 +22,9 @@ def IsKinematic(var):
         return True
     return False
 
+def IsCartesian(var):
+    return var in ['px', 'py', 'pz', 'E']
+
 def MaskIndices(indices, array_to_slice):
     """
     https://stackoverflow.com/questions/40894594/extract-elements-from-numpy-array-that-are-not-in-list-of-indexes
@@ -153,7 +156,27 @@ class Dataloader:
             for var in kinematics_format:
                 tmp_dict[f'{prefix}_{var}'] = (lambda x: getattr(x, var))(p4[:, i]).to_numpy()
 
-        return pd.DataFrame.from_dict(tmp_dict)
+        df = pd.DataFrame.from_dict(tmp_dict)
+        augmentation_policy = self.loader_cfg['augmentation_policy']
+        match augmentation_policy:
+            case None:
+                return df
+            case list(masspoints):
+                this_mp = None
+                try:
+                    this_tree_mX_branch = tree.arrays(['X_mass'])
+                    mX = list(np.unique(this_tree_mX_branch['X_mass'].to_numpy()))
+                    assert len(mX) == 1, 'File must contain only one masspoint'
+                    this_mp = mX[0]
+                except uproot.exceptions.KeyInFileError:
+                    pass
+                
+                if this_mp and this_mp in masspoints:
+                    # do augmentation
+                    # handle case when object kinematics is [pt, eta, phi, mass] 
+            case _:
+                raise RuntimeError(f'Illegal augmentation policy `{augmentation_policy}`') 
+        return df
 
     def LoadObjects(self, tree):
         # concatenate data from all objects horizontally
