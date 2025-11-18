@@ -1,4 +1,15 @@
 import tensorflow as tf
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"Enabled memory growth for {len(gpus)} GPU(s).")
+    except RuntimeError as e:
+        # Memory growth must be set before GPUs have been initialized
+        print(e)
+
 import pandas as pd
 import numpy as np
 import uproot 
@@ -494,6 +505,8 @@ def main():
     # save training parameters
     with open(os.path.join(model_dir, f'params_{model_name}.yaml'), 'w') as outfile:
         yaml.dump(params, outfile, sort_keys=False, default_flow_style=False)
+
+    tf.keras.backend.clear_session()
 
 
 if __name__ == '__main__':
