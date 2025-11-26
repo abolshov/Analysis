@@ -7,6 +7,7 @@ import vector
 import matplotlib.pyplot as plt
 import os
 import time
+import itertools
 
 
 sample_type_map = {1: "GluGluToRadion",
@@ -497,6 +498,70 @@ class Dataloader:
 
         return df
 
+    def Augment(self, masspoints):
+        """
+        returns augmented dataframe
+        augmentation is done by computing df for each mass point, corresponding to following transformations:
+            - reflection against each of axes one at a time
+            - reflection against pairs of axes
+            - reflection against all axes simultaneosly
+        returns dataframe, which includes original and part obtained by applying transformations
+        """
+
+        col_names = self.df.columns
+        dfs = []
+        for mp in masspoints:
+            orig_df = self.df[self.df['X_mass'] == mp]
+            dfs.append(orig_df)
+            directions = ['px', 'py', 'pz']
+            
+            # reflections against each axis
+            for d in directions:
+                tmp = orig_df.copy(deep=True)
+                for col_name in col_names:
+                    if d not in col_name:
+                        continue
+                    tmp[col_name] *= -1
+                dfs.append(tmp)
+            
+            # reflections of two directions axis simultaneously
+            objects = [key for key in self.loader_cfg['objects']['input_objects'].keys()]
+            for d1, d2 in itertools.combinations(directions, 2):
+                tmp = orig_df.copy(deep=True)
+                for obj_name in objects:
+                    shape = self.obj_shapes[obj_name]
+                    if shape > 1:
+                        for i in range(shape):
+                            tmp[f'{obj_name}_{i + 1}_{d1}'] *= -1
+                            tmp[f'{obj_name}_{i + 1}_{d2}'] *= -1
+                    else:
+                        col1_name = f'{obj_name}_{d1}'
+                        col2_name = f'{obj_name}_{d2}'
+                        if col1_name in col_names:
+                            tmp[col1_name] *= -1
+                        if col2_name in col_names:
+                            tmp[col2_name] *= -1
+                dfs.append(tmp)
+
+            # reflection of all 3 axes simultaneously
+            tmp = orig_df.copy(deep=True)
+            for obj_name in objects:
+                shape = self.obj_shapes[obj_name]
+                if shape > 1:
+                    for i in range(shape):
+                        for d in directions:
+                            col_name = f'{obj_name}_{i + 1}_{d}'
+                            tmp[col_name] *= -1
+                else:
+                    for d in directions:
+                        col_name = f'{obj_name}_{d}'
+                        if d not in col_names:
+                            continue
+                        tmp[col_name] *= -1
+            dfs.append(tmp)
+        result = pd.concat(dfs, axis=0)
+        return result
+
     def Get(self, selection=None, *args, **kwargs):
         """
         returns tuple (X, [names of features], y, [names of targets]) or underlying dataframe
@@ -511,11 +576,10 @@ class Dataloader:
             case list(masspoints):
                 # do augmentation
                 # handle case when object kinematics is [pt, eta, phi, mass] 
-
-                for mp, group in self.df.groupby('X_mass'):
-                    if mp not in masspoints:
-                        continue
-                    
+                self.df = self.Augment(masspoints)
+            case -1:
+                masspoints = list(np.unique(self.df['X_mass']))
+                self.df = self.Augment(masspoints)
             case _:
                 raise RuntimeError(f'Illegal augmentation policy `{augmentation_policy}`') 
 
