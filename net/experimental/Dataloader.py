@@ -507,58 +507,35 @@ class Dataloader:
             - reflection against all axes simultaneosly
         returns dataframe, which includes original and part obtained by applying transformations
         """
-
+        
+        directions = ['px', 'py', 'pz']
         col_names = self.df.columns
         dfs = []
+        
         for mp in masspoints:
             orig_df = self.df[self.df['X_mass'] == mp]
             dfs.append(orig_df)
-            directions = ['px', 'py', 'pz']
             
             # reflections against each axis
             for d in directions:
                 tmp = orig_df.copy(deep=True)
-                for col_name in col_names:
-                    if d not in col_name:
-                        continue
-                    tmp[col_name] *= -1
+                dir_cols = [col for col in col_names if d in col]
+                tmp[dir_cols] *= -1
                 dfs.append(tmp)
             
             # reflections of two directions axis simultaneously
-            objects = [key for key in self.loader_cfg['objects']['input_objects'].keys()]
             for d1, d2 in itertools.combinations(directions, 2):
                 tmp = orig_df.copy(deep=True)
-                for obj_name in objects:
-                    shape = self.obj_shapes[obj_name]
-                    if shape > 1:
-                        for i in range(shape):
-                            tmp[f'{obj_name}_{i + 1}_{d1}'] *= -1
-                            tmp[f'{obj_name}_{i + 1}_{d2}'] *= -1
-                    else:
-                        col1_name = f'{obj_name}_{d1}'
-                        col2_name = f'{obj_name}_{d2}'
-                        if col1_name in col_names:
-                            tmp[col1_name] *= -1
-                        if col2_name in col_names:
-                            tmp[col2_name] *= -1
+                dir_cols = [col for col in col_names if d1 in col or d2 in col]
+                tmp[dir_cols] *= -1
                 dfs.append(tmp)
 
             # reflection of all 3 axes simultaneously
             tmp = orig_df.copy(deep=True)
-            for obj_name in objects:
-                shape = self.obj_shapes[obj_name]
-                if shape > 1:
-                    for i in range(shape):
-                        for d in directions:
-                            col_name = f'{obj_name}_{i + 1}_{d}'
-                            tmp[col_name] *= -1
-                else:
-                    for d in directions:
-                        col_name = f'{obj_name}_{d}'
-                        if d not in col_names:
-                            continue
-                        tmp[col_name] *= -1
+            dir_cols = [col for col in col_names if any(d in col for d in directions)]
+            tmp[dir_cols] *= -1
             dfs.append(tmp)
+
         result = pd.concat(dfs, axis=0)
         return result
 
