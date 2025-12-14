@@ -60,6 +60,8 @@ class Dataloader:
         self.bb_topology = self.loader_cfg['bb_topology']
         self.qq_topology = self.loader_cfg['qq_topology']
 
+        self.augmentation_done = False
+
     def MakeNameCollection(self, category):
         res = []
         obj_cfg = self.loader_cfg['objects'][category]
@@ -508,19 +510,31 @@ class Dataloader:
         returns dataframe, which includes original and part obtained by applying transformations
         """
         
+        existing_masspoints = list(map(lambda x: int(x), np.unique(self.df['X_mass'])))
+
         directions = ['px', 'py', 'pz']
         col_names = self.df.columns
         dfs = []
+
+        # add new column to be able to select only original events (that were not obtained as a result of augmentation) for model evaluation
+        self.df['is_original'] = True
         
-        for mp in masspoints:
+        # loop over all masspoints that are currently in the dataframe
+        for mp in existing_masspoints:
             orig_df = self.df[self.df['X_mass'] == mp]
             dfs.append(orig_df)
             
+            # if masspoint is not present in augmentation policy, just save its df and continue
+            if mp not in masspoints:
+                continue
+
+            # if masspoint exists in the df and is in the policy list, do full augmentation
             # reflections against each axis
             for d in directions:
                 tmp = orig_df.copy(deep=True)
                 dir_cols = [col for col in col_names if d in col]
                 tmp[dir_cols] *= -1
+                tmp['is_original'] = False
                 dfs.append(tmp)
             
             # reflections of two directions axis simultaneously
@@ -528,12 +542,14 @@ class Dataloader:
                 tmp = orig_df.copy(deep=True)
                 dir_cols = [col for col in col_names if d1 in col or d2 in col]
                 tmp[dir_cols] *= -1
+                tmp['is_original'] = False
                 dfs.append(tmp)
 
             # reflection of all 3 axes simultaneously
             tmp = orig_df.copy(deep=True)
             dir_cols = [col for col in col_names if any(d in col for d in directions)]
             tmp[dir_cols] *= -1
+            tmp['is_original'] = False
             dfs.append(tmp)
 
         result = pd.concat(dfs, axis=0)
@@ -546,19 +562,23 @@ class Dataloader:
             selection: callable with signature df, *args
         """
 
+        # I think this is not the best way to implement augnemntation: requires copying entire df
+        # would be better if I could do it if needed and augment only the part that is needed
         augmentation_policy = self.loader_cfg['augmentation_policy']
-        match augmentation_policy:
-            case None:
-                pass
-            case list(masspoints):
-                # do augmentation
-                # handle case when object kinematics is [pt, eta, phi, mass] 
-                self.df = self.Augment(masspoints)
-            case -1:
-                masspoints = list(np.unique(self.df['X_mass']))
-                self.df = self.Augment(masspoints)
-            case _:
-                raise RuntimeError(f'Illegal augmentation policy `{augmentation_policy}`') 
+        if not self.augmentation_done:
+            match augmentation_policy:
+                case None:
+                    pass
+                case list(masspoints):
+                    # do augmentation
+                    # handle case when object kinematics is [pt, eta, phi, mass] 
+                    self.df = self.Augment(masspoints) # has bug: overwrites original df with augmented masspoints, i.e. if I augment 300, 350 and 400, only these masspoints will be present
+                case -1:
+                    masspoints = list(map(lambda x: int(x), np.unique(self.df['X_mass'])))
+                    self.df = self.Augment(masspoints)
+                case _:
+                    raise RuntimeError(f'Illegal augmentation policy `{augmentation_policy}`')
+            self.augmentation_done = True
 
         if selection:
             df = self.df[selection(self.df, *args)]
