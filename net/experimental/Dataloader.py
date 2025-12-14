@@ -187,8 +187,12 @@ class Dataloader:
         else:
             raise TypeError(f'Illegal type {type(loadable)} passed. Only str or list are allowed')
 
+        # add new column to be able to select only original events (that were not obtained as a result of augmentation) for model evaluation
+        self.df['is_original'] = True
+
         # shuffle rows
         self.df = self.df.sample(frac=1, random_state=42).reset_index(drop=True)
+        
         end = time.perf_counter()
         elapsed = end - start
         print(f'Done in {elapsed:.2f}s')
@@ -515,9 +519,6 @@ class Dataloader:
         directions = ['px', 'py', 'pz']
         col_names = self.df.columns
         dfs = []
-
-        # add new column to be able to select only original events (that were not obtained as a result of augmentation) for model evaluation
-        self.df['is_original'] = True
         
         # loop over all masspoints that are currently in the dataframe
         for mp in existing_masspoints:
