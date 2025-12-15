@@ -1,6 +1,7 @@
-directory: 'predict_quantiles3D_DL_woMP550'
-name: 'predict_quantiles3D_DL_woMP550_odd'
-format: 'keras'
+directory: 'predict_quantiles3D_SL_base'
+keras_name: 'predict_quantiles3D_SL_base_odd'
+onnx_name: 'predict_quantiles3D_SL_v4_odd'
+format: 'keras' # can be saved as .keras, .h5 or whatever
 # mapping of object name -> module where it is defined
 custom_objects:
   TrainableSiLU: NetUtils
