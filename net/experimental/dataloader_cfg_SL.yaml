@@ -1,0 +1,162 @@
+tree_name: Events
+channel: SL
+
+objects:
+  input_objects:
+    centralJet:
+      target_shape: 10
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+        - 'btagPNetB'
+        - 'btagPNetCvB'
+        - 'btagPNetCvL'
+        - 'btagPNetCvNotB'
+        - 'btagPNetQvG'
+        - 'PNetRegPtRawCorr'
+        - 'PNetRegPtRawCorrNeutrino'
+        - 'PNetRegPtRawRes'
+    SelectedFatJet:
+      target_shape: 3
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+        - 'particleNet_QCD'
+        - 'particleNet_XbbVsQCD'
+        - 'particleNetWithMass_QCD'
+        - 'particleNetWithMass_HbbvsQCD'
+        - 'particleNet_massCorr'
+    lep1:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    PuppiMET:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py']
+      branches_to_load:
+        - 'pt'
+        - 'phi'
+
+  target_objects:
+    genHVV:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    genHbb:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+
+  extra_objects:
+    genb1:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    genb2:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    genV2prod1:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    genV2prod2:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+    genV2:
+      target_shape: 1
+      kinematics_output_format: ['px', 'py', 'pz', 'E']
+      branches_to_load:
+        - 'pt'
+        - 'eta'
+        - 'phi'
+        - 'mass'
+
+# loaded as they are in input file
+auxilliary_branches:
+  - 'event'
+  - 'sample_type'
+  - 'X_mass'
+  - 'ncentralJet'
+  - 'nSelectedFatJet'
+  - 'lep1_legType'
+  - 'lep1_gen_kind'
+  - 'lep2_legType'
+  - 'lep2_gen_kind'
+  - 'genV1prod1_pt'
+  - 'genV2prod1_pt'
+
+apply_selections: 
+  gen_level: True
+  reco_level: True
+  gen_reco_matching: True
+
+selection_config:
+  gen_level:
+    bquark_pt: 20
+    bquark_eta: 2.5
+    light_quark_pt: 10
+    light_quark_eta: 5.0
+    lep_pt: 5
+    boosted_thresh: 0.8
+  reco_level:
+    ak4_pt: 20
+    ak4_b_eta: 2.5
+    ak4_light_eta: 5.0
+    ak8_pt: 200
+    ak8_b_eta: 2.5
+    ak8_light_eta: 5.0
+    lep_pt: 5
+    ak4_btag: 0.0245
+    ak8_btag: 0.8
+  gen_reco_matching:
+    match_ak4_thresh: 0.4
+    match_ak8_thresh: 0.8
+
+augmentation_cfg:
+  masses: -1
+  modes: 
+    - 'single' # reflections against one axis at a time
+    - 'double' # reflections against a pair of axes simultaneously
+    - 'triple' # reflections against all three axes
+
+plot_cutflow: False
+plot_dir: 'predict_quantiles3D_SL_v4/cutflow/'
+use_percentages: True
+bb_topology: mixed
+qq_topology: mixed

@@ -504,7 +504,7 @@ class Dataloader:
 
         return df
 
-    def Augment(self, masspoints):
+    def Augment(self, masspoints, modes):
         """
         returns augmented dataframe
         augmentation is done by computing df for each mass point, corresponding to following transformations:
@@ -514,6 +514,9 @@ class Dataloader:
         returns dataframe, which includes original and part obtained by applying transformations
         """
         
+        if not modes or modes is None:
+            raise RuntimeError(f'Illegal list of augmentation modes `{modes}`.')
+
         existing_masspoints = list(map(lambda x: int(x), np.unique(self.df['X_mass'])))
 
         directions = ['px', 'py', 'pz']
@@ -531,27 +534,30 @@ class Dataloader:
 
             # if masspoint exists in the df and is in the policy list, do full augmentation
             # reflections against each axis
-            for d in directions:
-                tmp = orig_df.copy(deep=True)
-                dir_cols = [col for col in col_names if d in col]
-                tmp[dir_cols] *= -1
-                tmp['is_original'] = False
-                dfs.append(tmp)
+            if 'single' in modes:
+                for d in directions:
+                    tmp = orig_df.copy(deep=True)
+                    dir_cols = [col for col in col_names if d in col]
+                    tmp[dir_cols] *= -1
+                    tmp['is_original'] = False
+                    dfs.append(tmp)
             
             # reflections of two directions axis simultaneously
-            for d1, d2 in itertools.combinations(directions, 2):
+            if 'double' in modes:
+                for d1, d2 in itertools.combinations(directions, 2):
+                    tmp = orig_df.copy(deep=True)
+                    dir_cols = [col for col in col_names if d1 in col or d2 in col]
+                    tmp[dir_cols] *= -1
+                    tmp['is_original'] = False
+                    dfs.append(tmp)
+
+            # reflection of all 3 axes simultaneously
+            if 'triple' in modes:
                 tmp = orig_df.copy(deep=True)
-                dir_cols = [col for col in col_names if d1 in col or d2 in col]
+                dir_cols = [col for col in col_names if any(d in col for d in directions)]
                 tmp[dir_cols] *= -1
                 tmp['is_original'] = False
                 dfs.append(tmp)
-
-            # reflection of all 3 axes simultaneously
-            tmp = orig_df.copy(deep=True)
-            dir_cols = [col for col in col_names if any(d in col for d in directions)]
-            tmp[dir_cols] *= -1
-            tmp['is_original'] = False
-            dfs.append(tmp)
 
         result = pd.concat(dfs, axis=0)
         return result
@@ -565,18 +571,20 @@ class Dataloader:
 
         # I think this is not the best way to implement augnemntation: requires copying entire df
         # would be better if I could do it if needed and augment only the part that is needed
-        augmentation_policy = self.loader_cfg['augmentation_policy']
+        augmentation_cfg = self.loader_cfg['augmentation_cfg']
+        masses_to_augment = augmentation_cfg.get('masses', None)
+        augmentation_modes = augmentation_cfg.get('modes', None)
         if not self.augmentation_done:
-            match augmentation_policy:
+            match masses_to_augment:
                 case None:
                     pass
                 case list(masspoints):
                     # do augmentation
                     # handle case when object kinematics is [pt, eta, phi, mass] 
-                    self.df = self.Augment(masspoints) # has bug: overwrites original df with augmented masspoints, i.e. if I augment 300, 350 and 400, only these masspoints will be present
+                    self.df = self.Augment(masspoints, augmentation_modes) # has bug: overwrites original df with augmented masspoints, i.e. if I augment 300, 350 and 400, only these masspoints will be present
                 case -1:
                     masspoints = list(map(lambda x: int(x), np.unique(self.df['X_mass'])))
-                    self.df = self.Augment(masspoints)
+                    self.df = self.Augment(masspoints, augmentation_modes)
                 case _:
                     raise RuntimeError(f'Illegal augmentation policy `{augmentation_policy}`')
             self.augmentation_done = True

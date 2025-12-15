@@ -1,5 +1,5 @@
 tree_name: Events
-channel: SL
+channel: DL
 
 objects:
   input_objects:
@@ -48,7 +48,7 @@ objects:
         - 'eta'
         - 'phi'
         - 'mass'
-    met:
+    PuppiMET:
       target_shape: 1
       kinematics_output_format: ['px', 'py']
       branches_to_load:
@@ -90,30 +90,6 @@ objects:
         - 'eta'
         - 'phi'
         - 'mass'
-    # genV2prod1:
-    #   target_shape: 1
-    #   kinematics_output_format: ['px', 'py', 'pz', 'E']
-    #   branches_to_load:
-    #     - 'pt'
-    #     - 'eta'
-    #     - 'phi'
-    #     - 'mass'
-    # genV2prod2:
-    #   target_shape: 1
-    #   kinematics_output_format: ['px', 'py', 'pz', 'E']
-    #   branches_to_load:
-    #     - 'pt'
-    #     - 'eta'
-    #     - 'phi'
-    #     - 'mass'
-    # genV2:
-    #   target_shape: 1
-    #   kinematics_output_format: ['px', 'py', 'pz', 'E']
-    #   branches_to_load:
-    #     - 'pt'
-    #     - 'eta'
-    #     - 'phi'
-    #     - 'mass'
 
 # loaded as they are in input file
 auxilliary_branches:
@@ -133,13 +109,12 @@ apply_selections:
   gen_level: True
   reco_level: True
   gen_reco_matching: True
-  signal_region: False
 
 selection_config:
   gen_level:
     bquark_pt: 20
     bquark_eta: 2.5
-    light_quark_pt: 20
+    light_quark_pt: 10
     light_quark_eta: 5.0
     lep_pt: 5
     boosted_thresh: 0.8
@@ -151,19 +126,19 @@ selection_config:
     ak8_b_eta: 2.5
     ak8_light_eta: 5.0
     lep_pt: 5
-    ak4_btag: 0.245
+    ak4_btag: 0.0245
     ak8_btag: 0.8
   gen_reco_matching:
     match_ak4_thresh: 0.4
-    match_ak8_thresh: 0.8
+    match_ak8_thresh: 0.8    
 
-augmentation_policy: 
-  - 300
-  - 350
-  - 450    
+augmentation_cfg:
+  masses: -1
+  modes: 
+    - 'single' # reflections against one axis at a time
 
 plot_cutflow: False
-plot_dir: 'cutflow_plots'
-use_percentages: False
+plot_dir: 'predict_quantiles3D_DL_v8/Run3_2022/DL/'
+use_percentages: True
 bb_topology: mixed
 qq_topology: mixed
