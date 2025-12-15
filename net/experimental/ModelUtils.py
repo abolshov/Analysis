@@ -1,25 +1,21 @@
 import tensorflow as tf
-import yaml
 import importlib
 import os
 import onnx
 import tf2onnx
-import sys
+import yaml
 
 
-def LoadModel(cfg_file_name, allow_missing_train_cfg=True):
+def LoadModel(cfg, allow_missing_train_cfg=True):
     """
         function for loading .keras model
         returns: tuple (model, training_parameters)
         if allow_missing_train_cfg is True, training_parameters will be None if .yaml with is not found, otherwise exception will be re-thrown
     """
-    cfg = None
-    with open(cfg_file_name, 'r') as cfg_file:
-        cfg = yaml.safe_load(cfg_file)
 
     model = None
     model_dir = cfg['directory']
-    model_name = cfg['name']
+    model_name = cfg['keras_name']
     model_fmt = cfg['format']
     custom_objects = {}
     if 'custom_objects' in cfg and cfg['custom_objects']:
@@ -44,7 +40,7 @@ def LoadModel(cfg_file_name, allow_missing_train_cfg=True):
             raise
     return model, training_params
 
-def ConvertToONNX(model, input_signature, save_to=None, op_set=13):
+def ConvertToONNX(model, input_signature, save_to=None, onnx_name=None, op_set=13):
     """
     input_signature ~ [tf.TensorSpec([None, 157], tf.float32, name='input')]
     if save_to is None, model is not saved
@@ -54,5 +50,6 @@ def ConvertToONNX(model, input_signature, save_to=None, op_set=13):
                                                input_signature=input_signature,
                                                opset=op_set)
     if save_to:
-        onnx.save(onnx_model, os.path.join(save_to, f'{model.name}.onnx'))
+        save_name = onnx_name if onnx_name else model.name
+        onnx.save(onnx_model, os.path.join(save_to, f'{save_name}.onnx'))
     return onnx_model
