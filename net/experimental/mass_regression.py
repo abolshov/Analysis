@@ -59,8 +59,8 @@ def main():
         files = [line[:-1] for line in file_cfg.readlines()]
 
     mod = 2
-    train_parity = 1
-    test_parity = 0
+    train_parity = 0
+    test_parity = 1
 
     params['train_parity'] = train_parity
     params['test_parity'] = test_parity
@@ -98,7 +98,7 @@ def main():
     tf.random.set_seed(42)
 
     suffix = 'odd' if train_parity == 1 else 'even'
-    version = 'base'
+    version = 'augAll'
     model_name = f'predict_quantiles3D_{channel}_{version}_{suffix}'
     params['model_name'] = model_name
     model_dir = f'predict_quantiles3D_{channel}_{version}'
@@ -115,7 +115,7 @@ def main():
     # quantiles = None
     num_quantiles = len(quantiles) if quantiles else 1
     epochs = 100
-    batch_size = 4096
+    batch_size = 4 * 4096
     batch_norm = True
     momentum = 0.01
     bn_eps = 0.01
@@ -125,7 +125,7 @@ def main():
     use_quantile_width_penalty = True
     num_output_units = num_quantiles
     add_mass_loss = True
-    compute_corr_mtrx = True
+    compute_corr_mtrx = False
 
     params['input_shape'] = list(input_shape)
     params['num_units'] = num_units
@@ -152,14 +152,14 @@ def main():
     if use_quantile_width_penalty:
         width_penalty_rates = {}
         width_penalty_rates['genHVV_E'] = 0.0
-        width_penalty_rates['genHVV_px'] = 0.035
-        width_penalty_rates['genHVV_py'] = 0.035
+        width_penalty_rates['genHVV_px'] = 0.02
+        width_penalty_rates['genHVV_py'] = 0.02
         width_penalty_rates['genHVV_pz'] =  0.01
 
         width_penalty_rates['genHbb_E'] = 0.0
-        width_penalty_rates['genHbb_px'] = 0.035
-        width_penalty_rates['genHbb_py'] = 0.035
-        width_penalty_rates['genHbb_pz'] =  0.005
+        width_penalty_rates['genHbb_px'] = 0.02
+        width_penalty_rates['genHbb_py'] = 0.02
+        width_penalty_rates['genHbb_pz'] =  0.01
 
     params['width_penalty_rates'] = width_penalty_rates
 
@@ -277,13 +277,17 @@ def main():
     params['loss_names'] = loss_names
     params['loss_weights'] = loss_weights
 
-    # optim = tf.keras.optimizers.AdamW(learning_rate=learning_rate)
-    optim = tf.keras.optimizers.Nadam(learning_rate=learning_rate)
+    # ---- https://towardsdatascience.com/the-math-behind-keras-3-optimizers-deep-understanding-and-application-2e5ff95eb342/
+    optim = tf.keras.optimizers.AdamW(learning_rate=learning_rate, clipnorm=1.0)
+    # optim = tf.keras.optimizers.Nadam(learning_rate=learning_rate)
+    params['optimizer'] = optim.get_config()
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name=model_name)
     model.compile(loss=losses,
                   loss_weights=loss_weights, 
                   optimizer=optim)
+
+    params['model'] = model.get_config()
 
     start = time.perf_counter()
     history = model.fit(X_train,
@@ -351,8 +355,6 @@ def main():
     # form testing dataloader
     def TestSelection(df, mod, parity, mass, sample_type):
         condition = (df['event'] % mod == parity) & (df['X_mass'] == mass) & (df['sample_type'] == sample_type) & (df['is_original'])
-        # tmp = np.logical_and(df['event'] % mod == parity, df['X_mass'] == mass)
-        # return np.logical_and(tmp, df['sample_type'] == sample_type)
         return condition
 
     X_test, _, y_test, _ = dataloader.Get(TestSelection, mod, test_parity, 800, 1)
