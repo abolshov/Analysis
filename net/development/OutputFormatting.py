@@ -30,6 +30,37 @@ class Tabulizer:
         self.input_kinematic_pattern = re.compile(rf'^(?P<particle>.+)_(?P<variable>{'|'.join(map(re.escape, input_kinematic_variables))})$')
         self.met4D = met4D
 
+        # auxilliary members to track branches
+        self.branch_info_cached = False
+        self.particles = []
+        self.particle_feature_branches = {}
+        self.particle_pattern = None
+        self.free_branches = []
+
+    # helper function for caching 
+    def _cache_branch_info(self,
+                           chunk: ak.Array) -> None:
+
+        # find 'particles' (e.g. lep1, met, centralJet, etc)
+        # need to do it only once because format is always the same
+        for name in chunk.fields:
+            match = self.input_kinematic_pattern.search(name)
+            if match:
+                particle = match.group('particle')
+                self.particles.append(particle)
+    
+        # all 'particle' branches follow this pattern
+        self.particle_pattern = re.compile(rf'({'|'.join(self.particles)})_*')
+
+        # free branches do not have particle pattern in them
+        self.free_branches = [name for name in chunk.fields if not self.particle_pattern.search(name)]
+
+        # get branches such as btag, etc and save them
+        for p in self.particles:
+            self.particle_feature_branches[p] = [pb for pb in chunk.fields if self.particle_pattern.search(pb) and not self.input_kinematic_pattern.search(pb)]
+
+        self.branch_info_cached = True
+
     def format(self,
                chunk: ak.Array) -> Tuple[np.ndarray, np.ndarray]:
         
@@ -42,33 +73,21 @@ class Tabulizer:
                                chunk: ak.Array) -> Dict[str, np.ndarray]:
         res = {}
 
-        # find 'particles' (e.g. lep1, met, centralJet, etc)
-        particles = []
-        for name in chunk.fields:
-            match = self.input_kinematic_pattern.search(name)
-            if match:
-                particle = match.group('particle')
-                particles.append(particle)
-        
-        # all 'particle' branches follow this pattern
-        particle_pattern = re.compile(rf'({'|'.join(particles)})_*')
+        if not self.branch_info_cached:
+            self._cache_branch_info(chunk)
 
-        # free branches do not have particle pattern in them
-        free_branches = [name for name in chunk.fields if not particle_pattern.search(name)]
-
-        for fb in free_branches:
+        for fb in self.free_branches:
             data = chunk[fb]
             if data.ndim != 1:
-                raise RuntimeError(f'Branch {fb} has illegal dimension {data.ndim}.')
-            res[name] = ak.to_numpy(data)
+                raise RuntimeError(f'Branch {fb} has dimension {data.ndim}, while expected 1.')
+            res[fb] = ak.to_numpy(data)
 
-        for p in particles:
+        for p in self.particles:
             if self.particle_paddings is None or self.particle_paddings.get(p) is None:
-                raise RuntimeError(f'Cannot consistently pad branch `{name}` across all chunks because padding length was not provided.')
+                raise RuntimeError(f'Cannot consistently pad branches for `{p}` because padding length was not provided.')
             max_len = self.particle_paddings[p]
 
-            # get branches such as btag, etc and save them
-            particle_feature_branches = [pb for pb in chunk.fields if particle_pattern.search(pb) and not self.input_kinematic_pattern.search(pb)]
+            particle_feature_branches = self.particle_feature_branches[p]
             for pb in particle_feature_branches:
                 tokens = pb.split('_')
                 variable = tokens[-1]
