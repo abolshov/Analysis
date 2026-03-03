@@ -23,7 +23,7 @@ $(APP_DIR)/$(TARGET): $(OBJECTS)
 
 -include $(DEPENDENCIES)
 
-.PHONY: all build clean debug dev release info all
+.PHONY: all build clean debug dev release profile info all
 
 build:
 	@mkdir -p $(APP_DIR)
@@ -34,9 +34,6 @@ debug: all
 
 dev: CXXFLAGS += -O2 -DDEV
 dev: all
-
-experimental: CXXFLAGS += -O2 -DDEV -DEXPERIMENTAL
-experimental: all
 
 release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt
 release: all
