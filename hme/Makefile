@@ -41,6 +41,9 @@ experimental: all
 release: CXXFLAGS += -O3 -march=native -flto=auto -funroll-loops -fno-plt
 release: all
 
+profile: CXXFLAGS += -O2 -g -fno-omit-frame-pointers
+profile: all
+
 clean:
 	-@rm -rvf $(OBJ_DIR)/*
 	-@rm -rvf $(APP_DIR)/*
