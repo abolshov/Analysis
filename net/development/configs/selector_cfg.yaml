@@ -1,0 +1,22 @@
+gen_level:
+  bquark_pt: 20
+  bquark_eta: 2.5
+  light_quark_pt: 10
+  light_quark_eta: 5.0
+  lep_pt: 5
+  boosted_thresh: 0.8
+  bb_topology: mixed
+  qq_topology: mixed
+reco_level:
+  ak4_pt: 20
+  ak4_b_eta: 2.5
+  ak4_light_eta: 5.0
+  ak8_pt: 200
+  ak8_b_eta: 2.5
+  ak8_light_eta: 5.0
+  lep_pt: 5
+  ak4_btag: 0.0245
+  ak8_btag: 0.8
+gen_reco_matching:
+  match_ak4_thresh: 0.4
+  match_ak8_thresh: 0.8
