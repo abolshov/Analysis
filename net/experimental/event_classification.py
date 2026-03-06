@@ -19,6 +19,7 @@ import re
 import math
 
 from typing import List
+from PlotUtils import PlotMetric
 
 def to_numpy(*,
              ak_array: ak.Array, 
@@ -268,13 +269,14 @@ def main():
     assert train_mean.shape == train_variance.shape and train_mean.shape[0] == X_train.shape[1]
 
     # define model
-    num_hidden_layers = 6
-    num_units = 2 * nearest_pow2(X_train.shape[1])
-    dropout = 0.1
+    num_hidden_layers = 3
+    num_units = 4 * nearest_pow2(X_train.shape[1])
+    dropout = 0.5
     print(f"Using {num_hidden_layers} hidden layers with {num_units} units in each layer")
 
     input = tf.keras.Input(shape=(X_train.shape[1],))
     x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(input)
+    x = tf.keras.layers.Identity()(input)
     for _ in range(num_hidden_layers):
         x = tf.keras.layers.Dense(num_units)(x)
         x = tf.keras.layers.BatchNormalization()(x)
@@ -291,12 +293,36 @@ def main():
     
     print(model.summary())
     
+    metrics = [
+        "accuracy",
+        "AUC",
+        "Precision",
+        "Precision",
+        "Recall",
+        "TruePositives",
+        "FalsePositives",
+        "TrueNegatives",
+        "FalseNegatives"
+    ]
+
     model.compile(
         loss=tf.keras.losses.BinaryCrossentropy(),
-        optimizer=tf.keras.optimizers.Adam(3e-4),
-        metrics=["accuracy"]
+        optimizer=tf.keras.optimizers.Adam(3e-6),
+        metrics=metrics
     )
+
+    # fit model
+    history = model.fit(X_train, 
+                        y_train, 
+                        shuffle=True,
+                        validation_data=(X_val, y_val),
+                        verbose=0,
+                        batch_size=2048,
+                        epochs=30)
     
+    PlotMetric(history, "Classifier_SL", "loss")
+    for m in metrics:
+        PlotMetric(history, "Classifier_SL", m)
 
 if __name__ == "__main__":
     main()
