@@ -7,7 +7,6 @@ if gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
         print(f"Enabled memory growth for {len(gpus)} GPU(s).")
     except RuntimeError as e:
-        # Memory growth must be set before GPUs have been initialized
         print(e)
 
 import psutil
@@ -17,6 +16,7 @@ import awkward as ak
 import numpy as np
 import os
 import re
+import math
 
 from typing import List
 
@@ -51,6 +51,25 @@ def load_file(*,
         return to_numpy(ak_array=branches)
     
     return branches
+
+def nearest_pow2(n: int) -> int:
+    if n <= 0:
+        return 1
+    
+    # Get exponents for the power of 2 below and above n
+    p_low = math.floor(math.log2(n))
+    p_high = math.ceil(math.log2(n))
+    
+    # Calculate the actual power values
+    v_low = 2**p_low
+    v_high = 2**p_high
+    
+    # Return the one with the smallest difference
+    return v_low if (n - v_low) <= (v_high - n) else v_high
+
+tf.random.set_seed(42)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+os.environ['TF_DETERMINISTIC_OPS'] = '1'
 
 def main():
     print("Training DNN for event classification")
@@ -241,6 +260,43 @@ def main():
     memory_mb = memory_bytes / (1024 * 1024)
     print(f"Loaded {X_val.shape[1]} variables for {X_val.shape[0]} events for validation set")
     print(f"Memory usage {memory_mb:.2f} MB")
+
+    # precompute mean and variance
+    train_mean = np.mean(X_train, axis=0)
+    train_variance = np.var(X_train, axis=0)
+
+    assert train_mean.shape == train_variance.shape and train_mean.shape[0] == X_train.shape[1]
+
+    # define model
+    num_hidden_layers = 6
+    num_units = 2 * nearest_pow2(X_train.shape[1])
+    dropout = 0.1
+    print(f"Using {num_hidden_layers} hidden layers with {num_units} units in each layer")
+
+    input = tf.keras.Input(shape=(X_train.shape[1],))
+    x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(input)
+    for _ in range(num_hidden_layers):
+        x = tf.keras.layers.Dense(num_units)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.activations.swish(x)
+        x = tf.keras.layers.Dropout(dropout)(x)
+
+    # output layer
+    x = tf.keras.layers.Dense(1)(x)
+    output = tf.keras.activations.sigmoid(x)
+
+    model = tf.keras.models.Model(inputs=input, 
+                                  outputs=output, 
+                                  name="Classifier_SL")
+    
+    print(model.summary())
+    
+    model.compile(
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        optimizer=tf.keras.optimizers.Adam(3e-4),
+        metrics=["accuracy"]
+    )
+    
 
 if __name__ == "__main__":
     main()
