@@ -20,6 +20,7 @@ import math
 
 from typing import List
 from PlotUtils import PlotMetric
+from sklearn.utils import class_weight
 
 def to_numpy(*,
              ak_array: ak.Array, 
@@ -57,16 +58,9 @@ def nearest_pow2(n: int) -> int:
     if n <= 0:
         return 1
     
-    # Get exponents for the power of 2 below and above n
-    p_low = math.floor(math.log2(n))
     p_high = math.ceil(math.log2(n))
-    
-    # Calculate the actual power values
-    v_low = 2**p_low
     v_high = 2**p_high
-    
-    # Return the one with the smallest difference
-    return v_low if (n - v_low) <= (v_high - n) else v_high
+    return v_high
 
 tf.random.set_seed(42)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
@@ -116,7 +110,6 @@ def main():
         'nSelBtag_fatjets',  
         'dPhi_MET_dibjet',
         'fatbjet_eta', 
-        'light_jet2_mass', 
         'other_jet2_mass',
         'other_jet2_pt', 
         'other_jet1_pt', 
@@ -132,22 +125,20 @@ def main():
         'dphi_bb', 
         'bjet2_mass', 
         'PuppiMET_pt', 
-        'light_jet2_phi',
         'other_jet2_phi', 
         'bjet1_eta', 
         'fatbjet_mass', 
         'bb_mass_PNetRegPtRawCorr_PNetRegPtRawCorrNeutrino', 
-        'light_jet1_phi', 
         'other_jet1_eta', 
         'fatbjet_particleNetWithMass_HbbvsQCD', 
-        'SingleLep_DeepHME_mass', 
+        # 'SingleLep_DeepHME_mass', 
         'nSelBtag_jets', 
         'Lep1Jet1Jet2_mass', 
         'bjet2_eta', 
         'PuppiMET_phi', 
         'fatbjet_particleNet_XbbVsQCD', 
         'fatbjet_mass_PNetCorr', 
-        'SingleLep_DeepHME_mass_error', 
+        # 'SingleLep_DeepHME_mass_error', 
         'CosTheta_bb', 
         'bjet1_pt', 
         'MT', 
@@ -162,6 +153,9 @@ def main():
     ]
 
     extra_branches = [
+        'light_jet2_mass', 
+        'light_jet2_phi',
+        'light_jet1_phi', 
         'dphi_hadT_hadW', 
         'fatbjet_muEF', 
         'min_dphi_b_hadW', 
@@ -237,8 +231,16 @@ def main():
                         list_of_branches=["class_weight", "class_target"],
                         convert_to_numpy=False)
 
-    train_weights = weights_train["class_weight"].to_numpy()
+    train_sample_weights = weights_train["class_weight"].to_numpy() # may add later for sample_weights
     y_train = weights_train["class_target"].to_numpy()
+    
+    class_weights = class_weight.compute_class_weight(
+        'balanced',
+        classes=np.unique(y_train),
+        y=y_train
+    )
+    class_weight_dict = dict(enumerate(class_weights))
+    print(f"Applying weights: {class_weight_dict}")
 
     memory_bytes = process.memory_info().rss
     memory_mb = memory_bytes / (1024 * 1024)
@@ -269,14 +271,13 @@ def main():
     assert train_mean.shape == train_variance.shape and train_mean.shape[0] == X_train.shape[1]
 
     # define model
-    num_hidden_layers = 3
-    num_units = 4 * nearest_pow2(X_train.shape[1])
-    dropout = 0.5
+    num_hidden_layers = 5
+    num_units = 2 * nearest_pow2(X_train.shape[1])
+    dropout = 0.2
     print(f"Using {num_hidden_layers} hidden layers with {num_units} units in each layer")
 
-    input = tf.keras.Input(shape=(X_train.shape[1],))
-    x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(input)
-    x = tf.keras.layers.Identity()(input)
+    inputs = tf.keras.Input(shape=(X_train.shape[1],))
+    x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(inputs)
     for _ in range(num_hidden_layers):
         x = tf.keras.layers.Dense(num_units)(x)
         x = tf.keras.layers.BatchNormalization()(x)
@@ -285,18 +286,17 @@ def main():
 
     # output layer
     x = tf.keras.layers.Dense(1)(x)
-    output = tf.keras.activations.sigmoid(x)
+    outputs = tf.keras.activations.sigmoid(x)
 
-    model = tf.keras.models.Model(inputs=input, 
-                                  outputs=output, 
-                                  name="Classifier_SL")
+    model = tf.keras.models.Model(inputs=inputs, 
+                                  outputs=outputs, 
+                                  name="BinaryClassifier_SL")
     
     print(model.summary())
     
     metrics = [
         "accuracy",
         "AUC",
-        "Precision",
         "Precision",
         "Recall",
         "TruePositives",
@@ -307,22 +307,27 @@ def main():
 
     model.compile(
         loss=tf.keras.losses.BinaryCrossentropy(),
-        optimizer=tf.keras.optimizers.Adam(3e-6),
+        optimizer=tf.keras.optimizers.Adam(3e-4),
         metrics=metrics
     )
 
     # fit model
+    print("Training the model ...")
     history = model.fit(X_train, 
                         y_train, 
                         shuffle=True,
                         validation_data=(X_val, y_val),
+                        class_weight=class_weight_dict,
                         verbose=0,
-                        batch_size=2048,
-                        epochs=30)
+                        batch_size=4*2048,
+                        epochs=50)
+    print("... Done!")
     
-    PlotMetric(history, "Classifier_SL", "loss")
+    PlotMetric(history, model.name, "loss")
     for m in metrics:
-        PlotMetric(history, "Classifier_SL", m)
+        PlotMetric(history, model.name, m)
+
+    model.save(f"{model.name}.keras")
 
 if __name__ == "__main__":
     main()
