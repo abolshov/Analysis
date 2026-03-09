@@ -24,7 +24,7 @@ from sklearn.utils import class_weight
 
 def to_numpy(*,
              ak_array: ak.Array, 
-             dtype=np.float64) -> np.ndarray:
+             dtype=np.float32) -> np.ndarray:
     """
     Pre-allocate numpy array for better memory efficiency
     """
@@ -107,9 +107,9 @@ def main():
         'deta_bb', 
         'dPhi_jet1_jet2', 
         'other_jet1_btagPNetB', 
-        'nSelBtag_fatjets',  
+        # 'nSelBtag_fatjets',  
         'dPhi_MET_dibjet',
-        'fatbjet_eta', 
+        # 'fatbjet_eta', 
         'other_jet2_mass',
         'other_jet2_pt', 
         'other_jet1_pt', 
@@ -119,32 +119,33 @@ def main():
         'bjet1_phi', 
         'MT2_bb',  
         'bjet2_pt', 
-        'fatbjet_phi',
+        # 'fatbjet_phi',
         'other_jet2_btagPNetB', 
         'bjet1_mass', 
         'dphi_bb', 
         'bjet2_mass', 
         'PuppiMET_pt', 
-        'other_jet2_phi', 
+        'other_jet2_phi',
+        'other_jet1_phi', 
         'bjet1_eta', 
-        'fatbjet_mass', 
+        # 'fatbjet_mass', 
         'bb_mass_PNetRegPtRawCorr_PNetRegPtRawCorrNeutrino', 
         'other_jet1_eta', 
-        'fatbjet_particleNetWithMass_HbbvsQCD', 
-        # 'SingleLep_DeepHME_mass', 
+        # 'fatbjet_particleNetWithMass_HbbvsQCD', 
+        'SingleLep_DeepHME_mass', 
         'nSelBtag_jets', 
         'Lep1Jet1Jet2_mass', 
         'bjet2_eta', 
         'PuppiMET_phi', 
-        'fatbjet_particleNet_XbbVsQCD', 
-        'fatbjet_mass_PNetCorr', 
+        # 'fatbjet_particleNet_XbbVsQCD', 
+        # 'fatbjet_mass_PNetCorr', 
         # 'SingleLep_DeepHME_mass_error', 
         'CosTheta_bb', 
         'bjet1_pt', 
         'MT', 
-        'fatbjet_pt', 
+        # 'fatbjet_pt', 
         'bjet2_phi', 
-        'fatbjet_msoftdrop', 
+        # 'fatbjet_msoftdrop', 
         'lep1_phi', 
         'dR_dibjet', 
         'HT', 
@@ -233,6 +234,9 @@ def main():
 
     train_sample_weights = weights_train["class_weight"].to_numpy() # may add later for sample_weights
     y_train = weights_train["class_target"].to_numpy()
+
+    # swap classes: 1=>signal, 0=>background
+    y_train = 1 - y_train
     
     class_weights = class_weight.compute_class_weight(
         'balanced',
@@ -241,6 +245,10 @@ def main():
     )
     class_weight_dict = dict(enumerate(class_weights))
     print(f"Applying weights: {class_weight_dict}")
+
+    # reshape to make F1Score work
+    # not working
+    # y_train = y_train.reshape(-1, 1)
 
     memory_bytes = process.memory_info().rss
     memory_mb = memory_bytes / (1024 * 1024)
@@ -259,6 +267,16 @@ def main():
                       list_of_branches=["class_target"],
                       convert_to_numpy=True)
     
+    weights_val = load_file(tree_name="weight_tree", 
+                            file_path=val_weight_file_path, 
+                            list_of_branches=["class_weight", "class_target"],
+                            convert_to_numpy=False)
+
+    val_sample_weights = weights_val["class_weight"].to_numpy() # may add later for sample_weights
+    y_val = weights_val["class_target"].to_numpy()
+    y_val = 1 - y_val
+    # y_val = y_val.reshape(-1, 1)
+
     memory_bytes = process.memory_info().rss
     memory_mb = memory_bytes / (1024 * 1024)
     print(f"Loaded {X_val.shape[1]} variables for {X_val.shape[0]} events for validation set")
@@ -285,7 +303,11 @@ def main():
         x = tf.keras.layers.Dropout(dropout)(x)
 
     # output layer
-    x = tf.keras.layers.Dense(1)(x)
+    num_pos_train = np.sum(y_train)
+    tot_train = len(y_train)
+    initial_bias = num_pos_train/tot_train
+    output_bias = tf.keras.initializers.Constant(initial_bias)
+    x = tf.keras.layers.Dense(1, bias_initializer=output_bias)(x)
     outputs = tf.keras.activations.sigmoid(x)
 
     model = tf.keras.models.Model(inputs=inputs, 
@@ -293,16 +315,19 @@ def main():
                                   name="BinaryClassifier_SL")
     
     print(model.summary())
-    
+    tf.keras.utils.plot_model(model, f"summary_{model.name}.pdf", show_shapes=True)
+
     metrics = [
-        "accuracy",
-        "AUC",
-        "Precision",
-        "Recall",
-        "TruePositives",
-        "FalsePositives",
-        "TrueNegatives",
-        "FalseNegatives"
+        tf.keras.metrics.TruePositives(name='TruePositives'),
+        tf.keras.metrics.FalsePositives(name='FalsePositives'),
+        tf.keras.metrics.TrueNegatives(name='TrueNegatives'),
+        tf.keras.metrics.FalseNegatives(name='FalseNegatives'),
+        tf.keras.metrics.BinaryAccuracy(name='Accuracy'),
+        tf.keras.metrics.Precision(name='Precision'),
+        tf.keras.metrics.Recall(name='Recall'),
+        tf.keras.metrics.AUC(name='AUC'),
+        tf.keras.metrics.AUC(name='PRC', curve='PR'),
+        # tf.keras.metrics.F1Score(name='F1'),
     ]
 
     model.compile(
@@ -325,9 +350,12 @@ def main():
     
     PlotMetric(history, model.name, "loss")
     for m in metrics:
-        PlotMetric(history, model.name, m)
-
+        PlotMetric(history, model.name, m.name)
+    
     model.save(f"{model.name}.keras")
+
+    # free resources (just in case)
+    tf.keras.backend.clear_session()
 
 if __name__ == "__main__":
     main()
