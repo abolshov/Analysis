@@ -100,7 +100,7 @@ def main():
     train_parity = 0
     train_event_file_path, train_weight_file_path = parity_file_map[train_parity]
 
-    use_extra_variables = False
+    use_extra_variables = True
 
     base_branches = [
         'other_jet1_mass', 
@@ -139,7 +139,7 @@ def main():
         'PuppiMET_phi', 
         # 'fatbjet_particleNet_XbbVsQCD', 
         # 'fatbjet_mass_PNetCorr', 
-        # 'SingleLep_DeepHME_mass_error', 
+        'SingleLep_DeepHME_mass_error', 
         'CosTheta_bb', 
         'bjet1_pt', 
         'MT', 
@@ -158,7 +158,7 @@ def main():
         'light_jet2_phi',
         'light_jet1_phi', 
         'dphi_hadT_hadW', 
-        'fatbjet_muEF', 
+        # 'fatbjet_muEF', 
         'min_dphi_b_hadW', 
         'dphi_Hbb_Hww', 
         'mT_Hww', 
@@ -166,7 +166,7 @@ def main():
         'lep2_pt', 
         'm_Hbb', 
         'lep2_mass', 
-        'fatbjet_neEmEF', 
+        # 'fatbjet_neEmEF', 
         'pT_Hbb', 
         'min_dphi_b_lepW', 
         'mass_hadT', 
@@ -175,22 +175,22 @@ def main():
         'light_jet1_mass',
         'light_jet1_eta', 
         'pT_lepT', 
-        'fatbjet_neMultiplicity',
+        # 'fatbjet_neMultiplicity',
         'min_dR_b_hadW', 
         'ratio_pT_hadT_const', 
         'fatbjet_tau3', 
         'light_jet1_btagPNetB', 
         'pTtoE_ratio_Hww', 
-        'event', 
+        # 'event', 
         'm_Hww',
         'dphi_hadW_lepW', 
         'm_hadW',
         'dR_hadW_lepW', 
         'dR_Hbb_Hww', 
         'light_jet1_pt', 
-        'fatbjet_tau1', 
+        # 'fatbjet_tau1', 
         'mT_lepT', 
-        'fatbjet_tau2', 
+        # 'fatbjet_tau2', 
         'mT_hadT', 
         'deta_leadBjet_hadW', 
         'pT_lepW', 
@@ -204,13 +204,13 @@ def main():
         'min_dR_bl',  
         'mT_lepW', 
         'lep2_phi', 
-        'fatbjet_neHEF', 
+        # 'fatbjet_neHEF', 
         'pT_Hww', 
         'pT_hadT',
-        'fatbjet_tau4', 
+        # 'fatbjet_tau4', 
         'dR_leadBjet_hadW', 
         'pTtoE_ratio_HH', 
-        'fatbjet_nConstituents', 
+        # 'fatbjet_nConstituents', 
         'light_jet2_eta', 
         'dphi_leadBjet_hadW', 
         'pTtoE_ratio_Hbb',
@@ -228,9 +228,9 @@ def main():
                         convert_to_numpy=True)
 
     weights_train = load_file(tree_name="weight_tree", 
-                        file_path=train_weight_file_path, 
-                        list_of_branches=["class_weight", "class_target"],
-                        convert_to_numpy=False)
+                              file_path=train_weight_file_path, 
+                              list_of_branches=["class_weight", "class_target"],
+                              convert_to_numpy=False)
 
     train_sample_weights = weights_train["class_weight"].to_numpy() # may add later for sample_weights
     y_train = weights_train["class_target"].to_numpy()
@@ -284,7 +284,7 @@ def main():
     assert train_mean.shape == train_variance.shape and train_mean.shape[0] == X_train.shape[1]
 
     # define model
-    num_hidden_layers = 5
+    num_hidden_layers = 3
     num_units = 2 * nearest_pow2(X_train.shape[1])
     dropout = 0.2
     print(f"Using {num_hidden_layers} hidden layers with {num_units} units in each layer")
@@ -300,14 +300,21 @@ def main():
     # output layer
     num_pos_train = np.sum(y_train)
     tot_train = len(y_train)
-    initial_bias = num_pos_train/tot_train
+    num_neg_train = tot_train - num_pos_train
+    proba = num_pos_train/num_neg_train
+    # proba = num_pos_train/tot_train
+    # proba = np.clip(p, 1e-7, 1 - 1e-7)
+    # initial_bias = np.log(proba/(1 - proba))
+    initial_bias = np.log(proba)
     output_bias = tf.keras.initializers.Constant(initial_bias)
     x = tf.keras.layers.Dense(1, bias_initializer=output_bias)(x)
     outputs = tf.keras.activations.sigmoid(x)
 
+    # model_name = "BinaryClassifier_SL_extraFeatures"
+    model_name = "BinaryClassifier_SL"
     model = tf.keras.models.Model(inputs=inputs, 
                                   outputs=outputs, 
-                                  name="BinaryClassifier_SL")
+                                  name=model_name)
     
     plot_dir = model.name
     os.makedirs(plot_dir, exist_ok=True)
@@ -347,7 +354,7 @@ def main():
                         epochs=epochs)
     print("... Done!")
     
-    PlotMetric(history, model.name, "loss")
+    PlotMetric(history, model.name, "loss", plotting_dir=plot_dir)
     for m in metrics:
         PlotMetric(history, model.name, m.name, plotting_dir=plot_dir)
 
@@ -389,6 +396,17 @@ def main():
             predictions=test_pred,
             plotdir=plot_dir)
 
+    print("Evaluate model on test set ...")
+    test_history = model.evaluate(X_test,
+                                  y_test, 
+                                  batch_size=batch_size,
+                                  verbose=0)
+    print("Test set results:")
+    loss = test_history[0]
+    print(f"\tLoss: {loss:.4f}")
+    for i, m in enumerate(metrics):
+        print(f"\t{m.name}: {test_history[i + 1]:.4f}")
+    
     # free resources (just in case)
     tf.keras.backend.clear_session()
 
