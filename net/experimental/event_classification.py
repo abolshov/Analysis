@@ -19,7 +19,7 @@ import re
 import math
 
 from typing import List
-from PlotUtils import PlotMetric
+from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
 from sklearn.utils import class_weight
 
 def to_numpy(*,
@@ -262,11 +262,6 @@ def main():
                       list_of_branches=branches_to_load,
                       convert_to_numpy=True)
     
-    y_val = load_file(tree_name="weight_tree", 
-                      file_path=val_weight_file_path, 
-                      list_of_branches=["class_target"],
-                      convert_to_numpy=True)
-    
     weights_val = load_file(tree_name="weight_tree", 
                             file_path=val_weight_file_path, 
                             list_of_branches=["class_weight", "class_target"],
@@ -314,8 +309,10 @@ def main():
                                   outputs=outputs, 
                                   name="BinaryClassifier_SL")
     
+    plot_dir = model.name
+    os.makedirs(plot_dir, exist_ok=True)
     print(model.summary())
-    tf.keras.utils.plot_model(model, f"summary_{model.name}.pdf", show_shapes=True)
+    tf.keras.utils.plot_model(model, os.path.join(plot_dir, f"summary_{model.name}.pdf"), show_shapes=True)
 
     metrics = [
         tf.keras.metrics.TruePositives(name='TruePositives'),
@@ -337,6 +334,8 @@ def main():
     )
 
     # fit model
+    batch_size = 4*2048
+    epochs = 50
     print("Training the model ...")
     history = model.fit(X_train, 
                         y_train, 
@@ -344,15 +343,51 @@ def main():
                         validation_data=(X_val, y_val),
                         class_weight=class_weight_dict,
                         verbose=0,
-                        batch_size=4*2048,
-                        epochs=50)
+                        batch_size=batch_size,
+                        epochs=epochs)
     print("... Done!")
     
     PlotMetric(history, model.name, "loss")
     for m in metrics:
-        PlotMetric(history, model.name, m.name)
-    
+        PlotMetric(history, model.name, m.name, plotting_dir=plot_dir)
+
     model.save(f"{model.name}.keras")
+
+    print("Loading test set")
+    test_parity = 2
+    test_event_file_path, test_weight_file_path = parity_file_map[test_parity]
+    X_test = load_file(tree_name="Events", 
+                       file_path=test_event_file_path, 
+                       list_of_branches=branches_to_load,
+                       convert_to_numpy=True)
+    
+    weights_test = load_file(tree_name="weight_tree", 
+                             file_path=test_weight_file_path, 
+                             list_of_branches=["class_weight", "class_target"],
+                             convert_to_numpy=False)
+
+    y_test = weights_test["class_target"].to_numpy()
+    y_test = 1 - y_test
+    
+    memory_bytes = process.memory_info().rss
+    memory_mb = memory_bytes / (1024 * 1024)
+    print(f"Loaded {X_test.shape[1]} variables for {X_test.shape[0]} events for test set")
+    print(f"Memory usage {memory_mb:.2f} MB")
+
+    test_pred = model.predict(X_test, batch_size=batch_size)
+
+    PlotConfMatrix(labels=y_test,
+                   predictions=test_pred,
+                   threshold=0.5,
+                   plotdir=plot_dir)
+
+    PlotROC(labels=y_test,
+            predictions=test_pred,
+            plotdir=plot_dir)
+    
+    PlotPRC(labels=y_test,
+            predictions=test_pred,
+            plotdir=plot_dir)
 
     # free resources (just in case)
     tf.keras.backend.clear_session()
