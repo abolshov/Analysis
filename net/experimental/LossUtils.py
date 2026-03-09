@@ -348,4 +348,31 @@ class MultiheadLoss(tf.keras.losses.Loss):
     def from_config(cls, config):
         return cls(**config)
 
+@tf.keras.utils.register_keras_serializable('F1Loss')
+class F1Loss(tf.keras.losses.Loss):
+    def __init__(self, name='F1Loss', **kwargs):
+        super().__init__(name=name, **kwargs)
+
+    def call(self, y_true, y_pred):
+        # Ensure y_pred is in the range [0, 1]
+        y_pred = tf.clip_by_value(y_pred, tf.keras.backend.epsilon(), 1 - tf.keras.backend.epsilon())
         
+        # Calculate soft true positives, false positives, and false negatives
+        tp = tf.reduce_sum(tf.cast(y_true, 'float32') * y_pred, axis=0)
+        fp = tf.reduce_sum(tf.cast(1-y_true, 'float32') * y_pred, axis=0)
+        fn = tf.reduce_sum(tf.cast(y_true, 'float32') * (1-y_pred), axis=0)
+
+        # Calculate soft precision and recall
+        p = tp / (tp + fp + tf.keras.backend.epsilon())
+        r = tp / (tp + fn + tf.keras.backend.epsilon())
+
+        # Calculate soft F1 score
+        f1 = 2*p*r/(p + r + tf.keras.backend.epsilon())
+        f1 = tf.where(tf.math.is_nan(f1), tf.zeros_like(f1), f1)
+        
+        # Return 1 - F1 score as the loss
+        return 1 - tf.reduce_mean(f1)
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
