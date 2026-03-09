@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+from sklearn.metrics import confusion_matrix, roc_curve, precision_recall_curve
 from MiscUtils import PredPeak, PredWidth, ground_truth_map, pretty_vars, objects
 
 
@@ -127,3 +128,78 @@ def PlotHistStack(data, hist_params, file_name, density=False, val_range=None, b
         plt.savefig(f'{file_name}.pdf', bbox_inches='tight')
     plt.clf()
     plt.close()
+
+def PlotConfMatrix(*,
+                   labels, 
+                   predictions,
+                   threshold,
+                   plotdir):
+    cm = confusion_matrix(labels, predictions > threshold)
+    plt.matshow(cm)
+    tick_labels = np.unique(labels)
+    plt.xticks(ticks=np.arange(cm.shape[0]), labels=tick_labels)
+    plt.yticks(ticks=np.arange(cm.shape[0]), labels=tick_labels)
+
+    for (i, j), val in np.ndenumerate(cm):
+        plt.text(j, i, f'{val:.1e}', ha='center', va='center', color='white')
+
+    cb = plt.colorbar()
+    plt.title('Confusion matrix @{:.2f}'.format(threshold))
+    plt.ylabel('Actual label')
+    plt.xlabel('Predicted label')
+    ax = plt.gca()
+    ax.xaxis.set_ticks_position('bottom')
+    plt.savefig(os.path.join(plotdir, f'conf_mtrx.pdf'), bbox_inches='tight')
+    plt.clf()
+    plt.close()
+
+def PlotROC(*,
+            labels, 
+            predictions,
+            plotdir,
+            xlim=[-0.5, 20],
+            ylim=[80, 100.5],
+            **kwargs):
+    fp, tp, _ = roc_curve(labels, predictions)
+
+    plt.plot(100*fp, 100*tp, linewidth=2, **kwargs)
+    plt.title('Reciever Operation Curve (ROC)')
+    plt.xlabel('False positives [%]')
+    plt.ylabel('True positives [%]')
+    plt.xlim(xlim)
+    plt.ylim(ylim)
+    plt.grid(True)
+    ax = plt.gca()
+    ax.set_aspect('equal')
+    plt.savefig(os.path.join(plotdir, 'roc.pdf'), bbox_inches='tight')
+    plt.clf()
+    plt.close()
+
+# implement ROC comparator:
+# takes lists of labels, predictions and plots on the same canvas
+def PlotCompareROC():
+    pass
+
+def PlotPRC(*,
+            labels, 
+            predictions,
+            plotdir,
+            **kwargs):
+    "Plots Precision Recall Curve => PRC"
+    precision, recall, _ = precision_recall_curve(labels, predictions)
+
+    plt.plot(precision, recall, linewidth=2, **kwargs)
+    plt.title('Precision-Recall Curve (PRC)')
+    plt.xlabel('Precision')
+    plt.ylabel('Recall')
+    plt.grid(True)
+    ax = plt.gca()
+    ax.set_aspect('equal')
+    plt.savefig(os.path.join(plotdir, 'prc.pdf'), bbox_inches='tight')
+    plt.clf()
+    plt.close()
+
+# implement PRC comparator:
+# takes lists of labels, predictions and plots on the same canvas
+def PlotComparePRC():
+    pass
