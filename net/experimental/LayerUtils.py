@@ -387,3 +387,54 @@ class MultiheadQuantileRegressor(tf.keras.layers.Layer):
     # def compute_output_shape(self, input_shape):
     #     # (batch_size, num_heads, num_quantiles)
     #     return (None, len(self.heads), self.num_quantiles)
+
+@tf.keras.utils.register_keras_serializable('ResidualBlock')
+class ResidualBlock(tf.keras.layers.Layer):
+    def __init__(self, 
+                 *,
+                 units,
+                 activation, 
+                 **kwargs):
+        
+        super().__init__(**kwargs)
+        
+        self.add = tf.keras.layers.Add()
+        self.activation = tf.keras.activations.get(activation)
+        
+        self.dense = None
+        self.batch_norm = None
+
+        self.units = units
+
+    def build(self, input_shape):
+        input_dim = input_shape[-1]
+        
+        if input_dim != self.units:
+            output_shape = input_shape[:-1] + (self.units,)
+            raise ValueError(f"Input of layer {self.dense.name} is incompatible with the layer: "
+                             f"expected shape {input_shape}, but got {output_shape}.")
+
+        self.dense = tf.keras.layers.Dense(self.units)
+        self.batch_norm = tf.keras.layers.BatchNormalization()
+
+        return super().build(input_shape)
+
+    def __call__(self, 
+                 inputs, 
+                 *, 
+                 training=False, 
+                 mask=None):
+        skip = inputs
+        x = self.dense(inputs)
+        x = self.batch_norm(x, training=training)
+        x = self.add([x, skip])
+        x = self.activation(x)
+        return x
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'units': self.units,
+            'activation': tf.keras.activations.serialize(self.activation)
+        })
+        return config
