@@ -9,7 +9,6 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-import psutil
 import uproot
 import pathlib
 import awkward as ak
@@ -20,6 +19,7 @@ import math
 
 from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
+from MiscUtils import MemoryMonitor
 from sklearn.utils import class_weight
 
 def to_numpy(*,
@@ -69,10 +69,8 @@ os.environ['TF_DETERMINISTIC_OPS'] = '1'
 def main():
     print("Training DNN for event classification")
 
-    process = psutil.Process(os.getpid())
-    memory_bytes = process.memory_info().rss
-    memory_mb = memory_bytes / (1024 * 1024)
-    print(f"Memory usage {memory_mb:.2f} MB")
+    mm = MemoryMonitor()
+    mm.print_memory_usage()
 
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
     event_file_pattern = re.compile(r"nParity(\d)_Merged.root")
@@ -246,14 +244,7 @@ def main():
     class_weight_dict = dict(enumerate(class_weights))
     print(f"Applying weights: {class_weight_dict}")
 
-    # reshape to make F1Score work
-    # not working
-    # y_train = y_train.reshape(-1, 1)
-
-    memory_bytes = process.memory_info().rss
-    memory_mb = memory_bytes / (1024 * 1024)
-    print(f"Loaded {X_train.shape[1]} variables for {X_train.shape[0]} events for training set")
-    print(f"Memory usage {memory_mb:.2f} MB")
+    mm.print_memory_usage(msg=f"Loaded {X_train.shape[1]} variables for {X_train.shape[0]} events for training set")
 
     val_parity = 0
     val_event_file_path, val_weight_file_path = parity_file_map[val_parity]
@@ -270,12 +261,8 @@ def main():
     val_sample_weights = weights_val["class_weight"].to_numpy() # may add later for sample_weights
     y_val = weights_val["class_target"].to_numpy()
     y_val = 1 - y_val
-    # y_val = y_val.reshape(-1, 1)
 
-    memory_bytes = process.memory_info().rss
-    memory_mb = memory_bytes / (1024 * 1024)
-    print(f"Loaded {X_val.shape[1]} variables for {X_val.shape[0]} events for validation set")
-    print(f"Memory usage {memory_mb:.2f} MB")
+    mm.print_memory_usage(msg=f"Loaded {X_val.shape[1]} variables for {X_val.shape[0]} events for validation set")
 
     # precompute mean and variance
     train_mean = np.mean(X_train, axis=0)
@@ -302,9 +289,6 @@ def main():
     tot_train = len(y_train)
     num_neg_train = tot_train - num_pos_train
     proba = num_pos_train/num_neg_train
-    # proba = num_pos_train/tot_train
-    # proba = np.clip(p, 1e-7, 1 - 1e-7)
-    # initial_bias = np.log(proba/(1 - proba))
     initial_bias = np.log(proba)
     output_bias = tf.keras.initializers.Constant(initial_bias)
     x = tf.keras.layers.Dense(1, bias_initializer=output_bias)(x)
@@ -376,10 +360,7 @@ def main():
     y_test = weights_test["class_target"].to_numpy()
     y_test = 1 - y_test
     
-    memory_bytes = process.memory_info().rss
-    memory_mb = memory_bytes / (1024 * 1024)
-    print(f"Loaded {X_test.shape[1]} variables for {X_test.shape[0]} events for test set")
-    print(f"Memory usage {memory_mb:.2f} MB")
+    mm.print_memory_usage(msg=f"Loaded {X_test.shape[1]} variables for {X_test.shape[0]} events for test set")
 
     test_pred = model.predict(X_test, batch_size=batch_size)
 

@@ -1,5 +1,7 @@
 import numpy as np
 import vector
+import psutil
+import os
 
 ground_truth_map = {"genHbb_E": "E(H->bb)",
                     "genHbb_px": r"$P_x$(H->bb)",
@@ -59,3 +61,16 @@ def ToPtEtaPhiE(data):
 
     p4 = vector.zip({'px': data[:, 0], 'py': data[:, 1], 'pz': data[:, 2], 'E': data[:, 3]})
     return np.stack([p4.pt.to_numpy(), p4.eta.to_numpy(), p4.phi.to_numpy(), p4.E.to_numpy()], axis=1)
+
+class MemoryMonitor:
+    def __init__(self) -> None:
+        self.process = psutil.Process(os.getpid())
+
+    def print_memory_usage(self, 
+                           *,
+                           msg: str = None) -> None:
+        memory_bytes = self.process.memory_info().rss
+        memory_mb = memory_bytes / (1024 * 1024)
+        if msg:
+            print(msg)
+        print(f"Memory usage {memory_mb:.2f} MB")
