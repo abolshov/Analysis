@@ -2,6 +2,8 @@ import numpy as np
 import vector
 import psutil
 import os
+import uproot
+import pathlib
 
 ground_truth_map = {"genHbb_E": "E(H->bb)",
                     "genHbb_px": r"$P_x$(H->bb)",
@@ -74,3 +76,43 @@ class MemoryMonitor:
         if msg:
             print(msg)
         print(f"Memory usage {memory_mb:.2f} MB")
+
+def to_numpy(*,
+             ak_array: ak.Array, 
+             dtype=np.float32) -> np.ndarray:
+    """
+    Pre-allocate numpy array for better memory efficiency
+    """
+    fields = ak.fields(ak_array)
+    M = len(ak_array)
+    N = len(fields)
+    
+    result = np.empty((M, N), dtype=dtype)
+    
+    for i, field in enumerate(fields):
+        result[:, i] = ak.to_numpy(ak_array[field])
+    
+    return result
+
+def load_file(*,
+              tree_name: str,
+              file_path: str | os.PathLike | pathlib.Path,
+              list_of_branches: List[str],
+              convert_to_numpy: bool):
+
+    file = uproot.open(file_path)
+    tree = file[tree_name]
+    branches = tree.arrays(list_of_branches)
+
+    if convert_to_numpy:
+        return to_numpy(ak_array=branches)
+    
+    return branches
+
+def nearest_pow2(n: int) -> int:
+    if n <= 0:
+        return 1
+    
+    p_high = math.ceil(math.log2(n))
+    v_high = 2**p_high
+    return v_high
