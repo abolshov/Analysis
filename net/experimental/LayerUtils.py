@@ -403,7 +403,6 @@ class ResidualBlock(tf.keras.layers.Layer):
         
         self.dense = None
         self.batch_norm = None
-
         self.units = units
 
     def build(self, input_shape):
@@ -411,7 +410,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         
         if input_dim != self.units:
             output_shape = input_shape[:-1] + (self.units,)
-            raise ValueError(f"Input of layer {self.dense.name} is incompatible with the layer: "
+            raise ValueError(f"Input of layer {self.name} is incompatible with the layer: "
                              f"expected shape {input_shape}, but got {output_shape}.")
 
         self.dense = tf.keras.layers.Dense(self.units)
@@ -419,15 +418,76 @@ class ResidualBlock(tf.keras.layers.Layer):
 
         return super().build(input_shape)
 
-    def __call__(self, 
-                 inputs, 
-                 *, 
-                 training=False, 
-                 mask=None):
+    def call(self, 
+             inputs, 
+             *, 
+             training=False, 
+             mask=None):        
+        # skip = self.extra_dense(inputs) # this extra layer was making performance better
         skip = inputs
         x = self.dense(inputs)
         x = self.batch_norm(x, training=training)
         x = self.add([x, skip])
+        x = self.activation(x)
+        return x
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'units': self.units,
+            'activation': tf.keras.activations.serialize(self.activation)
+        })
+        return config
+    
+@tf.keras.utils.register_keras_serializable('DeepResidualBlock')
+class DeepResidualBlock(tf.keras.layers.Layer):
+    def __init__(self, 
+                 *,
+                 units,
+                 activation, 
+                 **kwargs):
+        
+        super().__init__(**kwargs)
+        
+        self.add = tf.keras.layers.Add()
+        self.activation = tf.keras.activations.get(activation)
+        
+        self.dense1 = None
+        self.bn1 = None
+        self.dense2 = None
+        self.bn2 = None
+        self.units = units
+
+    def build(self, input_shape):
+        input_dim = input_shape[-1]
+        
+        self.bn1 = tf.keras.layers.BatchNormalization()
+        self.fc1 = tf.keras.layers.Dense(self.units)
+        self.bn2 = tf.keras.layers.BatchNormalization()
+        self.fc2 = tf.keras.layers.Dense(self.units)
+        self.relu = tf.keras.layers.ReLU()
+        
+        # Projection for dimension mismatch
+        if input_dim != self.units:
+            self.projection = tf.keras.layers.Dense(self.units, use_bias=False)
+        else:
+            self.projection = None
+
+        return super().build(input_shape)
+
+    def call(self, 
+             inputs, 
+             *, 
+             training=False):
+        
+        if self.projection is not None:
+            residual = self.projection(inputs)
+        else:
+            residual = inputs
+            
+        x = self.fc1(self.relu(self.bn1(inputs, training=training)))
+        x = self.fc2(self.relu(self.bn2(x, training=training)))
+        x = self.add([x, residual])
         x = self.activation(x)
         return x
     

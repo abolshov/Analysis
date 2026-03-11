@@ -21,6 +21,7 @@ from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
 from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files
 from sklearn.utils import class_weight
+from LayerUtils import ResidualBlock, DeepResidualBlock
 
 tf.random.set_seed(42)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
@@ -29,7 +30,7 @@ os.environ['TF_DETERMINISTIC_OPS'] = '1'
 def main():
     mm = MemoryMonitor()
     mm.print_memory_usage(msg="Training DNN for event classification")
-    
+
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
     event_file_pattern = re.compile(r"nParity(\d)_Merged.root")
     train_file_dir = "/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset"
@@ -109,32 +110,36 @@ def main():
 
     inputs = tf.keras.Input(shape=(X_train.shape[1],))
     x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(inputs)
+    x = tf.keras.layers.Dense(num_units, use_bias=False)(x)
     for _ in range(num_hidden_layers):
-        x = tf.keras.layers.Dense(num_units)(x)
-        x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.activations.swish(x)
+        # x = tf.keras.layers.Dense(num_units)(x)
+        # x = tf.keras.layers.BatchNormalization()(x)
+        # x = ResidualBlock(units=num_units, activation="swish")(x)
+        x = DeepResidualBlock(units=num_units, activation="swish")(x)
+        # x = tf.keras.activations.swish(x)
         x = tf.keras.layers.Dropout(dropout)(x)
 
     # output layer
-    num_pos_train = np.sum(y_train)
-    tot_train = len(y_train)
-    num_neg_train = tot_train - num_pos_train
-    proba = num_pos_train/num_neg_train
-    initial_bias = np.log(proba)
-    output_bias = tf.keras.initializers.Constant(initial_bias)
-    x = tf.keras.layers.Dense(1, bias_initializer=output_bias)(x)
+    init_output_bias = True
+    if init_output_bias:
+        num_pos_train = np.sum(y_train)
+        tot_train = len(y_train)
+        num_neg_train = tot_train - num_pos_train
+        proba = num_pos_train/num_neg_train
+        initial_bias = np.log(proba)
+        output_bias = tf.keras.initializers.Constant(initial_bias)
+    x = tf.keras.layers.Dense(1, bias_initializer=output_bias if init_output_bias else "zeros")(x)
     outputs = tf.keras.activations.sigmoid(x)
 
-    # model_name = "BinaryClassifier_SL_extraFeatures"
-    model_name = "BinaryClassifier_SL"
+    model_name = cfg['model_name']
     model = tf.keras.models.Model(inputs=inputs, 
                                   outputs=outputs, 
                                   name=model_name)
     
-    plot_dir = model.name
-    os.makedirs(plot_dir, exist_ok=True)
+    model_dir = os.path.join(cfg['base_dir'], model.name)
+    os.makedirs(model_dir, exist_ok=True)
     print(model.summary())
-    tf.keras.utils.plot_model(model, os.path.join(plot_dir, f"summary_{model.name}.pdf"), show_shapes=True)
+    tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
 
     metrics = [
         tf.keras.metrics.TruePositives(name='TruePositives'),
@@ -151,6 +156,7 @@ def main():
 
     model.compile(
         loss=tf.keras.losses.BinaryCrossentropy(),
+        # loss=tf.keras.losses.BinaryFocalCrossentropy(),
         optimizer=tf.keras.optimizers.Adam(3e-4),
         metrics=metrics
     )
@@ -169,11 +175,11 @@ def main():
                         epochs=epochs)
     print("... Done!")
     
-    PlotMetric(history, model.name, "loss", plotting_dir=plot_dir)
+    PlotMetric(history, model.name, "loss", plotting_dir=model_dir)
     for m in metrics:
-        PlotMetric(history, model.name, m.name, plotting_dir=plot_dir)
+        PlotMetric(history, model.name, m.name, plotting_dir=model_dir)
 
-    model.save(f"{model.name}.keras")
+    model.save(os.path.join(model_dir, f"{model.name}.keras"))
 
     print("Loading test set")
     test_parity = 2
@@ -198,15 +204,15 @@ def main():
     PlotConfMatrix(labels=y_test,
                    predictions=test_pred,
                    threshold=0.5,
-                   plotdir=plot_dir)
+                   plotdir=model_dir)
 
     PlotROC(labels=y_test,
             predictions=test_pred,
-            plotdir=plot_dir)
+            plotdir=model_dir)
     
     PlotPRC(labels=y_test,
             predictions=test_pred,
-            plotdir=plot_dir)
+            plotdir=model_dir)
 
     print("Evaluate model on test set ...")
     test_history = model.evaluate(X_test,
