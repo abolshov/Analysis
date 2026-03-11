@@ -4,6 +4,11 @@ import psutil
 import os
 import uproot
 import pathlib
+import math
+import awkward as ak
+import re
+
+from typing import List, Dict, Union
 
 ground_truth_map = {"genHbb_E": "E(H->bb)",
                     "genHbb_px": r"$P_x$(H->bb)",
@@ -116,3 +121,26 @@ def nearest_pow2(n: int) -> int:
     p_high = math.ceil(math.log2(n))
     v_high = 2**p_high
     return v_high
+
+def map_input_files(*,
+                    directory: str | os.PathLike | pathlib.Path,
+                    event_file_pattern: re.Pattern[str],
+                    weight_file_pattern: re.Pattern[str]) -> Dict[int, Union[str, os.PathLike, pathlib.Path]]:
+    
+    event_files = {}
+    weight_files = {}
+    for f in os.listdir(directory):
+        weight_match = weight_file_pattern.search(f)
+        event_match = event_file_pattern.search(f)
+        abs_path = os.path.abspath(os.path.join(directory, f))
+        if weight_match:
+            parity = int(weight_match.group(1))
+            weight_files[parity] = abs_path
+        elif event_match:
+            parity = int(event_match.group(1))
+            event_files[parity] = abs_path
+        else:
+            continue
+
+    parity_file_map = { p: (event_files[p], weight_files[p]) for p in event_files.keys()}
+    return parity_file_map

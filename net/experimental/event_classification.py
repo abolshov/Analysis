@@ -15,83 +15,27 @@ import awkward as ak
 import numpy as np
 import os
 import re
-import math
+import yaml
 
 from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
-from MiscUtils import MemoryMonitor
+from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files
 from sklearn.utils import class_weight
-
-def to_numpy(*,
-             ak_array: ak.Array, 
-             dtype=np.float32) -> np.ndarray:
-    """
-    Pre-allocate numpy array for better memory efficiency
-    """
-    fields = ak.fields(ak_array)
-    M = len(ak_array)
-    N = len(fields)
-    
-    result = np.empty((M, N), dtype=dtype)
-    
-    for i, field in enumerate(fields):
-        result[:, i] = ak.to_numpy(ak_array[field])
-    
-    return result
-
-def load_file(*,
-              tree_name: str,
-              file_path: str | os.PathLike | pathlib.Path,
-              list_of_branches: List[str],
-              convert_to_numpy: bool):
-
-    file = uproot.open(file_path)
-    tree = file[tree_name]
-    branches = tree.arrays(list_of_branches)
-
-    if convert_to_numpy:
-        return to_numpy(ak_array=branches)
-    
-    return branches
-
-def nearest_pow2(n: int) -> int:
-    if n <= 0:
-        return 1
-    
-    p_high = math.ceil(math.log2(n))
-    v_high = 2**p_high
-    return v_high
 
 tf.random.set_seed(42)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
 
 def main():
-    print("Training DNN for event classification")
-
     mm = MemoryMonitor()
-    mm.print_memory_usage()
-
+    mm.print_memory_usage(msg="Training DNN for event classification")
+    
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
     event_file_pattern = re.compile(r"nParity(\d)_Merged.root")
-
     train_file_dir = "/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset"
-    event_files = {}
-    weight_files = {}
-    for f in os.listdir(train_file_dir):
-        weight_match = weight_file_pattern.search(f)
-        event_match = event_file_pattern.search(f)
-        abs_path = os.path.abspath(os.path.join(train_file_dir, f))
-        if weight_match:
-            parity = int(weight_match.group(1))
-            weight_files[parity] = abs_path
-        elif event_match:
-            parity = int(event_match.group(1))
-            event_files[parity] = abs_path
-        else:
-            continue
-
-    parity_file_map = { p: (event_files[p], weight_files[p]) for p in event_files.keys()}
+    parity_file_map = map_input_files(directory=train_file_dir,
+                                      weight_file_pattern=weight_file_pattern,
+                                      event_file_pattern=event_file_pattern)
     for p, (event_file, weight_file) in parity_file_map.items():
         print(f"Parity {p}: event_file={event_file}, weight_file={weight_file}")
 
@@ -100,125 +44,12 @@ def main():
 
     use_extra_variables = True
 
-    base_branches = [
-        'other_jet1_mass', 
-        'deta_bb', 
-        'dPhi_jet1_jet2', 
-        'other_jet1_btagPNetB', 
-        # 'nSelBtag_fatjets',  
-        'dPhi_MET_dibjet',
-        # 'fatbjet_eta', 
-        'other_jet2_mass',
-        'other_jet2_pt', 
-        'other_jet1_pt', 
-        'lep1_mass', 
-        'bjet2_btagPNetB', 
-        'other_jet2_eta', 
-        'bjet1_phi', 
-        'MT2_bb',  
-        'bjet2_pt', 
-        # 'fatbjet_phi',
-        'other_jet2_btagPNetB', 
-        'bjet1_mass', 
-        'dphi_bb', 
-        'bjet2_mass', 
-        'PuppiMET_pt', 
-        'other_jet2_phi',
-        'other_jet1_phi', 
-        'bjet1_eta', 
-        # 'fatbjet_mass', 
-        'bb_mass_PNetRegPtRawCorr_PNetRegPtRawCorrNeutrino', 
-        'other_jet1_eta', 
-        # 'fatbjet_particleNetWithMass_HbbvsQCD', 
-        'SingleLep_DeepHME_mass', 
-        'nSelBtag_jets', 
-        'Lep1Jet1Jet2_mass', 
-        'bjet2_eta', 
-        'PuppiMET_phi', 
-        # 'fatbjet_particleNet_XbbVsQCD', 
-        # 'fatbjet_mass_PNetCorr', 
-        'SingleLep_DeepHME_mass_error', 
-        'CosTheta_bb', 
-        'bjet1_pt', 
-        'MT', 
-        # 'fatbjet_pt', 
-        'bjet2_phi', 
-        # 'fatbjet_msoftdrop', 
-        'lep1_phi', 
-        'dR_dibjet', 
-        'HT', 
-        'lep1_pt', 
-        'bjet1_btagPNetB', 
-    ]
+    with open ('classifier_cfg.yaml', 'r') as cfg_file:
+        cfg = yaml.safe_load(cfg_file)
 
-    extra_branches = [
-        'light_jet2_mass', 
-        'light_jet2_phi',
-        'light_jet1_phi', 
-        'dphi_hadT_hadW', 
-        # 'fatbjet_muEF', 
-        'min_dphi_b_hadW', 
-        'dphi_Hbb_Hww', 
-        'mT_Hww', 
-        'min_dphi_bl', 
-        'lep2_pt', 
-        'm_Hbb', 
-        'lep2_mass', 
-        # 'fatbjet_neEmEF', 
-        'pT_Hbb', 
-        'min_dphi_b_lepW', 
-        'mass_hadT', 
-        'light_jet2_pt', 
-        'light_jet2_btagPNetB', 
-        'light_jet1_mass',
-        'light_jet1_eta', 
-        'pT_lepT', 
-        # 'fatbjet_neMultiplicity',
-        'min_dR_b_hadW', 
-        'ratio_pT_hadT_const', 
-        'fatbjet_tau3', 
-        'light_jet1_btagPNetB', 
-        'pTtoE_ratio_Hww', 
-        # 'event', 
-        'm_Hww',
-        'dphi_hadW_lepW', 
-        'm_hadW',
-        'dR_hadW_lepW', 
-        'dR_Hbb_Hww', 
-        'light_jet1_pt', 
-        # 'fatbjet_tau1', 
-        'mT_lepT', 
-        # 'fatbjet_tau2', 
-        'mT_hadT', 
-        'deta_leadBjet_hadW', 
-        'pT_lepW', 
-        'lep2_eta', 
-        'dR_hadW_l', 
-        'm_b_lepT',
-        'min_dR_b_lepW', 
-        'pT_hadW', 
-        'deta_hadT_hadW', 
-        'dphi_hadW_l', 
-        'min_dR_bl',  
-        'mT_lepW', 
-        'lep2_phi', 
-        # 'fatbjet_neHEF', 
-        'pT_Hww', 
-        'pT_hadT',
-        # 'fatbjet_tau4', 
-        'dR_leadBjet_hadW', 
-        'pTtoE_ratio_HH', 
-        # 'fatbjet_nConstituents', 
-        'light_jet2_eta', 
-        'dphi_leadBjet_hadW', 
-        'pTtoE_ratio_Hbb',
-        'dR_hadT_hadW', 
-        'mT_hadW'
-    ]
-
-    branches_to_load = base_branches
+    branches_to_load = cfg['base_branches']
     if use_extra_variables:
-        branches_to_load.extend(extra_branches)
+        branches_to_load.extend(cfg['extra_branches'])
 
     X_train = load_file(tree_name="Events", 
                         file_path=train_event_file_path, 
