@@ -40,13 +40,16 @@ def main():
     for p, (event_file, weight_file) in parity_file_map.items():
         print(f"Parity {p}: event_file={event_file}, weight_file={weight_file}")
 
-    train_parity = 0
-    train_event_file_path, train_weight_file_path = parity_file_map[train_parity]
-
-    use_extra_variables = True
 
     with open ('classifier_cfg.yaml', 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
+
+    hyperparameters = cfg['hyperparameters']
+
+    train_parity = hyperparameters['training_parity']
+    train_event_file_path, train_weight_file_path = parity_file_map[train_parity]
+
+    use_extra_variables = hyperparameters['use_extra_branches']
 
     branches_to_load = cfg['base_branches']
     if use_extra_variables:
@@ -78,7 +81,7 @@ def main():
 
     mm.print_memory_usage(msg=f"Loaded {X_train.shape[1]} variables for {X_train.shape[0]} events for training set")
 
-    val_parity = 0
+    val_parity = hyperparameters['validation_parity']
     val_event_file_path, val_weight_file_path = parity_file_map[val_parity]
     X_val = load_file(tree_name="Events", 
                       file_path=val_event_file_path, 
@@ -103,20 +106,20 @@ def main():
     assert train_mean.shape == train_variance.shape and train_mean.shape[0] == X_train.shape[1]
 
     # define model
-    num_hidden_layers = 3
+    num_hidden_layers = hyperparameters['num_hidden_layers']
     num_units = 2 * nearest_pow2(X_train.shape[1])
-    dropout = 0.2
+    dropout = hyperparameters['dropout']
     print(f"Using {num_hidden_layers} hidden layers with {num_units} units in each layer")
 
     inputs = tf.keras.Input(shape=(X_train.shape[1],))
     x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(inputs)
-    x = tf.keras.layers.Dense(num_units, use_bias=False)(x)
+    # x = tf.keras.layers.Dense(num_units, use_bias=False)(x)
     for _ in range(num_hidden_layers):
-        # x = tf.keras.layers.Dense(num_units)(x)
-        # x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Dense(num_units)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
         # x = ResidualBlock(units=num_units, activation="swish")(x)
-        x = DeepResidualBlock(units=num_units, activation="swish")(x)
-        # x = tf.keras.activations.swish(x)
+        # x = DeepResidualBlock(units=num_units, activation="swish")(x)
+        x = tf.keras.activations.swish(x)
         x = tf.keras.layers.Dropout(dropout)(x)
 
     # output layer
@@ -136,7 +139,7 @@ def main():
                                   outputs=outputs, 
                                   name=model_name)
     
-    model_dir = os.path.join(cfg['base_dir'], model.name)
+    model_dir = os.path.join(cfg['training_directory'], model.name)
     os.makedirs(model_dir, exist_ok=True)
     print(model.summary())
     tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
@@ -154,16 +157,18 @@ def main():
         # tf.keras.metrics.F1Score(name='F1'),
     ]
 
+    learning_rate = hyperparameters['learning_rate']
+
     model.compile(
         loss=tf.keras.losses.BinaryCrossentropy(),
         # loss=tf.keras.losses.BinaryFocalCrossentropy(),
-        optimizer=tf.keras.optimizers.Adam(3e-4),
+        optimizer=tf.keras.optimizers.Adam(learning_rate),
         metrics=metrics
     )
 
     # fit model
-    batch_size = 4*2048
-    epochs = 50
+    batch_size = hyperparameters['batch_size']
+    epochs = hyperparameters['epochs']
     print("Training the model ...")
     history = model.fit(X_train, 
                         y_train, 
@@ -182,7 +187,7 @@ def main():
     model.save(os.path.join(model_dir, f"{model.name}.keras"))
 
     print("Loading test set")
-    test_parity = 2
+    test_parity = hyperparameters['test_parity']
     test_event_file_path, test_weight_file_path = parity_file_map[test_parity]
     X_test = load_file(tree_name="Events", 
                        file_path=test_event_file_path, 
