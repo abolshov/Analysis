@@ -1,9 +1,12 @@
 import matplotlib.pyplot as plt
 import os
+import pathlib
 import numpy as np
-from sklearn.metrics import confusion_matrix, roc_curve, precision_recall_curve
+from sklearn.metrics import confusion_matrix, roc_curve, precision_recall_curve, ConfusionMatrixDisplay
 from MiscUtils import PredPeak, PredWidth, ground_truth_map, pretty_vars, objects
 
+from numpy.typing import NDArray
+from typing import Literal, List
 
 def PlotMetric(history, model, metric, plotting_dir=None):
     plt.plot(history.history[metric], label=f'train_{metric}')
@@ -130,25 +133,18 @@ def PlotHistStack(data, hist_params, file_name, density=False, val_range=None, b
     plt.close()
 
 def PlotConfMatrix(*,
-                   labels, 
-                   predictions,
-                   threshold,
-                   plotdir):
-    cm = confusion_matrix(labels, predictions > threshold)
-    plt.matshow(cm)
-    tick_labels = np.unique(labels)
-    plt.xticks(ticks=np.arange(cm.shape[0]), labels=tick_labels)
-    plt.yticks(ticks=np.arange(cm.shape[0]), labels=tick_labels)
-
-    for (i, j), val in np.ndenumerate(cm):
-        plt.text(j, i, f'{val:.1e}', ha='center', va='center', color='white')
-
-    cb = plt.colorbar()
+                   labels: NDArray, 
+                   predictions: NDArray,
+                   threshold: float,
+                   plotdir: str | os.PathLike | pathlib.Path,
+                   normalize: Literal['true', 'pred', 'all'] ='true',
+                   tick_labels: List[str] = None):
+    cm = confusion_matrix(labels, predictions > threshold, normalize=normalize)
+    if tick_labels is None:
+        tick_labels = np.unique(labels)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=tick_labels)
+    disp.plot(cmap=plt.cm.viridis, values_format='.2f')
     plt.title('Confusion matrix @{:.2f}'.format(threshold))
-    plt.ylabel('Actual label')
-    plt.xlabel('Predicted label')
-    ax = plt.gca()
-    ax.xaxis.set_ticks_position('bottom')
     plt.savefig(os.path.join(plotdir, f'conf_mtrx.pdf'), bbox_inches='tight')
     plt.clf()
     plt.close()
