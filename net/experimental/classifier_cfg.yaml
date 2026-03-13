@@ -12,10 +12,18 @@ hyperparameters:
   epochs: 80
   learning_rate: 0.0003
 
+multiclass: False
+output_activation: sigmoid
+output_bias: exact
+classification_threshold: 0.5
+
 loss:
   class_name: BinaryFocalCrossentropy
   config: 
     gamma: 3.0
+
+optimizer:
+  class_name: Adam
 
 base_branches:
   - 'other_jet1_mass'

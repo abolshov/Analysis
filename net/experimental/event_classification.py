@@ -22,6 +22,7 @@ from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC, PlotHistStac
 from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files
 from sklearn.utils import class_weight
 from LayerUtils import ResidualBlock, DeepResidualBlock
+import gc
 
 tf.random.set_seed(42)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
@@ -68,8 +69,10 @@ def main():
     train_sample_weights = weights_train["class_weight"].to_numpy() # may add later for sample_weights
     y_train = weights_train["class_target"].to_numpy()
 
-    # swap classes: 1=>signal, 0=>background
-    y_train = 1 - y_train
+    multiclass = cfg['multiclass']
+    if not multiclass:
+        # swap classes: 1=>signal, 0=>background
+        y_train = 1 - y_train
     
     class_weights = class_weight.compute_class_weight(
         'balanced',
@@ -95,7 +98,8 @@ def main():
 
     val_sample_weights = weights_val["class_weight"].to_numpy() # may add later for sample_weights
     y_val = weights_val["class_target"].to_numpy()
-    y_val = 1 - y_val
+    if not multiclass:
+        y_val = 1 - y_val
 
     mm.print_memory_usage(msg=f"Loaded {X_val.shape[1]} variables for {X_val.shape[0]} events for validation set")
 
@@ -123,16 +127,25 @@ def main():
         x = tf.keras.layers.Dropout(dropout)(x)
 
     # output layer
-    init_output_bias = True
-    if init_output_bias:
+    output_bias = cfg['output_bias']
+    if output_bias is None:
+        bias_initializer = "zeros"
+    elif isinstance(output_bias, str) and output_bias == 'exact':
         num_pos_train = np.sum(y_train)
         tot_train = len(y_train)
         num_neg_train = tot_train - num_pos_train
         proba = num_pos_train/num_neg_train
         initial_bias = np.log(proba)
-        output_bias = tf.keras.initializers.Constant(initial_bias)
-    x = tf.keras.layers.Dense(1, bias_initializer=output_bias if init_output_bias else "zeros")(x)
-    outputs = tf.keras.activations.sigmoid(x)
+        bias_initializer = tf.keras.initializers.Constant(initial_bias)
+    elif isinstance(output_bias, float):
+        bias_initializer = tf.keras.initializers.Constant(output_bias)
+    else:
+        raise RuntimeError(f"Illegal option `{output_bias}` for `output_bias`. Allowed `'exact'`, `None` or specifica floating point value.")
+
+    x = tf.keras.layers.Dense(1, bias_initializer=bias_initializer)(x)
+    
+    output_activation = tf.keras.activations.get(cfg['output_activation'])
+    outputs = output_activation(x)
 
     model_name = cfg['model_name']
     model = tf.keras.models.Model(inputs=inputs, 
@@ -190,6 +203,8 @@ def main():
     del y_train
     del X_val
     del y_val
+    coll = gc.collect()
+    mm.print_memory_usage(msg=f"After invoking garbage collector, collected {coll}.")
 
     print("Loading test set")
     test_parity = hyperparameters['test_parity']
@@ -210,10 +225,11 @@ def main():
     mm.print_memory_usage(msg=f"Loaded {X_test.shape[1]} variables for {X_test.shape[0]} events for test set")
 
     test_pred = model.predict(X_test, batch_size=batch_size)
-
+    
+    threshold = cfg['classification_threshold']
     PlotConfMatrix(labels=y_test,
                    predictions=test_pred,
-                   threshold=0.5,
+                   threshold=threshold,
                    plotdir=model_dir)
 
     PlotROC(labels=y_test,
@@ -247,6 +263,19 @@ def main():
                   xlabel='DNN score',
                   ylabel='Arbitrary Unit',
                   plotting_dir=model_dir)
+
+    fp_mask = (test_pred > threshold) & bkg_mask
+    tp_mask = (test_pred > threshold) & sig_mask
+    PlotHistStack(data=[test_pred[tp_mask], test_pred[fp_mask]],
+                  hist_params={'TP': {'color': 'blue', 'linewidth': 2}, 'FP': {'color': 'red', 'linewidth': 2}},
+                  file_name='tp_vs_fp_dnn_score',
+                  density=True,
+                  val_range=(0, 1),
+                  title=f'DNN score for FP and TP at threshold={threshold:.2f}',
+                  xlabel='DNN score',
+                  ylabel='Arbitrary Unit',
+                  plotting_dir=model_dir)
+
 
     # free resources (just in case)
     tf.keras.backend.clear_session()
