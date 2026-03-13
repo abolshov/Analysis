@@ -100,7 +100,16 @@ def PlotCovarMtrx(mtrx, method, labels, plotdir, display_values=True):
     plt.clf()
     plt.close()
 
-def PlotHistStack(data, hist_params, file_name, density=False, val_range=None, bins=None, title='', xlabel='', ylabel='', plotting_dir=None):
+def PlotHistStack(data, 
+                  hist_params, 
+                  file_name, 
+                  density=False, 
+                  val_range=None, 
+                  bins=None, 
+                  title='', 
+                  xlabel='', 
+                  ylabel='', 
+                  plotting_dir=None):
     assert isinstance(data, list) and isinstance(data[0], np.ndarray), 'Input data must be list of np.arrays'
     assert len(data) == len(hist_params), f'Mismatch between number of input arrays ({len(data)}) and sets of parameters ({len(hist_params)})'
     assert bins is not None or val_range is not None, 'Must provide bins as array or integer or range'

@@ -18,7 +18,7 @@ import re
 import yaml
 
 from typing import List
-from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
+from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC, PlotHistStack
 from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files
 from sklearn.utils import class_weight
 from LayerUtils import ResidualBlock, DeepResidualBlock
@@ -113,13 +113,13 @@ def main():
 
     inputs = tf.keras.Input(shape=(X_train.shape[1],))
     x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(inputs)
-    # x = tf.keras.layers.Dense(num_units, use_bias=False)(x)
+    x = tf.keras.layers.Dense(num_units, use_bias=False)(x)
     for _ in range(num_hidden_layers):
-        x = tf.keras.layers.Dense(num_units)(x)
-        x = tf.keras.layers.BatchNormalization()(x)
+        # x = tf.keras.layers.Dense(num_units)(x)
+        # x = tf.keras.layers.BatchNormalization()(x)
         # x = ResidualBlock(units=num_units, activation="swish")(x)
-        # x = DeepResidualBlock(units=num_units, activation="swish")(x)
-        x = tf.keras.activations.swish(x)
+        x = DeepResidualBlock(units=num_units, activation="swish")(x)
+        # x = tf.keras.activations.swish(x)
         x = tf.keras.layers.Dropout(dropout)(x)
 
     # output layer
@@ -158,10 +158,10 @@ def main():
     ]
 
     learning_rate = hyperparameters['learning_rate']
-
+    loss_cfg = cfg["loss"]
+    loss_instance = tf.keras.losses.get(loss_cfg)
     model.compile(
-        loss=tf.keras.losses.BinaryCrossentropy(),
-        # loss=tf.keras.losses.BinaryFocalCrossentropy(),
+        loss=loss_instance,
         optimizer=tf.keras.optimizers.Adam(learning_rate),
         metrics=metrics
     )
@@ -185,6 +185,11 @@ def main():
         PlotMetric(history, model.name, m.name, plotting_dir=model_dir)
 
     model.save(os.path.join(model_dir, f"{model.name}.keras"))
+
+    del X_train
+    del y_train
+    del X_val
+    del y_val
 
     print("Loading test set")
     test_parity = hyperparameters['test_parity']
@@ -229,7 +234,20 @@ def main():
     print(f"\tLoss: {loss:.4f}")
     for i, m in enumerate(metrics):
         print(f"\t{m.name}: {test_history[i + 1]:.4f}")
+
+    sig_mask = y_test == 1
+    bkg_mask = y_test == 0
     
+    PlotHistStack(data=[test_pred[sig_mask], test_pred[bkg_mask]],
+                  hist_params={'sig': {'color': 'blue', 'linewidth': 2}, 'bkg': {'color': 'red', 'linewidth': 2}},
+                  file_name='dnn_score',
+                  density=True,
+                  val_range=(0, 1),
+                  title='DNN score distribution',
+                  xlabel='DNN score',
+                  ylabel='Arbitrary Unit',
+                  plotting_dir=model_dir)
+
     # free resources (just in case)
     tf.keras.backend.clear_session()
 
