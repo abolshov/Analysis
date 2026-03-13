@@ -1,5 +1,4 @@
-# model_name: 'BinaryClassifier_SL_DeepResidualBlockExtraFeatures'
-model_name: 'test2'
+model_name: 'BinaryClassifier_SL_DeepResidualBlockExtraFeaturesFocal'
 training_directory: '/home/artem/Desktop/CMS/models/classifiers'
 
 hyperparameters:
@@ -10,8 +9,13 @@ hyperparameters:
   num_hidden_layers: 3
   dropout: 0.2
   batch_size: 8192
-  epochs: 50
+  epochs: 80
   learning_rate: 0.0003
+
+loss:
+  class_name: BinaryFocalCrossentropy
+  config: 
+    gamma: 3.0
 
 base_branches:
   - 'other_jet1_mass'
@@ -73,9 +77,7 @@ extra_branches:
   - 'dphi_Hbb_Hww'
   - 'mT_Hww'
   - 'min_dphi_bl'
-  - 'lep2_pt'
   - 'm_Hbb'
-  - 'lep2_mass'
   # 'fatbjet_neEmEF'
   - 'pT_Hbb'
   - 'min_dphi_b_lepW' 
@@ -103,7 +105,6 @@ extra_branches:
   - 'mT_hadT'
   - 'deta_leadBjet_hadW'
   - 'pT_lepW'
-  - 'lep2_eta'
   - 'dR_hadW_l'
   - 'm_b_lepT'
   - 'min_dR_b_lepW'
@@ -112,7 +113,6 @@ extra_branches:
   - 'dphi_hadW_l'
   - 'min_dR_bl'
   - 'mT_lepW'
-  - 'lep2_phi'
   # - 'fatbjet_neHEF'
   - 'pT_Hww'
   - 'pT_hadT'
