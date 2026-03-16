@@ -147,14 +147,18 @@ def PlotConfMatrix(*,
                    threshold: float,
                    plotdir: str | os.PathLike | pathlib.Path,
                    normalize: Literal['true', 'pred', 'all'] ='true',
-                   tick_labels: List[str] = None):
+                   tick_labels: List[str] = None,
+                   file_name: str = None):
     cm = confusion_matrix(labels, predictions > threshold, normalize=normalize)
     if tick_labels is None:
         tick_labels = np.unique(labels)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=tick_labels)
-    disp.plot(cmap=plt.cm.viridis, values_format='.2f')
+    disp.plot(cmap=plt.cm.viridis, values_format='.4f')
     plt.title('Confusion matrix @{:.2f}'.format(threshold))
-    plt.savefig(os.path.join(plotdir, f'conf_mtrx.pdf'), bbox_inches='tight')
+    if file_name is None:
+        plt.savefig(os.path.join(plotdir, 'conf_mtrx.pdf'), bbox_inches='tight')
+    else:
+        plt.savefig(os.path.join(plotdir, f'{file_name}.pdf'), bbox_inches='tight')
     plt.clf()
     plt.close()
 
@@ -168,7 +172,7 @@ def PlotROC(*,
     fp, tp, _ = roc_curve(labels, predictions)
 
     plt.plot(100*fp, 100*tp, linewidth=2, **kwargs)
-    plt.title('Reciever Operation Curve (ROC)')
+    plt.title('Reciever Operation Characteristic (ROC)')
     plt.xlabel('False positives [%]')
     plt.ylabel('True positives [%]')
     plt.xlim(xlim)
