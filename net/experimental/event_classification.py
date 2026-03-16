@@ -19,7 +19,7 @@ import yaml
 
 from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC, PlotHistStack
-from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files
+from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values
 from sklearn.utils import class_weight
 from LayerUtils import ResidualBlock, DeepResidualBlock
 import gc
@@ -60,6 +60,10 @@ def main():
                         file_path=train_event_file_path, 
                         list_of_branches=branches_to_load,
                         convert_to_numpy=True)
+    
+    mm.print_memory_usage(msg=f"Before cleaning: {X_train.shape}")
+    clean_mask_train, X_train = clean_extreme_values(data=X_train)
+    mm.print_memory_usage(msg=f"After cleaning: {X_train.shape}")
 
     weights_train = load_file(tree_name="weight_tree", 
                               file_path=train_weight_file_path, 
@@ -68,6 +72,7 @@ def main():
 
     train_sample_weights = weights_train["class_weight"].to_numpy() # may add later for sample_weights
     y_train = weights_train["class_target"].to_numpy()
+    y_train = y_train[clean_mask_train]
 
     multiclass = cfg['multiclass']
     if not multiclass:
@@ -220,7 +225,8 @@ def main():
                              convert_to_numpy=False)
 
     y_test = weights_test["class_target"].to_numpy()
-    y_test = 1 - y_test
+    if not multiclass:
+        y_test = 1 - y_test
     
     mm.print_memory_usage(msg=f"Loaded {X_test.shape[1]} variables for {X_test.shape[0]} events for test set")
 
@@ -250,32 +256,6 @@ def main():
     print(f"\tLoss: {loss:.4f}")
     for i, m in enumerate(metrics):
         print(f"\t{m.name}: {test_history[i + 1]:.4f}")
-
-    sig_mask = y_test == 1
-    bkg_mask = y_test == 0
-    
-    PlotHistStack(data=[test_pred[sig_mask], test_pred[bkg_mask]],
-                  hist_params={'sig': {'color': 'blue', 'linewidth': 2}, 'bkg': {'color': 'red', 'linewidth': 2}},
-                  file_name='dnn_score',
-                  density=True,
-                  val_range=(0, 1),
-                  title='DNN score distribution',
-                  xlabel='DNN score',
-                  ylabel='Arbitrary Unit',
-                  plotting_dir=model_dir)
-
-    fp_mask = (test_pred > threshold) & bkg_mask
-    tp_mask = (test_pred > threshold) & sig_mask
-    PlotHistStack(data=[test_pred[tp_mask], test_pred[fp_mask]],
-                  hist_params={'TP': {'color': 'blue', 'linewidth': 2}, 'FP': {'color': 'red', 'linewidth': 2}},
-                  file_name='tp_vs_fp_dnn_score',
-                  density=True,
-                  val_range=(0, 1),
-                  title=f'DNN score for FP and TP at threshold={threshold:.2f}',
-                  xlabel='DNN score',
-                  ylabel='Arbitrary Unit',
-                  plotting_dir=model_dir)
-
 
     # free resources (just in case)
     tf.keras.backend.clear_session()

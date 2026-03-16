@@ -8,7 +8,8 @@ import math
 import awkward as ak
 import re
 
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
+from numpy.typing import NDArray
 
 ground_truth_map = {"genHbb_E": "E(H->bb)",
                     "genHbb_px": r"$P_x$(H->bb)",
@@ -144,3 +145,10 @@ def map_input_files(*,
 
     parity_file_map = { p: (event_files[p], weight_files[p]) for p in event_files.keys()}
     return parity_file_map
+
+def clean_extreme_values(*,
+                         data: NDArray[np.floating],
+                         pos_thrsh: float = 2500.0,
+                         neg_thrsh: float = -1000.0) -> Tuple[NDArray[np.bool_], NDArray[np.floating]]:
+    mask = ~np.any((data > pos_thrsh) | (data < neg_thrsh), axis=1)
+    return mask, data[mask]
