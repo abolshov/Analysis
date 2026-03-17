@@ -175,12 +175,14 @@ def main():
         # tf.keras.metrics.F1Score(name='F1'),
     ]
 
-    learning_rate = hyperparameters['learning_rate']
+    # learning_rate = hyperparameters['learning_rate']
     loss_cfg = cfg["loss"]
     loss_instance = tf.keras.losses.get(loss_cfg)
+    optimizer_cfg = cfg['optimizer']
+    optimizer_instance = tf.keras.optimizers.get(optimizer_cfg)
     model.compile(
         loss=loss_instance,
-        optimizer=tf.keras.optimizers.Adam(learning_rate),
+        optimizer=optimizer_instance,
         metrics=metrics
     )
 
