@@ -1,5 +1,6 @@
 import tensorflow as tf
-from typing import Callable
+
+from typing import Callable, List
 ActivationFunction = Callable[[tf.Tensor], tf.Tensor]
 
 import numpy as np
@@ -9,12 +10,12 @@ from numpy.typing import NDArray
 class Autoencoder(tf.keras.models.Model):
     def __init__(self, 
                  *,
-                 input_dim: int,
-                 latent_dim: int,
+                 encoder_dims: List[int],
+                 decoder_dims: List[int],
                  hidden_activation: str | ActivationFunction,
                  output_activation: str | ActivationFunction,
-                 mean: NDArray | tf.Tensor = None,
-                 variance: NDArray | tf.Tensor = None,
+                 mean: NDArray[np.floating] | tf.Tensor = None,
+                 variance: NDArray[np.floating] | tf.Tensor = None,
                  **kwargs) -> None:
         
         super(Autoencoder, self).__init__(**kwargs)
@@ -22,33 +23,27 @@ class Autoencoder(tf.keras.models.Model):
         self.hidden_activation = tf.keras.activations.get(hidden_activation)
         self.output_activation = tf.keras.activations.get(output_activation)
 
-        self.norm = None
-        if mean and variance:
-            self.norm = tf.keras.layers.Normalization(mean=mean, variance=variance)
-            # not sure reverse_norm is needed
-            # self.reverse_norm = tf.keras.layers.Normalization(mean=mean, variance=variance, invert=True)
+        self.encoder = tf.keras.Sequential()
+        self.decoder = tf.keras.Sequential()
 
-        self.encoder = None
-        self.decoder = None
+        use_norm = mean and variance
+        if use_norm:
+            self.decoder.add(tf.keras.layers.Normalization(mean=mean, variance=variance))
+            
+        self.encoder.add(
+            [
+                tf.keras.layers.Dense(dim, activation=hidden_activation) for dim in encoder_dims
+            ]
+        )
 
-        # I want to build model more dynmically
-        # self.encoder = tf.keras.Sequential(
-        #     [
-        #         tf.keras.layers.Dense(64, activation=hidden_activation),
-        #         tf.keras.layers.Dense(32, activation=hidden_activation),
-        #         tf.keras.layers.Dense(16, activation=hidden_activation),
-        #         tf.keras.layers.Dense(8, activation=hidden_activation)
-        #     ]
-        # )
-
-        # self.decoder = tf.keras.Sequential(
-        #     [
-        #         tf.keras.layers.Dense(16, activation=hidden_activation),
-        #         tf.keras.layers.Dense(32, activation=hidden_activation),
-        #         tf.keras.layers.Dense(64, activation=hidden_activation),
-        #         tf.keras.layers.Dense(input_dim, activation=output_activation)
-        #     ]
-        # )
+        self.decoder = tf.keras.Sequential(
+            [
+                tf.keras.layers.Dense(dim, activation=hidden_activation) for dim in decoder_dims[:-1]
+            ]
+        )
+        self.decoder.add(tf.keras.layers.Dense(decoder_dims[-1], activation=output_activation))
+        if use_norm:
+            self.decoder.add(tf.keras.layers.Normalization(mean=mean, variance=variance, invert=True))
 
     def call(self, x):
         encoded = self.encoder(x)

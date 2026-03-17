@@ -54,7 +54,7 @@ def main():
     
     y = 1 - y
     sig_mask = y == 1
-    bkg_mask = not sig_mask
+    bkg_mask = ~sig_mask
     
     mm.print_memory_usage(msg="After loading train set")
 
@@ -62,10 +62,12 @@ def main():
     X_sig = X[sig_mask]
 
     input_dim = X_bkg.shape[-1]
-    anomaly_detector = Autoencoder(input_dim=input_dim, 
+    anomaly_detector = Autoencoder(encoder_dims=[input_dim, 64, 32, 16, 8], 
+                                   decoder_dims=[16, 32, 64, input_dim],
                                    hidden_activation="relu",
-                                   output_activation="sigmoid",
+                                   output_activation=None,
                                    name="autoencoder_anomaly_detector")
+    
     anomaly_detector.compile(
         loss=tf.keras.losses.MeanSquaredError(),
         optimizer=tf.keras.optimizers.Adam(3e-4)    
@@ -76,7 +78,7 @@ def main():
         X_bkg,
         validation_data=(X_sig, X_sig),
         epochs=50,
-        batch_size=4*2048
+        batch_size=2048
     )
 
 
