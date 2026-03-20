@@ -6,7 +6,7 @@ from sklearn.metrics import confusion_matrix, roc_curve, precision_recall_curve,
 from MiscUtils import PredPeak, PredWidth, ground_truth_map, pretty_vars, objects
 
 from numpy.typing import NDArray
-from typing import Literal, List
+from typing import Literal, List, Tuple, Dict, Any
 
 def PlotMetric(history, model, metric, plotting_dir=None):
     plt.plot(history.history[metric], label=f'train_{metric}')
@@ -100,37 +100,43 @@ def PlotCovarMtrx(mtrx, method, labels, plotdir, display_values=True):
     plt.clf()
     plt.close()
 
-def PlotHistStack(data, 
-                  hist_params, 
-                  file_name, 
-                  density=False, 
-                  val_range=None, 
-                  bins=None, 
-                  title='', 
-                  xlabel='', 
-                  ylabel='', 
-                  plotting_dir=None):
-    assert isinstance(data, list) and isinstance(data[0], np.ndarray), 'Input data must be list of np.arrays'
+def PlotHistStack(*,
+                  data: List[NDArray], 
+                  hist_params: Dict[str, Dict[str, Any]], 
+                  file_name: str | os.PathLike | pathlib.Path, 
+                  val_range: Tuple[float, float],
+                  weights: List[NDArray] = None, 
+                  density: bool = False, 
+                  stacked: bool = False, 
+                  num_bins: int = 50, 
+                  title: str = None, 
+                  xlabel: str = None, 
+                  ylabel: str = None, 
+                  plotting_dir: str | os.PathLike | pathlib.Path = None) -> None:
+    
     assert len(data) == len(hist_params), f'Mismatch between number of input arrays ({len(data)}) and sets of parameters ({len(hist_params)})'
-    assert bins is not None or val_range is not None, 'Must provide bins as array or integer or range'
 
-    if bins is None and val_range is not None:
-        begin, end = val_range
-        bins = np.linspace(begin, end, 50)
+    begin, end = val_range
+    bins = np.linspace(begin, end, num_bins)
 
     for i, (label, params) in enumerate(hist_params.items()):
         plt.hist(data[i], 
                  label=label, 
+                 weights=weights[i] if weights else None,
                  bins=bins, 
                  density=density,
                  range=val_range,
                  color=params['color'],
                  histtype='step',
+                 stacked=stacked,
                  linewidth=params['linewidth'])
 
-    plt.title(title)
-    plt.ylabel(ylabel)
-    plt.xlabel(xlabel)
+    if title:
+        plt.title(title)
+    if ylabel:
+        plt.ylabel(ylabel)
+    if xlabel:
+        plt.xlabel(xlabel)
     plt.grid(True)
     plt.legend()
 
