@@ -18,10 +18,10 @@ import re
 import yaml
 
 from typing import List
-from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC, PlotHistStack
+from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
 from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values
 from sklearn.utils import class_weight
-from LayerUtils import ResidualBlock, DeepResidualBlock
+from LayerUtils import DeepResidualBlock
 import gc
 
 tf.random.set_seed(42)
