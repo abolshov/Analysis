@@ -104,7 +104,7 @@ def main():
                                              name="autoencoder")
     
     anomaly_detector.compile(
-        loss=tf.keras.losses.MeanSquaredError(),
+        loss=tf.keras.losses.LogCosh(),
         optimizer=tf.keras.optimizers.Adam(3e-4)    
     )
 
@@ -134,7 +134,8 @@ def main():
     X_val = (X_val - val_mins)/(val_maxs - val_mins)
 
     callbacks = [
-        tf.keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True)
+        tf.keras.callbacks.EarlyStopping(patience=20, restore_best_weights=True),
+        tf.keras.callbacks.ReduceLROnPlateau(patience=10)
     ]
 
     train_history = anomaly_detector.fit(
@@ -142,7 +143,7 @@ def main():
         X_bkg_train,
         validation_data=(X_val, X_val),
         epochs=200,
-        batch_size=2048,
+        batch_size=1024,
         callbacks=callbacks,
         verbose=0,
         shuffle=True
@@ -151,14 +152,6 @@ def main():
     model_dir = os.path.join("/home/artem/Desktop/CMS/models/anomaly_detection/", anomaly_detector.name)
     PlotMetric(train_history, anomaly_detector.name, "loss", plotting_dir=model_dir)
     anomaly_detector.save(os.path.join(model_dir, f"{anomaly_detector.name}.keras"))
-
-    # reconstructions = anomaly_detector.predict(X_val, batch_size=128)
-    # val_loss = tf.keras.losses.MSE(reconstructions, X_val)
-
-    # plt.hist(val_loss[None, :], bins=50)
-    # plt.xlabel("Validation loss")
-    # plt.ylabel("No of examples")
-    # plt.savefig(os.path.join(model_dir, "anomaly_score.pdf"), format="pdf")
 
 if __name__ == "__main__":
     main()
