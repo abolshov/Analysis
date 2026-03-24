@@ -19,7 +19,7 @@ import yaml
 
 from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
-from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values
+from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values, make_dataset
 from sklearn.utils import class_weight
 from LayerUtils import ResidualBlock
 import gc
@@ -182,14 +182,17 @@ def main():
         metrics=metrics
     )
 
+    train_ds = make_dataset(features=X_train, labels=y_train)
+    val_ds = make_dataset(features=X_val, labels=y_val)
+    mm.print_memory_usage(msg="After making datasets")
+
     # fit model
     batch_size = hyperparameters['batch_size']
     epochs = hyperparameters['epochs']
     print("Training the model ...")
-    history = model.fit(X_train, 
-                        y_train, 
+    history = model.fit(train_ds, 
                         shuffle=True,
-                        validation_data=(X_val, y_val),
+                        validation_data=val_ds,
                         class_weight=class_weight_dict,
                         verbose=0,
                         batch_size=batch_size,
