@@ -268,8 +268,66 @@ def main():
     )
     mm.print_memory_usage(msg=f"After creating train loader with {len(train_loader)} batches")
 
-    # TODO: load validation data
-    # will do when I have file
+    val_file_path = "/home/artem/Desktop/CMS/data/DeepHME/Run3_2023BPix/XtoYHto2B2Wto2B2L2Nu_MX_700_MY_125/anaTuple_0.root"
+    val_loader = get_loader(
+        file_path=val_file_path,
+        tree_name="Events",
+        channel="DL",
+        num_jets=10,
+        num_fatjets=2,
+        batch_size=512,
+        num_workers=2,
+        device=device
+    )
+    mm.print_memory_usage(msg=f"After creating validation loader with {len(val_loader)} batches")
+
+    model = Transformer().to(device)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
     
+    history = {
+        'loss': [],
+        'val_loss': []
+    }
+
+    # Training loop
+    num_epochs = 10
+    for epoch in range(num_epochs):
+        model.train()
+        train_loss = 0
+        
+        for features, labels in train_loader:
+            features, labels = features.to(device), labels.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(features)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
+        
+        # Validation
+        model.eval()
+        val_loss = 0
+        
+        with torch.no_grad():
+            for features, labels in val_loader:
+                features, labels = features.to(device), labels.to(device)
+                outputs = model(features)
+                loss = criterion(outputs, labels)
+                val_loss += loss.item()
+        
+        # Calculate epoch metrics
+        train_loss /= len(train_loader)
+        val_loss /= len(val_loader)
+        
+        # Append to history
+        history['loss'].append(train_loss)
+        history['val_loss'].append(val_loss)
+        
+        print(f'Epoch {epoch + 1}/{num_epochs}:')
+        print(f'\ttrain_loss: {train_loss:.4f}')
+        print(f'\tval_Loss: {val_loss:.4f}')
+
 if __name__ == "__main__":
     main()
