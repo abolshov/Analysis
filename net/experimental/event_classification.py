@@ -21,7 +21,7 @@ from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
 from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values
 from sklearn.utils import class_weight
-from LayerUtils import DeepResidualBlock
+from LayerUtils import ResidualBlock
 import gc
 
 tf.random.set_seed(42)
@@ -131,7 +131,7 @@ def main():
         # x = tf.keras.layers.Dense(num_units)(x)
         # x = tf.keras.layers.BatchNormalization()(x)
         # x = ResidualBlock(units=num_units, activation="swish")(x)
-        x = DeepResidualBlock(units=num_units, activation="swish")(x)
+        x = ResidualBlock(units=num_units, activation="swish")(x)
         # x = tf.keras.activations.swish(x)
         x = tf.keras.layers.Dropout(dropout)(x)
 
