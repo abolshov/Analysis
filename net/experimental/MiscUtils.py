@@ -7,6 +7,7 @@ import pathlib
 import math
 import awkward as ak
 import re
+import tensorflow as tf
 
 from typing import List, Dict, Union, Tuple
 from numpy.typing import NDArray
@@ -85,7 +86,7 @@ class MemoryMonitor:
 
 def to_numpy(*,
              ak_array: ak.Array, 
-             dtype=np.float32) -> np.ndarray:
+             dtype = np.float32) -> np.ndarray:
     """
     Pre-allocate numpy array for better memory efficiency
     """
@@ -114,6 +115,11 @@ def load_file(*,
         return to_numpy(ak_array=branches)
     
     return branches
+
+def make_dataset(*,
+                 features: NDArray,
+                 labels: NDArray) -> tf.data.Dataset:
+    return tf.data.Dataset.from_tensor_slices(features, labels)
 
 def nearest_pow2(n: int) -> int:
     if n <= 0:
