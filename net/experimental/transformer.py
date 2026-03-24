@@ -4,6 +4,7 @@ import os
 import awkward as ak
 import numpy as np
 import vector
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -13,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from MiscUtils import MemoryMonitor
 
-from typing import Tuple
+from typing import Tuple, Dict, List
 import numpy.typing as npt
 
 class Transformer(nn.Module):
@@ -74,6 +75,7 @@ class Transformer(nn.Module):
         
         # regression head
         x = self.regressor(x).squeeze()  # Shape: [batch_size, output_dim]
+        x = torch.unsqueeze(x, 1)
         return x
     
 class DeepHMEDataset(Dataset):
@@ -250,6 +252,36 @@ def get_loader(*,
 
     return loader
 
+def plot_training_history(*,
+                          history: Dict[str, npt.NDArray], 
+                          plot_name: str,
+                          metrics: List[str] = ['loss', 'accuracy']):
+    """
+    Plot training history for neural networks
+    """
+    # _, axes = plt.subplots(1, len(metrics), figsize=(15, 5))
+    _, axes = plt.subplots(1, len(metrics))
+    if len(metrics) == 1:
+        axes = [axes]
+
+    try: 
+        # this is the syntax for keras 
+        hist = history.history
+    except: 
+        hist = history
+    for ax, metric in zip(axes, metrics):
+        ax.plot(hist[metric], label=f'Training {metric}')
+        ax.plot(hist[f'val_{metric}'], label=f'Validation {metric}')
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel(metric.capitalize())
+        ax.legend()
+        ax.grid(True)
+    
+    plt.tight_layout()
+    plt.savefig(f"{plot_name}.pdf", format="pdf")
+    plt.clf()
+    plt.close()
+
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     mm = MemoryMonitor()
@@ -264,7 +296,6 @@ def main():
         num_fatjets=2,
         batch_size=512,
         num_workers=2,
-        device=device
     )
     mm.print_memory_usage(msg=f"After creating train loader with {len(train_loader)} batches")
 
@@ -277,13 +308,12 @@ def main():
         num_fatjets=2,
         batch_size=512,
         num_workers=2,
-        device=device
     )
     mm.print_memory_usage(msg=f"After creating validation loader with {len(val_loader)} batches")
 
     model = Transformer().to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0003)
     
     history = {
         'loss': [],
@@ -291,7 +321,7 @@ def main():
     }
 
     # Training loop
-    num_epochs = 10
+    num_epochs = 20
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0
@@ -327,7 +357,11 @@ def main():
         
         print(f'Epoch {epoch + 1}/{num_epochs}:')
         print(f'\ttrain_loss: {train_loss:.4f}')
-        print(f'\tval_Loss: {val_loss:.4f}')
+        print(f'\tval_loss: {val_loss:.4f}')
+
+    plot_training_history(history=history, 
+                          plot_name="loss_transformer", 
+                          metrics=["loss"])    
 
 if __name__ == "__main__":
     main()
