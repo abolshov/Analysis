@@ -221,23 +221,55 @@ def prepare_input_vectors(*,
     
     return features, labels
 
+def get_loader(*,
+               file_path: str | os.PathLike,
+               tree_name: str,
+               channel: str,
+               num_jets: int,
+               num_fatjets: int,
+               batch_size: int,
+               num_workers: int,
+               device: torch.device | None = None) -> DataLoader:
+    
+    ds = DeepHMEDataset(
+        file_path=file_path,
+        tree_name=tree_name,
+        channel=channel,
+        num_jets=num_jets,
+        num_fatjets=num_fatjets,
+        device=device
+    )
+
+    loader = DataLoader(
+        ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+
+    return loader
+
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     mm = MemoryMonitor()
     mm.print_memory_usage(msg=f"Training transformer on {device}")
 
     train_file_path = "/home/artem/Desktop/CMS/data/DeepHME/big_file_DL_M700.root"
-    X_train, y_train = prepare_input_vectors(input_path=train_file_path,
-                                             tree_name="Events",
-                                             channel='DL',
-                                             num_jets=10,
-                                             num_fatjets=2)
-    mm.print_memory_usage(msg=f"After loading train root file, shapes: {X_train.shape}, {y_train.shape}")
+    train_loader = get_loader(
+        file_path=train_file_path,
+        tree_name="Events",
+        channel="DL",
+        num_jets=10,
+        num_fatjets=2,
+        batch_size=512,
+        num_workers=2,
+        device=device
+    )
+    mm.print_memory_usage(msg=f"After creating train loader with {len(train_loader)} batches")
 
     # TODO: load validation data
     # will do when I have file
     
-     
-
 if __name__ == "__main__":
     main()
