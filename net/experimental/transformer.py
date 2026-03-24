@@ -76,161 +76,168 @@ class Transformer(nn.Module):
         x = self.regressor(x).squeeze()  # Shape: [batch_size, output_dim]
         return x
     
+class DeepHMEDataset(Dataset):
+    def __init__(self,
+                 *,
+                 file_path: str | os.PathLike,
+                 tree_name: str,
+                 channel: str,
+                 num_jets: int,
+                 num_fatjets: int,
+                 device: torch.device | None = None):
+        
+        features, labels = prepare_input_vectors(
+            input_path=file_path,
+            tree_name=tree_name,
+            channel=channel,
+            num_jets=num_jets,
+            num_fatjets=num_fatjets
+        )
+        
+        # Zero-copy if already float32, otherwise converts
+        self.features = torch.as_tensor(features, dtype=torch.float32)
+        self.labels = torch.as_tensor(labels, dtype=torch.float32)
+        
+        # Optional: move to device (useful for small datasets that fit in GPU)
+        if device is not None:
+            self.features = self.features.to(device)
+            self.labels = self.labels.to(device)
+    
+    def __len__(self) -> int:
+        return self.features.shape[0]  # More explicit than len(self.labels)
+    
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.features[idx], self.labels[idx]
+    
+    @property
+    def num_particles(self) -> int:
+        return self.features.shape[1]
+    
+    @property
+    def feature_dim(self) -> int:
+        return self.features.shape[2]
+
 def prepare_input_vectors(*,
                           input_path: str | os.PathLike,
                           tree_name: str,
                           channel: str,
                           num_jets: int,
                           num_fatjets: int) -> Tuple[npt.NDArray, npt.NDArray]:
-    file = uproot.open(input_path)
-    tree = file[tree_name]
-    branches = tree.arrays(
-        [
-            "lep1_pt",
-            "lep1_eta",
-            "lep1_phi",
-            "lep1_mass",
-            "lep2_pt",
-            "lep2_eta",
-            "lep2_phi",
-            "lep2_mass",
-            "PuppiMET_pt",
-            "PuppiMET_phi",
-            "centralJet_pt",
-            "centralJet_eta",
-            "centralJet_phi",
-            "centralJet_mass",
-            "SelectedFatJet_pt",
-            "SelectedFatJet_eta",
-            "SelectedFatJet_phi",
-            "SelectedFatJet_mass",
-            # "X_mass",
-            "genHbb_pt",
-            "genHbb_eta",
-            "genHbb_phi",
-            "genHbb_mass",
-            "genHVV_pt",
-            "genHVV_eta",
-            "genHVV_phi",
-            "genHVV_mass",
-        ]
-    )
-
-    lepton_selection = (branches["lep1_pt"] > 0.0) & (branches["lep2_pt"] > 0.0)
-    branches = branches[lepton_selection]
-
-    # +1 for MET
-    tot_num_particles = num_jets + num_fatjets + 1
-    if channel == 'SL':
-        tot_num_particles += 1
-    elif channel == 'DL':
-        tot_num_particles += 2
-    else:
-        raise RuntimeError(f"Illegal channel {channel}.")
-
-    # output shape: [events, tot_num_particles, 4]
-    N_events = len(branches)
-
-    # particles layout:
-    # jet1|...|jetN|fatjet1|...|fatjetM|lep1|lep2|MET|
-    # particle feautre layout: E|px|py|pz
-    features = np.empty((N_events, tot_num_particles, 4))
-    labels = np.empty((N_events, 1, 4)) # only p4 of X
-
-    jets = ak.pad_none(
-        branches[["centralJet_pt",
-                  "centralJet_eta",
-                  "centralJet_phi",
-                  "centralJet_mass"]], 
-        num_jets, 
-        clip=True
-    )
-    jets = ak.fill_none(jets, 0.0)
-    jets_p4 = vector.zip({'pt': jets['centralJet_pt'], 
-                          'eta': jets['centralJet_eta'],
-                          'phi': jets['centralJet_phi'],
-                          'mass': jets['centralJet_mass']})
-
-    for jet_idx in range(num_jets):
-        for comp_idx, comp_name in enumerate(['E', 'px', 'py', 'pz']):
-            features[:, jet_idx, comp_idx] = getattr(jets_p4[:, jet_idx], comp_name)
-
-    fatjets = ak.pad_none(
-        branches[["SelectedFatJet_pt",
-                  "SelectedFatJet_eta",
-                  "SelectedFatJet_phi",
-                  "SelectedFatJet_mass"]], 
-        num_fatjets, 
-        clip=True
-    )
-    fatjets = ak.fill_none(fatjets, 0.0)
-    fatjets_p4 = vector.zip({'pt': fatjets['SelectedFatJet_pt'], 
-                             'eta': fatjets['SelectedFatJet_eta'],
-                             'phi': fatjets['SelectedFatJet_phi'],
-                             'mass': fatjets['SelectedFatJet_mass']})
-
-    for fatjet_idx in range(num_fatjets):
-        for comp_idx, comp_name in enumerate(['E', 'px', 'py', 'pz']):
-            # need to take into account offset: fatjets start at num_jets
-            features[:, num_jets + fatjet_idx, comp_idx] = getattr(fatjets_p4[:, fatjet_idx], comp_name)
-
-    lep1_p4 = vector.zip({'pt': branches['lep1_pt'], 
-                          'eta': branches['lep1_eta'],
-                          'phi': branches['lep1_phi'],
-                          'mass': branches['lep1_mass']})
-    offset = num_jets + num_fatjets
-    for comp_idx, comp_name in enumerate(['E', 'px', 'py', 'pz']):
-        # lep1 starts at num_jets + num_fatjets
-        features[:, offset, comp_idx] = getattr(lep1_p4, comp_name)
-
-    if channel == 'DL':
-        lep2_p4 = vector.zip({'pt': branches['lep2_pt'], 
-                              'eta': branches['lep2_eta'],
-                              'phi': branches['lep2_phi'],
-                              'mass': branches['lep2_mass']})
-        offset += 1
-        for comp_idx, comp_name in enumerate(['E', 'px', 'py', 'pz']):
-            # lep2 starts at num_jets + num_fatjets + 1 (after lep1)
-            features[:, offset, comp_idx] = getattr(lep2_p4, comp_name)
-
-    met_p4 = vector.zip({'pt': branches['PuppiMET_pt'], 
-                         'eta': 0.0,
-                         'phi': branches['PuppiMET_phi'],
-                         'mass': 0.0})
-    offset += 1
-    for comp_idx, comp_name in enumerate(['E', 'px', 'py', 'pz']):
-        # met starts at num_jets + num_fatjets + 2
-        features[:, offset, comp_idx] = getattr(met_p4, comp_name)
-
-    # now deal with labels - compute X_p4 = Hbb_p4 + Hww_p4
-    Hbb_p4 = vector.zip({'pt': branches['genHbb_pt'], 
-                         'eta': branches['genHbb_eta'],
-                         'phi': branches['genHbb_phi'],
-                         'mass': branches['genHbb_mass']})
     
-    HVV_p4 = vector.zip({'pt': branches['genHVV_pt'], 
-                         'eta': branches['genHVV_eta'],
-                         'phi': branches['genHVV_phi'],
-                         'mass': branches['genHVV_mass']})
-
-    X_p4 = Hbb_p4 + HVV_p4
-
-    for comp_idx, comp_name in enumerate(['E', 'px', 'py', 'pz']):
-        labels[:, 0, comp_idx] = getattr(X_p4, comp_name)
-
+    def make_p4(pt, eta, phi, mass):
+        """Create a 4-vector from pt, eta, phi, mass."""
+        return vector.zip({'pt': pt, 'eta': eta, 'phi': phi, 'mass': mass})
+    
+    def make_p4_from_branches(branches, prefix):
+        """Create a 4-vector from branches with a common prefix."""
+        return make_p4(
+            branches[f'{prefix}_pt'],
+            branches[f'{prefix}_eta'],
+            branches[f'{prefix}_phi'],
+            branches[f'{prefix}_mass']
+        )
+    
+    def extract_cartesian(p4):
+        """Extract [E, px, py, pz] as a stacked numpy array."""
+        return np.stack([p4.E, p4.px, p4.py, p4.pz], axis=-1)
+    
+    def process_collection(branches, prefix, num_objects):
+        """Process a variable-length collection (jets/fatjets) into fixed-size array."""
+        keys = [f'{prefix}_{var}' for var in ('pt', 'eta', 'phi', 'mass')]
+        padded = ak.pad_none(branches[keys], num_objects, clip=True)
+        padded = ak.fill_none(padded, 0.0)
+        p4 = make_p4(padded[keys[0]], padded[keys[1]], padded[keys[2]], padded[keys[3]])
+        # Extract all objects at once: shape [N_events, num_objects, 4]
+        return np.stack([
+            np.asarray(getattr(p4, comp)) for comp in ('E', 'px', 'py', 'pz')
+        ], axis=-1)
+    
+    # Validate channel
+    if channel not in ('SL', 'DL'):
+        raise RuntimeError(f"Illegal channel {channel}.")
+    
+    # Build branch list dynamically to load only what's needed
+    base_branches = [
+        "lep1_pt", "lep1_eta", "lep1_phi", "lep1_mass",
+        "PuppiMET_pt", "PuppiMET_phi",
+        "centralJet_pt", "centralJet_eta", "centralJet_phi", "centralJet_mass",
+        "SelectedFatJet_pt", "SelectedFatJet_eta", "SelectedFatJet_phi", "SelectedFatJet_mass",
+        "genHbb_pt", "genHbb_eta", "genHbb_phi", "genHbb_mass",
+        "genHVV_pt", "genHVV_eta", "genHVV_phi", "genHVV_mass",
+    ]
+    if channel == 'DL':
+        base_branches.extend(["lep2_pt", "lep2_eta", "lep2_phi", "lep2_mass"])
+    
+    # Load data
+    with uproot.open(input_path) as file:
+        branches = file[tree_name].arrays(base_branches)
+    
+    # Apply selection
+    lepton_selection = branches["lep1_pt"] > 0.0
+    if channel == 'DL':
+        lepton_selection = lepton_selection & (branches["lep2_pt"] > 0.0)
+    branches = branches[lepton_selection]
+    
+    # Calculate dimensions
+    num_leptons = 2 if channel == 'DL' else 1
+    tot_num_particles = num_jets + num_fatjets + num_leptons + 1  # +1 for MET
+    N_events = len(branches)
+    
+    # Pre-allocate output arrays
+    features = np.empty((N_events, tot_num_particles, 4), dtype=np.float32)
+    labels = np.empty((N_events, 1, 4), dtype=np.float32)
+    
+    # Fill features using slicing (avoid per-index loops)
+    offset = 0
+    
+    # Jets
+    features[:, offset:offset + num_jets, :] = process_collection(
+        branches, 'centralJet', num_jets
+    )
+    offset += num_jets
+    
+    # Fat jets
+    features[:, offset:offset + num_fatjets, :] = process_collection(
+        branches, 'SelectedFatJet', num_fatjets
+    )
+    offset += num_fatjets
+    
+    # Lepton 1
+    features[:, offset, :] = extract_cartesian(make_p4_from_branches(branches, 'lep1'))
+    offset += 1
+    
+    # Lepton 2 (DL only)
+    if channel == 'DL':
+        features[:, offset, :] = extract_cartesian(make_p4_from_branches(branches, 'lep2'))
+        offset += 1
+    
+    # MET
+    met_p4 = make_p4(branches['PuppiMET_pt'], 0.0, branches['PuppiMET_phi'], 0.0)
+    features[:, offset, :] = extract_cartesian(met_p4)
+    
+    # Labels: X = Hbb + HVV
+    X_p4 = make_p4_from_branches(branches, 'genHbb') + make_p4_from_branches(branches, 'genHVV')
+    labels[:, 0, :] = extract_cartesian(X_p4)
+    
     return features, labels
 
 def main():
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     mm = MemoryMonitor()
-    mm.print_memory_usage(msg="Training transformer")
+    mm.print_memory_usage(msg=f"Training transformer on {device}")
 
-    input_path = "/home/artem/Desktop/CMS/data/DeepHME/big_file_DL_M700.root"
-    features, labels = prepare_input_vectors(input_path=input_path,
+    train_file_path = "/home/artem/Desktop/CMS/data/DeepHME/big_file_DL_M700.root"
+    X_train, y_train = prepare_input_vectors(input_path=train_file_path,
                                              tree_name="Events",
                                              channel='DL',
                                              num_jets=10,
                                              num_fatjets=2)
-    mm.print_memory_usage(msg=f"After loading root file, shapes: {features.shape}, {labels.shape}")
+    mm.print_memory_usage(msg=f"After loading train root file, shapes: {X_train.shape}, {y_train.shape}")
+
+    # TODO: load validation data
+    # will do when I have file
+    
+     
 
 if __name__ == "__main__":
     main()
