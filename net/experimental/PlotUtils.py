@@ -205,8 +205,8 @@ def PlotPRC(*,
 
     plt.plot(precision, recall, linewidth=2, **kwargs)
     plt.title('Precision-Recall Curve (PRC)')
-    plt.xlabel('Precision')
-    plt.ylabel('Recall')
+    plt.ylabel('Precision')
+    plt.xlabel('Recall')
     plt.grid(True)
     ax = plt.gca()
     ax.set_aspect('equal')
