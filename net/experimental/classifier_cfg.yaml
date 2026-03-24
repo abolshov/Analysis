@@ -10,11 +10,13 @@ hyperparameters:
   dropout: 0.2
   batch_size: 8192
   epochs: 80
-  # learning_rate: 0.0003
+
+class_weights: True
+minority_class_oversampling: False
 
 multiclass: False
 output_activation: sigmoid
-output_bias: -4.6
+output_bias: null
 classification_threshold: 0.5
 
 loss:
