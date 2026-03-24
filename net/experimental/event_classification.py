@@ -65,13 +65,10 @@ def main():
     clean_mask_train, X_train = clean_extreme_values(data=X_train)
     mm.print_memory_usage(msg=f"After cleaning: {X_train.shape}")
 
-    weights_train = load_file(tree_name="weight_tree", 
-                              file_path=train_weight_file_path, 
-                              list_of_branches=["class_weight", "class_target"],
-                              convert_to_numpy=False)
-
-    train_sample_weights = weights_train["class_weight"].to_numpy() # may add later for sample_weights
-    y_train = weights_train["class_target"].to_numpy()
+    y_train = load_file(tree_name="weight_tree", 
+                        file_path=train_weight_file_path, 
+                        list_of_branches=["class_target"],
+                        convert_to_numpy=True)
     y_train = y_train[clean_mask_train]
 
     multiclass = cfg['multiclass']
@@ -100,13 +97,11 @@ def main():
                       list_of_branches=branches_to_load,
                       convert_to_numpy=True)
     
-    weights_val = load_file(tree_name="weight_tree", 
-                            file_path=val_weight_file_path, 
-                            list_of_branches=["class_weight", "class_target"],
-                            convert_to_numpy=False)
+    y_val = load_file(tree_name="weight_tree", 
+                     file_path=val_weight_file_path, 
+                     list_of_branches=["class_target"],
+                     convert_to_numpy=True)
 
-    val_sample_weights = weights_val["class_weight"].to_numpy() # may add later for sample_weights
-    y_val = weights_val["class_target"].to_numpy()
     if not multiclass:
         y_val = 1 - y_val
 
@@ -130,7 +125,6 @@ def main():
     for _ in range(num_hidden_layers):
         # x = tf.keras.layers.Dense(num_units)(x)
         # x = tf.keras.layers.BatchNormalization()(x)
-        # x = ResidualBlock(units=num_units, activation="swish")(x)
         x = ResidualBlock(units=num_units, activation="swish")(x)
         # x = tf.keras.activations.swish(x)
         x = tf.keras.layers.Dropout(dropout)(x)
@@ -176,10 +170,8 @@ def main():
         tf.keras.metrics.Recall(name='Recall'),
         tf.keras.metrics.AUC(name='AUC'),
         tf.keras.metrics.AUC(name='PRC', curve='PR'),
-        # tf.keras.metrics.F1Score(name='F1'),
     ]
 
-    # learning_rate = hyperparameters['learning_rate']
     loss_cfg = cfg["loss"]
     loss_instance = tf.keras.losses.get(loss_cfg)
     optimizer_cfg = cfg['optimizer']
