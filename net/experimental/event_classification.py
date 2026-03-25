@@ -198,10 +198,20 @@ def main():
     val_ds = make_dataset(features=X_val, labels=y_val, batch_size=batch_size)
     mm.print_memory_usage(msg="After making datasets")
 
-    # callbacks = [
-    #     # tf.keras.callbacks.EarlyStopping(monitor="val_Precision", patience=5, restore_best_weights=True, mode='max'),
-    #     tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
-    # ]
+    callbacks = [
+        tf.keras.callbacks.EarlyStopping(monitor="val_Precision",
+                                         mode="max", 
+                                         patience=15, 
+                                         restore_best_weights=True, 
+                                         start_from_epoch=20,
+                                         baseline=0.25),
+        # tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
+        tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
+                                           monitor="val_Precision",
+                                           mode="max",
+                                           save_best_only=True,
+                                           initial_value_threshold=0.25)
+    ]
 
     # fit model
     epochs = hyperparameters['epochs']
@@ -210,7 +220,8 @@ def main():
                         validation_data=val_ds,
                         class_weight=class_weight_dict,
                         verbose=0,
-                        epochs=epochs)
+                        epochs=epochs,
+                        callbacks=callbacks)
     print("... Done!")
     
     PlotMetric(history, model.name, "loss", plotting_dir=model_dir)
