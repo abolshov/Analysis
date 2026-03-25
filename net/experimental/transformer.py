@@ -19,6 +19,16 @@ from MiscUtils import MemoryMonitor
 from typing import Tuple, Dict, List
 import numpy.typing as npt
 
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class NormalizationParams:
+    feature_mean: npt.NDArray
+    feature_std: npt.NDArray
+    label_mean: npt.NDArray
+    label_std: npt.NDArray
+
 class Transformer(nn.Module):
     def __init__(self,
                  *,
@@ -88,32 +98,41 @@ class DeepHMEDataset(Dataset):
                  channel: str,
                  num_jets: int,
                  num_fatjets: int,
-                 normalize: bool,
-                 device: torch.device | None = None):
+                 normalize: bool = False,
+                 device: torch.device | None = None,
+                 norm_params: Optional[NormalizationParams] = None):
         
-        features, labels = prepare_input_vectors(
+        features, labels, computed_norm_params = prepare_input_vectors(
             input_path=file_path,
             tree_name=tree_name,
             channel=channel,
             num_jets=num_jets,
             num_fatjets=num_fatjets,
-            normalize=normalize
+            normalize=normalize,
+            norm_params=norm_params
         )
         
-        # Zero-copy if already float32, otherwise converts
         self.features = torch.as_tensor(features, dtype=torch.float32)
         self.labels = torch.as_tensor(labels, dtype=torch.float32)
-        
-        # Optional: move to device (useful for small datasets that fit in GPU)
+        self.norm_params = computed_norm_params
+
         if device is not None:
             self.features = self.features.to(device)
             self.labels = self.labels.to(device)
     
     def __len__(self) -> int:
-        return self.features.shape[0]  # More explicit than len(self.labels)
+        return self.features.shape[0]
     
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         return self.features[idx], self.labels[idx]
+    
+    def denormalize_labels(self, normalized_labels: torch.Tensor) -> torch.Tensor:
+        """Convert model predictions back to physical units."""
+        if self.norm_params is None:
+            return normalized_labels
+        mean = torch.as_tensor(self.norm_params.label_mean, dtype=torch.float32)
+        std = torch.as_tensor(self.norm_params.label_std, dtype=torch.float32)
+        return normalized_labels * std + mean
     
     @property
     def num_particles(self) -> int:
@@ -129,7 +148,8 @@ def prepare_input_vectors(*,
                           channel: str,
                           num_jets: int,
                           num_fatjets: int,
-                          normalize: bool) -> Tuple[npt.NDArray, npt.NDArray]:
+                          normalize: bool,
+                          norm_params: Optional[NormalizationParams] = None) -> Tuple[npt.NDArray, npt.NDArray, Optional[NormalizationParams]]:
     
     def make_p4(pt, eta, phi, mass):
         """Create a 4-vector from pt, eta, phi, mass."""
@@ -227,20 +247,35 @@ def prepare_input_vectors(*,
     labels[:, 0, :] = extract_cartesian(X_p4)
     
     if normalize:
-        feature_scaler = StandardScaler(copy=False)
-        label_scaler = StandardScaler(copy=False)
-
-        n_events, n_particles, n_components = features.shape 
-        features_flattened = features.reshape(n_events, n_particles*n_components)
-        labels_flattened = labels.reshape(n_events, n_components) # labels is single 4-vector
-
-        features_normalized = feature_scaler.fit_transform(features_flattened)
-        labels_normalized = label_scaler.fit_transform(labels_flattened)
-
-        features = features_normalized.reshape(n_events, n_particles, n_components)
-        labels = labels_normalized.reshape(n_events, 1, n_components)
-
-    return features, labels
+        n_events, n_particles, n_components = features.shape
+        features_flat = features.reshape(n_events, -1)
+        labels_flat = labels.reshape(n_events, -1)
+        
+        if norm_params is None:
+            # Training: compute normalization parameters
+            feature_mean = features_flat.mean(axis=0)
+            feature_std = features_flat.std(axis=0)
+            feature_std[feature_std == 0] = 1.0  # Avoid division by zero
+            
+            label_mean = labels_flat.mean(axis=0)
+            label_std = labels_flat.std(axis=0)
+            label_std[label_std == 0] = 1.0
+            
+            norm_params = NormalizationParams(
+                feature_mean=feature_mean,
+                feature_std=feature_std,
+                label_mean=label_mean,
+                label_std=label_std
+            )
+        
+        # Apply normalization (works for both train and inference)
+        features_flat = (features_flat - norm_params.feature_mean) / norm_params.feature_std
+        labels_flat = (labels_flat - norm_params.label_mean) / norm_params.label_std
+        
+        features = features_flat.reshape(n_events, n_particles, n_components)
+        labels = labels_flat.reshape(n_events, 1, n_components)
+    
+    return features, labels, norm_params if normalize else None
 
 def get_loader(*,
                file_path: str | os.PathLike,
@@ -251,7 +286,8 @@ def get_loader(*,
                batch_size: int,
                normalize: bool,
                num_workers: int,
-               device: torch.device | None = None) -> DataLoader:
+               device: torch.device | None = None,
+               norm_params: Optional[NormalizationParams] = None) -> Tuple[DataLoader, Optional[NormalizationParams]]:
     
     ds = DeepHMEDataset(
         file_path=file_path,
@@ -260,6 +296,7 @@ def get_loader(*,
         num_jets=num_jets,
         num_fatjets=num_fatjets,
         normalize=normalize,
+        norm_params=norm_params,
         device=device
     )
 
@@ -271,7 +308,7 @@ def get_loader(*,
         pin_memory=True
     )
 
-    return loader
+    return loader, ds.norm_params
 
 def plot_training_history(*,
                           history: Dict[str, npt.NDArray], 
@@ -310,42 +347,52 @@ def main():
     mm.print_memory_usage(msg=f"Training transformer on {device}")
 
     train_file_path = "/home/artem/Desktop/CMS/data/DeepHME/big_file_DL_M700.root"
-    train_loader = get_loader(
+    train_loader, train_norm = get_loader(
         file_path=train_file_path,
         tree_name="Events",
         channel="DL",
         num_jets=10,
         num_fatjets=2,
-        batch_size=512,
-        normalize=False,
+        batch_size=128,
+        normalize=True,
+        norm_params= None,
         num_workers=2,
     )
     mm.print_memory_usage(msg=f"After creating train loader with {len(train_loader)} batches")
 
     val_file_path = "/home/artem/Desktop/CMS/data/DeepHME/Run3_2023BPix/XtoYHto2B2Wto2B2L2Nu_MX_700_MY_125/anaTuple_0.root"
-    val_loader = get_loader(
+    val_loader, _ = get_loader(
         file_path=val_file_path,
         tree_name="Events",
         channel="DL",
         num_jets=10,
         num_fatjets=2,
-        batch_size=512,
-        normalize=False,
+        batch_size=128,
+        normalize=True,
+        norm_params=train_norm,
         num_workers=2,
     )
     mm.print_memory_usage(msg=f"After creating validation loader with {len(val_loader)} batches")
 
-    model = Transformer().to(device)
+    model = Transformer(hidden_dim=128, num_layers=3).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.0003)
-    
+
+    num_epochs = 30
+    num_steps = len(train_loader)*num_epochs
+    cosine = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
+    n_warmup_steps = 5000
+    warmup = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda step: min((step + 1)/n_warmup_steps, 1.0))
+    scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, 
+                                                      schedulers=[warmup, cosine], 
+                                                      milestones=[n_warmup_steps])
+
     history = {
         'loss': [],
         'val_loss': []
     }
 
     # Training loop
-    num_epochs = 20
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0
@@ -358,6 +405,7 @@ def main():
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            scheduler.step()
             train_loss += loss.item()
         
         # Validation
@@ -384,6 +432,7 @@ def main():
         print(f'\tval_loss: {val_loss:.4f}')
 
     model_dir = os.path.join("/home/artem/Desktop/CMS/models/Transformer/")
+    os.makedirs(model_dir, exist_ok=True)
     plot_training_history(history=history, 
                           plot_name="loss",
                           plotting_dir=model_dir)    
