@@ -1,4 +1,4 @@
-model_name: 'BinaryClassifier_SL_BFCE'
+model_name: 'sandbox'
 training_directory: '/home/artem/Desktop/CMS/models/classifiers'
 
 hyperparameters:
@@ -9,7 +9,7 @@ hyperparameters:
   num_hidden_layers: 3
   dropout: 0.2
   batch_size: 8192
-  epochs: 80
+  epochs: 100
 
 class_weights: True
 minority_class_oversampling: False
@@ -22,7 +22,7 @@ classification_threshold: 0.5
 loss:
   class_name: BinaryFocalCrossentropy
   config: 
-    gamma: 2.5
+    gamma: 2.75
 
 optimizer:
   class_name: Adam
@@ -102,7 +102,7 @@ extra_branches:
   # 'fatbjet_neMultiplicity'
   - 'min_dR_b_hadW'
   - 'ratio_pT_hadT_const' 
-  - 'fatbjet_tau3' 
+  # - 'fatbjet_tau3' 
   - 'light_jet1_btagPNetB'
   - 'pTtoE_ratio_Hww'
   - 'm_Hww'
