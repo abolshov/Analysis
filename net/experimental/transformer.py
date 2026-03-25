@@ -36,7 +36,8 @@ class Transformer(nn.Module):
                  hidden_dim: int = 64, 
                  num_heads: int = 4, 
                  num_layers: int = 2, 
-                 output_dim: int = 4) -> None:
+                 output_dim: int = 4,
+                 dropout : float = 0.1) -> None:
         super(Transformer, self).__init__()
         
         # Input projection
@@ -44,7 +45,7 @@ class Transformer(nn.Module):
             nn.Linear(input_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
-            nn.Dropout(0.1)
+            nn.Dropout(dropout)
         )
         
         # Transformer encoder layers
@@ -54,7 +55,7 @@ class Transformer(nn.Module):
             nhead=num_heads,
             dim_feedforward=hidden_dim * 4,
             batch_first=True,
-            dropout=0.1,
+            dropout=dropout,
             activation='gelu'  # Using GELU as in the paper
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
@@ -64,11 +65,11 @@ class Transformer(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
-            nn.Dropout(0.1),
+            nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
-            nn.Dropout(0.1),
+            nn.Dropout(dropout),
             nn.Linear(hidden_dim, output_dim)
         )
     
@@ -346,17 +347,23 @@ def main():
     mm = MemoryMonitor()
     mm.print_memory_usage(msg=f"Training transformer on {device}")
 
+    num_jets = 6
+    num_fatjets = 1
+    batch_size = 128
+    num_workers = 2
+    num_epochs = 10
+
     train_file_path = "/home/artem/Desktop/CMS/data/DeepHME/big_file_DL_M700.root"
     train_loader, train_norm = get_loader(
         file_path=train_file_path,
         tree_name="Events",
         channel="DL",
-        num_jets=10,
-        num_fatjets=2,
-        batch_size=128,
+        num_jets=num_jets,
+        num_fatjets=num_fatjets,
+        batch_size=batch_size,
         normalize=True,
-        norm_params= None,
-        num_workers=2,
+        norm_params=None,
+        num_workers=num_workers,
     )
     mm.print_memory_usage(msg=f"After creating train loader with {len(train_loader)} batches")
 
@@ -365,27 +372,28 @@ def main():
         file_path=val_file_path,
         tree_name="Events",
         channel="DL",
-        num_jets=10,
-        num_fatjets=2,
-        batch_size=128,
+        num_jets=num_jets,
+        num_fatjets=num_fatjets,
+        batch_size=batch_size,
         normalize=True,
         norm_params=train_norm,
-        num_workers=2,
+        num_workers=num_workers
     )
     mm.print_memory_usage(msg=f"After creating validation loader with {len(val_loader)} batches")
 
-    model = Transformer(hidden_dim=128, num_layers=3).to(device)
+    model = Transformer().to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.0003)
+    optimizer = optim.AdamW(model.parameters(), 
+                            lr=0.001,
+                            weight_decay=0.01)
 
-    num_epochs = 30
-    num_steps = len(train_loader)*num_epochs
-    cosine = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
-    n_warmup_steps = 5000
-    warmup = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda step: min((step + 1)/n_warmup_steps, 1.0))
-    scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, 
-                                                      schedulers=[warmup, cosine], 
-                                                      milestones=[n_warmup_steps])
+    # num_steps = len(train_loader)*num_epochs
+    # cosine = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
+    # n_warmup_steps = 2000
+    # warmup = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda step: min((step + 1)/n_warmup_steps, 1.0))
+    # scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, 
+    #                                                   schedulers=[warmup, cosine], 
+    #                                                   milestones=[n_warmup_steps])
 
     history = {
         'loss': [],
@@ -405,7 +413,7 @@ def main():
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            # scheduler.step()
             train_loss += loss.item()
         
         # Validation
