@@ -88,6 +88,7 @@ class DeepHMEDataset(Dataset):
                  channel: str,
                  num_jets: int,
                  num_fatjets: int,
+                 normalize: bool,
                  device: torch.device | None = None):
         
         features, labels = prepare_input_vectors(
@@ -95,7 +96,8 @@ class DeepHMEDataset(Dataset):
             tree_name=tree_name,
             channel=channel,
             num_jets=num_jets,
-            num_fatjets=num_fatjets
+            num_fatjets=num_fatjets,
+            normalize=normalize
         )
         
         # Zero-copy if already float32, otherwise converts
@@ -126,7 +128,8 @@ def prepare_input_vectors(*,
                           tree_name: str,
                           channel: str,
                           num_jets: int,
-                          num_fatjets: int) -> Tuple[npt.NDArray, npt.NDArray]:
+                          num_fatjets: int,
+                          normalize: bool) -> Tuple[npt.NDArray, npt.NDArray]:
     
     def make_p4(pt, eta, phi, mass):
         """Create a 4-vector from pt, eta, phi, mass."""
@@ -223,6 +226,20 @@ def prepare_input_vectors(*,
     X_p4 = make_p4_from_branches(branches, 'genHbb') + make_p4_from_branches(branches, 'genHVV')
     labels[:, 0, :] = extract_cartesian(X_p4)
     
+    if normalize:
+        feature_scaler = StandardScaler(copy=False)
+        label_scaler = StandardScaler(copy=False)
+
+        n_events, n_particles, n_components = features.shape 
+        features_flattened = features.reshape(n_events, n_particles*n_components)
+        labels_flattened = labels.reshape(n_events, n_components) # labels is single 4-vector
+
+        features_normalized = feature_scaler.fit_transform(features_flattened)
+        labels_normalized = label_scaler.fit_transform(labels_flattened)
+
+        features = features_normalized.reshape(n_events, n_particles, n_components)
+        labels = labels_normalized.reshape(n_events, 1, n_components)
+
     return features, labels
 
 def get_loader(*,
@@ -232,6 +249,7 @@ def get_loader(*,
                num_jets: int,
                num_fatjets: int,
                batch_size: int,
+               normalize: bool,
                num_workers: int,
                device: torch.device | None = None) -> DataLoader:
     
@@ -241,6 +259,7 @@ def get_loader(*,
         channel=channel,
         num_jets=num_jets,
         num_fatjets=num_fatjets,
+        normalize=normalize,
         device=device
     )
 
@@ -297,6 +316,7 @@ def main():
         num_jets=10,
         num_fatjets=2,
         batch_size=512,
+        normalize=False,
         num_workers=2,
     )
     mm.print_memory_usage(msg=f"After creating train loader with {len(train_loader)} batches")
@@ -309,6 +329,7 @@ def main():
         num_jets=10,
         num_fatjets=2,
         batch_size=512,
+        normalize=False,
         num_workers=2,
     )
     mm.print_memory_usage(msg=f"After creating validation loader with {len(val_loader)} batches")
