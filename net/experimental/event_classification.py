@@ -27,6 +27,7 @@ import gc
 tf.random.set_seed(42)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
+np.random.seed(42)
 
 def main():
     mm = MemoryMonitor()
@@ -70,6 +71,7 @@ def main():
                         list_of_branches=["class_target"],
                         convert_to_numpy=True)
     y_train = y_train[clean_mask_train]
+    y_train = y_train.reshape(-1)
 
     multiclass = cfg['multiclass']
     if not multiclass:
@@ -90,6 +92,11 @@ def main():
 
     mm.print_memory_usage(msg=f"Loaded {X_train.shape[1]} variables for {X_train.shape[0]} events for training set")
 
+    # shuffle train set
+    indices = np.random.permutation(len(X_train))
+    X_train = X_train[indices]
+    y_train = y_train[indices]
+
     val_parity = hyperparameters['validation_parity']
     val_event_file_path, val_weight_file_path = parity_file_map[val_parity]
     X_val = load_file(tree_name="Events", 
@@ -101,6 +108,7 @@ def main():
                      file_path=val_weight_file_path, 
                      list_of_branches=["class_target"],
                      convert_to_numpy=True)
+    y_val = y_val.reshape(-1)
 
     if not multiclass:
         y_val = 1 - y_val
@@ -182,20 +190,26 @@ def main():
         metrics=metrics
     )
 
-    train_ds = make_dataset(features=X_train, labels=y_train)
-    val_ds = make_dataset(features=X_val, labels=y_val)
+    batch_size = hyperparameters['batch_size']
+    train_ds = make_dataset(features=X_train, 
+                            labels=y_train,
+                            batch_size=batch_size,
+                            shuffle=True)
+    val_ds = make_dataset(features=X_val, labels=y_val, batch_size=batch_size)
     mm.print_memory_usage(msg="After making datasets")
 
+    # callbacks = [
+    #     # tf.keras.callbacks.EarlyStopping(monitor="val_Precision", patience=5, restore_best_weights=True, mode='max'),
+    #     tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
+    # ]
+
     # fit model
-    batch_size = hyperparameters['batch_size']
     epochs = hyperparameters['epochs']
     print("Training the model ...")
     history = model.fit(train_ds, 
-                        shuffle=True,
                         validation_data=val_ds,
                         class_weight=class_weight_dict,
                         verbose=0,
-                        batch_size=batch_size,
                         epochs=epochs)
     print("... Done!")
     
@@ -205,6 +219,7 @@ def main():
 
     model.save(os.path.join(model_dir, f"{model.name}.keras"))
 
+    mm.print_memory_usage(msg=f"Before memory clean-up.")
     del X_train
     del y_train
     del X_val
@@ -241,7 +256,9 @@ def main():
 
     PlotROC(labels=y_test,
             predictions=test_pred,
-            plotdir=model_dir)
+            plotdir=model_dir,
+            xlim=[-0.5, 100.5],
+            ylim=[-0.5, 100.5])
     
     PlotPRC(labels=y_test,
             predictions=test_pred,

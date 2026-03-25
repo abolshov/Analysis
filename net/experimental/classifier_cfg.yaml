@@ -16,7 +16,7 @@ minority_class_oversampling: False
 
 multiclass: False
 output_activation: sigmoid
-output_bias: null
+output_bias: exact
 classification_threshold: 0.5
 
 loss:

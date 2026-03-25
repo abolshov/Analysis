@@ -117,9 +117,21 @@ def load_file(*,
     return branches
 
 def make_dataset(*,
-                 features: NDArray,
-                 labels: NDArray) -> tf.data.Dataset:
-    return tf.data.Dataset.from_tensor_slices(features, labels)
+                 features: np.ndarray,
+                 labels: np.ndarray,
+                 batch_size: int,
+                 shuffle: bool = False,
+                 buffer_size: int = 10000) -> tf.data.Dataset:
+    
+    ds = tf.data.Dataset.from_tensor_slices((features, labels))
+    
+    if shuffle:
+        ds = ds.shuffle(buffer_size=buffer_size)
+    
+    ds = ds.batch(batch_size)
+    ds = ds.prefetch(tf.data.AUTOTUNE)  # Improves performance
+    
+    return ds
 
 def nearest_pow2(n: int) -> int:
     if n <= 0:
