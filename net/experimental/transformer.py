@@ -276,7 +276,8 @@ def get_loader(*,
 def plot_training_history(*,
                           history: Dict[str, npt.NDArray], 
                           plot_name: str,
-                          metrics: List[str] = ['loss', 'accuracy']):
+                          plotting_dir: str | os.PathLike,
+                          metrics: List[str] = ['loss']):
     """
     Plot training history for neural networks
     """
@@ -299,7 +300,7 @@ def plot_training_history(*,
         ax.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f"{plot_name}.pdf", format="pdf")
+    plt.savefig(os.path.join(plotting_dir, f"{plot_name}.pdf"), format="pdf")
     plt.clf()
     plt.close()
 
@@ -382,9 +383,12 @@ def main():
         print(f'\ttrain_loss: {train_loss:.4f}')
         print(f'\tval_loss: {val_loss:.4f}')
 
+    model_dir = os.path.join("/home/artem/Desktop/CMS/models/Transformer/")
     plot_training_history(history=history, 
-                          plot_name="loss_transformer", 
-                          metrics=["loss"])    
+                          plot_name="loss",
+                          plotting_dir=model_dir)    
+
+    torch.save(model, os.path.join(model_dir, "transformer.pth"))
 
 if __name__ == "__main__":
     main()
