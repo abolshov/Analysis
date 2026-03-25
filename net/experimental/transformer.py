@@ -6,6 +6,8 @@ import numpy as np
 import vector
 import matplotlib.pyplot as plt
 
+from sklearn.preprocessing import StandardScaler
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
