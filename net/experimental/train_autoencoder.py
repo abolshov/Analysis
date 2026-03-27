@@ -89,13 +89,27 @@ def main():
 
     X_bkg_train = (X_bkg_train - train_mins)/(train_maxs - train_mins)
 
+    # encoder part
     inputs = tf.keras.Input(shape=(X_bkg_train.shape[1],))
     x = tf.keras.layers.Identity()(inputs)
-    for dim in [64, 32, 16, 8]:
-        x = tf.keras.layers.Dense(dim, activation='relu')(x)
+    x = tf.keras.layers.GaussianNoise(0.1)(x)
+    # [64, 48, 24, 12] ? 
+    for dim in [64, 32, 16]:
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Dense(dim, activation='swish')(x)
+        # x = tf.keras.layers.Dropout(0.1)(x)
 
+    # bottleneck part
+    x = tf.keras.layers.Dropout(0.1)(x)
+    x = tf.keras.layers.GaussianNoise(0.1)(x)
+    x = tf.keras.layers.Dense(8, activation='swish')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+
+    # decoder part
     for dim in [16, 32, 64]:
-        x = tf.keras.layers.Dense(dim, activation='relu')(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Dense(dim, activation='swish')(x)
+        # x = tf.keras.layers.Dropout(0.1)(x)
 
     outputs = tf.keras.layers.Dense(input_dim, activation='sigmoid')(x)
 
@@ -104,7 +118,7 @@ def main():
                                              name="autoencoder")
     
     anomaly_detector.compile(
-        loss=tf.keras.losses.LogCosh(),
+        loss=tf.keras.losses.MeanSquaredError(),
         optimizer=tf.keras.optimizers.Adam(3e-4)    
     )
 
@@ -135,7 +149,7 @@ def main():
 
     callbacks = [
         tf.keras.callbacks.EarlyStopping(patience=20, restore_best_weights=True),
-        tf.keras.callbacks.ReduceLROnPlateau(patience=10)
+        tf.keras.callbacks.ReduceLROnPlateau(patience=20)
     ]
 
     train_history = anomaly_detector.fit(
