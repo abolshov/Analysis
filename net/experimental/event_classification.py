@@ -27,29 +27,29 @@ import gc
 tf.random.set_seed(42)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
+os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
 np.random.seed(42)
 
 def main():
     mm = MemoryMonitor()
     mm.print_memory_usage(msg="Training DNN for event classification")
 
+    with open ('config/classifier_cfg.yaml', 'r') as cfg_file:
+        cfg = yaml.safe_load(cfg_file)
+
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
     event_file_pattern = re.compile(r"nParity(\d)_Merged.root")
-    train_file_dir = "/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset"
+    train_file_dir = cfg["input_directory"]
     parity_file_map = map_input_files(directory=train_file_dir,
                                       weight_file_pattern=weight_file_pattern,
                                       event_file_pattern=event_file_pattern)
-    for p, (event_file, weight_file) in parity_file_map.items():
-        print(f"Parity {p}: event_file={event_file}, weight_file={weight_file}")
-
-
-    with open ('classifier_cfg.yaml', 'r') as cfg_file:
-        cfg = yaml.safe_load(cfg_file)
 
     hyperparameters = cfg['hyperparameters']
 
     train_parity = hyperparameters['training_parity']
     train_event_file_path, train_weight_file_path = parity_file_map[train_parity]
+    print(f"Data file for trainig: {train_event_file_path}")
+    print(f"Weight file for trainig: {train_weight_file_path}")
 
     use_extra_variables = hyperparameters['use_extra_branches']
 
@@ -131,10 +131,7 @@ def main():
     x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(inputs)
     x = tf.keras.layers.Dense(num_units, use_bias=False)(x)
     for _ in range(num_hidden_layers):
-        # x = tf.keras.layers.Dense(num_units)(x)
-        # x = tf.keras.layers.BatchNormalization()(x)
         x = ResidualBlock(units=num_units, activation="swish")(x)
-        # x = tf.keras.activations.swish(x)
         x = tf.keras.layers.Dropout(dropout)(x)
 
     # output layer
@@ -190,21 +187,46 @@ def main():
         metrics=metrics
     )
 
-    batch_size = hyperparameters['batch_size']
-    train_ds = make_dataset(features=X_train, 
-                            labels=y_train,
-                            batch_size=batch_size,
-                            shuffle=True)
+    batch_size = hyperparameters["batch_size"]
+    minority_class_oversampling = cfg["minority_class_oversampling"]
+    # in case of oversampling need steps_per_epoch
+    steps_per_epoch = None
+    if minority_class_oversampling:
+        if multiclass:
+            raise RuntimeError("Oversampling is not implemented in case of multi-label classification.")
+        train_signal_mask = y_train == 1
+        X_train_sig = X_train[train_signal_mask]
+        X_train_bkg = X_train[~train_signal_mask]
+        y_train_sig = y_train[train_signal_mask]
+        y_train_bkg = y_train[~train_signal_mask]
+        sig_ds = make_dataset(features=X_train_sig, 
+                              labels=y_train_sig,
+                              repeat_count=-1)
+        bkg_ds = make_dataset(features=X_train_bkg, 
+                              labels=y_train_bkg)
+        train_ds = tf.data.Dataset.sample_from_datasets([sig_ds, bkg_ds], 
+                                                        weights=[0.5, 0.5],
+                                                        seed=42,
+                                                        rerandomize_each_iteration=True)
+        train_ds = train_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+        steps_per_epoch = int(np.ceil(2.0*len(y_train_bkg)/batch_size))
+        print(f"Will apply minority class oversampling with {steps_per_epoch} steps per epoch")
+    else:
+        train_ds = make_dataset(features=X_train, 
+                                labels=y_train,
+                                batch_size=batch_size,
+                                shuffle=True)
+    # validation data will be as is
     val_ds = make_dataset(features=X_val, labels=y_val, batch_size=batch_size)
     mm.print_memory_usage(msg="After making datasets")
 
     callbacks = [
-        tf.keras.callbacks.EarlyStopping(monitor="val_Precision",
-                                         mode="max", 
-                                         patience=15, 
-                                         restore_best_weights=True, 
-                                         start_from_epoch=20,
-                                         baseline=0.25),
+        # tf.keras.callbacks.EarlyStopping(monitor="val_Precision",
+        #                                  mode="max", 
+        #                                  patience=15, 
+        #                                  restore_best_weights=True, 
+        #                                  start_from_epoch=20,
+        #                                  baseline=0.25),
         # tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
         tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
                                            monitor="val_Precision",
@@ -220,6 +242,7 @@ def main():
                         validation_data=val_ds,
                         class_weight=class_weight_dict,
                         verbose=0,
+                        steps_per_epoch=steps_per_epoch,
                         epochs=epochs,
                         callbacks=callbacks)
     print("... Done!")

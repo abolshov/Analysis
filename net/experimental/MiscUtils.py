@@ -119,8 +119,9 @@ def load_file(*,
 def make_dataset(*,
                  features: np.ndarray,
                  labels: np.ndarray,
-                 batch_size: int,
+                 batch_size: int | None = None,
                  shuffle: bool = False,
+                 repeat_count: int | None = 1,
                  buffer_size: int = 10000) -> tf.data.Dataset:
     
     ds = tf.data.Dataset.from_tensor_slices((features, labels))
@@ -128,8 +129,11 @@ def make_dataset(*,
     if shuffle:
         ds = ds.shuffle(buffer_size=buffer_size)
     
-    ds = ds.batch(batch_size)
-    ds = ds.prefetch(tf.data.AUTOTUNE)  # Improves performance
+    ds = ds.repeat(repeat_count)
+
+    if batch_size:
+        ds = ds.batch(batch_size)
+        ds = ds.prefetch(tf.data.AUTOTUNE)  # Improves performance
     
     return ds
 
