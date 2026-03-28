@@ -1,23 +1,23 @@
-model_name: 'binary_resolved_nParity3'
+model_name: 'oversampling'
 training_directory: '/home/artem/Desktop/CMS/models/classifiers'
 input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset'
 
 hyperparameters:
-  training_parity: 3
-  validation_parity: 0
-  test_parity: 1
+  training_parity: 0
+  validation_parity: 2
+  test_parity: 3
   use_extra_branches: True
   num_hidden_layers: 3
   dropout: 0.2
   batch_size: 8192
-  epochs: 100
+  epochs: 50
 
-class_weights: True
-minority_class_oversampling: False
+class_weights: False
+minority_class_oversampling: True
 
 multiclass: False
 output_activation: sigmoid
-output_bias: exact
+output_bias: null
 classification_threshold: 0.5
 
 loss:

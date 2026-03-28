@@ -201,9 +201,12 @@ def main():
         y_train_bkg = y_train[~train_signal_mask]
         sig_ds = make_dataset(features=X_train_sig, 
                               labels=y_train_sig,
-                              repeat_count=-1)
+                              repeat_count=-1,
+                              shuffle=True)
         bkg_ds = make_dataset(features=X_train_bkg, 
-                              labels=y_train_bkg)
+                              labels=y_train_bkg,
+                              repeat_count=-1,
+                              shuffle=True)
         train_ds = tf.data.Dataset.sample_from_datasets([sig_ds, bkg_ds], 
                                                         weights=[0.5, 0.5],
                                                         seed=42,
@@ -221,12 +224,8 @@ def main():
     mm.print_memory_usage(msg="After making datasets")
 
     callbacks = [
-        # tf.keras.callbacks.EarlyStopping(monitor="val_Precision",
-        #                                  mode="max", 
-        #                                  patience=15, 
-        #                                  restore_best_weights=True, 
-        #                                  start_from_epoch=20,
-        #                                  baseline=0.25),
+        # tf.keras.callbacks.EarlyStopping(patience=10, 
+        #                                  restore_best_weights=True),
         # tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
         tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
                                            monitor="val_Precision",
