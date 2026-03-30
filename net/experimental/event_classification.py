@@ -188,7 +188,8 @@ def main():
     )
 
     batch_size = hyperparameters["batch_size"]
-    minority_class_oversampling = cfg["minority_class_oversampling"]
+    oversampling_cfg = cfg["minority_class_oversampling"]
+    minority_class_oversampling = oversampling_cfg["apply_oversampling"]
     # in case of oversampling need steps_per_epoch
     steps_per_epoch = None
     if minority_class_oversampling:
@@ -207,10 +208,13 @@ def main():
                               labels=y_train_bkg,
                               repeat_count=-1,
                               shuffle=True)
+        sig_sampling_proba = oversampling_cfg["sig_sampling_proba"]
+        bkg_sampling_proba = oversampling_cfg["bkg_sampling_proba"]
+        rerandomize_sampling_order = oversampling_cfg["rerandomize_sampling_order"]
         train_ds = tf.data.Dataset.sample_from_datasets([sig_ds, bkg_ds], 
-                                                        weights=[0.5, 0.5],
+                                                        weights=[sig_sampling_proba, bkg_sampling_proba],
                                                         seed=42,
-                                                        rerandomize_each_iteration=True)
+                                                        rerandomize_each_iteration=rerandomize_sampling_order)
         train_ds = train_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
         steps_per_epoch = int(np.ceil(2.0*len(y_train_bkg)/batch_size))
         print(f"Will apply minority class oversampling with {steps_per_epoch} steps per epoch")
@@ -224,8 +228,8 @@ def main():
     mm.print_memory_usage(msg="After making datasets")
 
     callbacks = [
-        # tf.keras.callbacks.EarlyStopping(patience=10, 
-        #                                  restore_best_weights=True),
+        tf.keras.callbacks.EarlyStopping(patience=5, 
+                                         restore_best_weights=True),
         # tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
         tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
                                            monitor="val_Precision",

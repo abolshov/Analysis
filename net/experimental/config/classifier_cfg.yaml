@@ -1,19 +1,23 @@
-model_name: 'oversampling'
+model_name: 'test'
 training_directory: '/home/artem/Desktop/CMS/models/classifiers'
-input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset'
+input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2023BPix/Dataset'
 
 hyperparameters:
   training_parity: 0
-  validation_parity: 2
-  test_parity: 3
+  validation_parity: 1
+  test_parity: 2
   use_extra_branches: True
   num_hidden_layers: 3
   dropout: 0.2
   batch_size: 8192
-  epochs: 50
+  epochs: 20
 
 class_weights: False
-minority_class_oversampling: True
+minority_class_oversampling:
+  apply_oversampling: True
+  sig_sampling_proba: 0.1
+  bkg_sampling_proba: 0.9
+  rerandomize_sampling_order: True
 
 multiclass: False
 output_activation: sigmoid
