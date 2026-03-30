@@ -16,6 +16,7 @@ import numpy as np
 import os
 import re
 import yaml
+import argparse
 
 from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
@@ -34,7 +35,20 @@ def main():
     mm = MemoryMonitor()
     mm.print_memory_usage(msg="Training DNN for event classification")
 
-    with open ('config/classifier_cfg.yaml', 'r') as cfg_file:
+    parser = argparse.ArgumentParser(
+        description="Train event classification model according to provided cofiguration",
+    )
+    parser.add_argument(
+        'config',
+        type=str,
+        help="Model configuration file",
+        required=True
+    )
+    args = parser.parse_args()
+    cfg_path = args.config
+    print(f"Will use configuration: {cfg_path}")
+
+    with open (cfg_path, 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
 
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
