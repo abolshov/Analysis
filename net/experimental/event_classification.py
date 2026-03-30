@@ -39,7 +39,7 @@ def main():
         description="Train event classification model according to provided cofiguration",
     )
     parser.add_argument(
-        'config',
+        '--config',
         type=str,
         help="Model configuration file",
         required=True

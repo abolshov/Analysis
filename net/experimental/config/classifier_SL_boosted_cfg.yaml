@@ -1,11 +1,11 @@
-model_name: 'v1'
+model_name: 'binary_boosted_nParity3'
 training_directory: '/home/artem/Desktop/CMS/models/classifiers'
-input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/boosted/Run3_2023BPix/Dataset'
+input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/boosted/'
 
 hyperparameters:
-  training_parity: 0
-  validation_parity: 1
-  test_parity: 2
+  training_parity: 3
+  validation_parity: 0
+  test_parity: 1
   use_extra_branches: False
   num_hidden_layers: 3
   dropout: 0.2
