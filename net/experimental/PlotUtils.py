@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import pathlib
 import numpy as np
+import pandas as pd
 from sklearn.metrics import confusion_matrix, roc_curve, precision_recall_curve, ConfusionMatrixDisplay
 from MiscUtils import PredPeak, PredWidth, ground_truth_map, pretty_vars, objects
 
@@ -218,3 +219,73 @@ def PlotPRC(*,
 # takes lists of labels, predictions and plots on the same canvas
 def PlotComparePRC():
     pass
+
+def PlotPrecisionAtK(*,
+                     y_true : NDArray, 
+                     y_scores: NDArray,
+                     plot_dir: str | os.PathLike, 
+                     weights : NDArray | None = None, 
+                     bins: int = 10):
+    """
+    Plots weighted counts using horizontal lines for bin width, 
+    markers for the mean, and vertical lines for error bars.
+    """
+    if weights is None:
+        weights = np.ones_like(y_true)
+        
+    df = pd.DataFrame({
+        'label': y_true,
+        'score': y_scores,
+        'weight': weights,
+        'weight_sq': np.square(weights)
+    })
+    
+    # 1. Calculate Quantiles and Bin Ranges
+    # We need the actual score boundaries for the horizontal lines
+    df['bin'], bin_edges = pd.qcut(df['score'], q=bins, labels=False, retbins=True, duplicates='drop')
+    
+    # 2. Calculate Weighted Counts and Errors
+    counts = df.groupby(['bin', 'label'])['weight'].sum().unstack(fill_value=0)
+    errors = np.sqrt(df.groupby(['bin', 'label'])['weight_sq'].sum().unstack(fill_value=0))
+    
+    plt.figure(figsize=(12, 7))
+    colors = {0: '#e74c3c', 1: '#2ecc71'}
+    labels = {0: 'Background', 1: 'Signal'}
+    
+    # 3. Plot each class separately
+    for label in [0, 1]:
+        if label not in counts.columns:
+            continue
+            
+        # X-coordinates: the midpoint of the bin for the marker
+        bin_midpoints = (bin_edges[:-1] + bin_edges[1:]) / 2
+        
+        # Y-coordinates: the weighted counts
+        y_vals = counts[label].values
+        y_errs = errors[label].values
+        
+        # Plot vertical error bars and markers
+        plt.errorbar(bin_midpoints, y_vals, yerr=y_errs, fmt='o', 
+                     color=colors[label], label=labels[label],
+                     capsize=0, elinewidth=2, markersize=8, markeredgecolor='white')
+        
+        # Plot horizontal lines representing the bin width
+        for i in range(len(bin_edges) - 1):
+            plt.hlines(y=y_vals[i], xmin=bin_edges[i], xmax=bin_edges[i+1], 
+                       color=colors[label], linewidth=3, alpha=0.4)
+
+    plt.title('DNN Score', fontsize=14)
+    plt.xlabel('DNN Score', fontsize=12)
+    if weights:
+        plt.ylabel('Weighted Count', fontsize=12)
+    else:
+        plt.ylabel('Count', fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.3)
+    plt.legend()
+    
+    # Adjust x-axis to fit the score range [0, 1]
+    plt.xlim(max(0, bin_edges.min() - 0.05), min(1, bin_edges.max() + 0.05))
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'precision_at_k.pdf'), bbox_inches='tight')
+    plt.clf()
+    plt.close()
