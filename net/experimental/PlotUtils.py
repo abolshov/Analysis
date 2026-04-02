@@ -222,7 +222,7 @@ def PlotComparePRC():
 
 def PlotPrecisionAtK(*,
                      y_true : NDArray, 
-                     y_scores: NDArray,
+                     y_pred: NDArray,
                      plot_dir: str | os.PathLike, 
                      weights : NDArray | None = None, 
                      bins: int = 10):
@@ -235,7 +235,7 @@ def PlotPrecisionAtK(*,
         
     df = pd.DataFrame({
         'label': y_true,
-        'score': y_scores,
+        'score': y_pred,
         'weight': weights,
         'weight_sq': np.square(weights)
     })
