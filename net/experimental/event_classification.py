@@ -20,7 +20,7 @@ import argparse
 
 from typing import List
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
-from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values, make_dataset
+from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, threshold_cleaning, make_dataset, quantile_cleaning
 from sklearn.utils import class_weight
 from LayerUtils import ResidualBlock
 import gc
@@ -76,8 +76,25 @@ def main():
                         list_of_branches=branches_to_load,
                         convert_to_numpy=True)
     
+    cleaning_cfg = cfg["data_cleaning"]
     mm.print_memory_usage(msg=f"Before cleaning: {X_train.shape}")
-    clean_mask_train, X_train = clean_extreme_values(data=X_train)
+    cleaning_type = cleaning_cfg["type"]
+    high = cleaning_cfg["high"]
+    low = cleaning_cfg["low"]
+    if cleaning_type == "threshold":
+        clean_mask_train, X_train = threshold_cleaning(
+            data=X_train,
+            pos_thrsh=low,
+            neg_thrsh=high
+        )
+    elif cleaning_type == "quantile":
+        clean_mask_train, X_train = quantile_cleaning(
+            data=X_train,
+            q_low=low,
+            q_high=high
+        )
+    else:
+        raise RuntimeError(f"Unsupported data cleaning type {cleaning_type}.")
     mm.print_memory_usage(msg=f"After cleaning: {X_train.shape}")
 
     y_train = load_file(tree_name="weight_tree", 
@@ -248,8 +265,7 @@ def main():
         tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
                                            monitor="val_Precision",
                                            mode="max",
-                                           save_best_only=True,
-                                           initial_value_threshold=0.25)
+                                           save_best_only=True)
     ]
 
     # fit model
