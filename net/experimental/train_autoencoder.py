@@ -9,16 +9,13 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-import uproot
-import pathlib
-import awkward as ak
 import numpy as np
 import os
 import re
 import yaml
+import argparse
 
-from MiscUtils import MemoryMonitor, load_file, map_input_files, clean_extreme_values
-from AnomalyDetection import Autoencoder
+from MiscUtils import MemoryMonitor, load_file, map_input_files, threshold_cleaning, quantile_cleaning
 from PlotUtils import PlotMetric
 
 tf.random.set_seed(42)
@@ -29,20 +26,37 @@ def main():
     mm = MemoryMonitor()
     mm.print_memory_usage(msg="Training autoencoder")
 
+    parser = argparse.ArgumentParser(
+        description="Train autoencoder according to provided cofiguration",
+    )
+    parser.add_argument(
+        '--config',
+        type=str,
+        help="Model configuration file",
+        required=True
+    )
+    args = parser.parse_args()
+    cfg_path = args.config
+    print(f"Will use configuration: {cfg_path}")
+
+    with open (cfg_path, 'r') as cfg_file:
+        cfg = yaml.safe_load(cfg_file)
+
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
     event_file_pattern = re.compile(r"nParity(\d)_Merged.root")
-    train_file_dir = "/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset"
+    train_file_dir = cfg["input_directory"]
     parity_file_map = map_input_files(directory=train_file_dir,
                                       weight_file_pattern=weight_file_pattern,
                                       event_file_pattern=event_file_pattern)
 
-    train_parity = 0
+    hyperparameters = cfg['hyperparameters']
+
+    train_parity = hyperparameters['training_parity']
     train_event_file_path, train_weight_file_path = parity_file_map[train_parity]
-    use_extra_variables = True
+    print(f"Data file for trainig: {train_event_file_path}")
+    print(f"Weight file for trainig: {train_weight_file_path}")
 
-    with open ('classifier_cfg.yaml', 'r') as cfg_file:
-        cfg = yaml.safe_load(cfg_file)
-
+    use_extra_variables = hyperparameters['use_extra_branches']
     branches_to_load = cfg['base_branches']
     if use_extra_variables:
         branches_to_load.extend(cfg['extra_branches'])
@@ -51,7 +65,25 @@ def main():
                         file_path=train_event_file_path, 
                         list_of_branches=branches_to_load,
                         convert_to_numpy=True)
-    train_mask, X_train = clean_extreme_values(data=X_train)
+    
+    cleaning_cfg = cfg["data_cleaning"]
+    cleaning_type = cleaning_cfg["type"]
+    high = cleaning_cfg["high"]
+    low = cleaning_cfg["low"]
+    if cleaning_type == "threshold":
+        train_mask, X_train = threshold_cleaning(
+            data=X_train,
+            pos_thrsh=low,
+            neg_thrsh=high
+        )
+    elif cleaning_type == "quantile":
+        train_mask, X_train = quantile_cleaning(
+            data=X_train,
+            q_low=low,
+            q_high=high
+        )
+    else:
+        raise RuntimeError(f"Unsupported data cleaning type {cleaning_type}.")
     
     y_train = load_file(tree_name="weight_tree", 
                         file_path=train_weight_file_path, 
@@ -113,24 +145,43 @@ def main():
 
     outputs = tf.keras.layers.Dense(input_dim, activation='sigmoid')(x)
 
+    model_name = cfg['model_name']
     anomaly_detector = tf.keras.models.Model(inputs=inputs, 
                                              outputs=outputs, 
-                                             name="autoencoder")
+                                             name=model_name)
     
+    loss_cfg = cfg["loss"]
+    loss_instance = tf.keras.losses.get(loss_cfg)
+    optimizer_cfg = cfg['optimizer']
+    optimizer_instance = tf.keras.optimizers.get(optimizer_cfg)
     anomaly_detector.compile(
-        loss=tf.keras.losses.MeanSquaredError(),
-        optimizer=tf.keras.optimizers.Adam(3e-4)    
+        loss=loss_instance,
+        optimizer=optimizer_instance,
     )
 
     print(anomaly_detector.summary())
 
-    val_parity = 1
+    val_parity = hyperparameters['validation_parity']
     val_event_file_path, val_weight_file_path = parity_file_map[val_parity]
     X_val = load_file(tree_name="Events", 
                       file_path=val_event_file_path, 
                       list_of_branches=branches_to_load,
                       convert_to_numpy=True)
-    val_mask, X_val = clean_extreme_values(data=X_val)
+    
+    if cleaning_type == "threshold":
+        val_mask, X_val = threshold_cleaning(
+            data=X_val,
+            pos_thrsh=low,
+            neg_thrsh=high
+        )
+    elif cleaning_type == "quantile":
+        val_mask, X_val = quantile_cleaning(
+            data=X_val,
+            q_low=low,
+            q_high=high
+        )
+    else:
+        raise RuntimeError(f"Unsupported data cleaning type {cleaning_type}.")
 
     y_val = load_file(tree_name="weight_tree", 
                       file_path=val_weight_file_path, 
@@ -152,18 +203,20 @@ def main():
         tf.keras.callbacks.ReduceLROnPlateau(patience=20)
     ]
 
+    epochs = hyperparameters["epochs"]
+    batch_size = hyperparameters["batch_size"]
     train_history = anomaly_detector.fit(
         X_bkg_train,
         X_bkg_train,
         validation_data=(X_val, X_val),
-        epochs=200,
-        batch_size=1024,
+        epochs=epochs,
+        batch_size=batch_size,
         callbacks=callbacks,
         verbose=0,
         shuffle=True
     )
 
-    model_dir = os.path.join("/home/artem/Desktop/CMS/models/anomaly_detection/", anomaly_detector.name)
+    model_dir = os.path.join(cfg["training_directory"], anomaly_detector.name)
     PlotMetric(train_history, anomaly_detector.name, "loss", plotting_dir=model_dir)
     anomaly_detector.save(os.path.join(model_dir, f"{anomaly_detector.name}.keras"))
 
