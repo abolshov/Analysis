@@ -2,6 +2,12 @@ model_name: 'test'
 training_directory: '/home/artem/Desktop/CMS/models/classifiers'
 input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2023BPix/Dataset'
 
+data_cleaning:
+  # type: threshold
+  type: quantile
+  low: 0.01
+  high: 0.99
+
 hyperparameters:
   training_parity: 0
   validation_parity: 1
