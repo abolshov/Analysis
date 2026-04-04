@@ -178,8 +178,15 @@ def threshold_cleaning(*,
 def quantile_cleaning(*,
                       data: NDArray[np.floating],
                       q_low: float = 0.01,
-                      q_up: float = 0.99) -> Tuple[NDArray[np.bool_], NDArray[np.floating]]:
+                      q_high: float = 0.99) -> Tuple[NDArray[np.bool_], NDArray[np.floating]]:
     low_quantiles = np.quantile(data, q_low, axis=0)
-    up_quantiles = np.quantile(data, q_up, axis=0)
-    mask = np.all((data > low_quantiles) & (data < up_quantiles), axis=1)
+    up_quantiles = np.quantile(data, q_high, axis=0)
+    mask = ~np.any((data < low_quantiles) | (data > up_quantiles), axis=1)
+    return mask, data[mask]
+
+def clean_extreme_values(*,
+                         data: NDArray[np.floating],
+                         pos_thrsh: float = 2500.0,
+                         neg_thrsh: float = -1000.0) -> Tuple[NDArray[np.bool_], NDArray[np.floating]]:
+    mask = ~np.any((data > pos_thrsh) | (data < neg_thrsh), axis=1)
     return mask, data[mask]
