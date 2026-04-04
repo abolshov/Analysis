@@ -220,13 +220,19 @@ def PlotPRC(*,
 def PlotComparePRC():
     pass
 
-def PlotPrecisionAtK(*,
-                     y_true : NDArray, 
-                     y_pred: NDArray,
-                     plotdir: str | os.PathLike, 
-                     weights : NDArray | None = None, 
-                     bins: int = 10,
-                     verbose: bool = False):
+def PlotQuantileBinnedDistr(*,
+                            y_true : NDArray, 
+                            y_pred: NDArray,
+                            plotdir: str | os.PathLike, 
+                            weights : NDArray | None = None, 
+                            bins: int = 10,
+                            verbose: bool = False,
+                            title: str | None = None,
+                            xlabel: str | None = None,
+                            ylabel: str | None = "Arbitrary Unit",
+                            xrange: Tuple[float, float] = (-0.05, 1.05),
+                            xticks: List[float] | None | NDArray[float] = None,
+                            plot_name: str = "quant_binned_score"):
     if weights is None:
         weights = np.ones_like(y_true)
 
@@ -297,16 +303,23 @@ def PlotPrecisionAtK(*,
         markersize=3,
         color="red"
     )
-    plt.title('DNN Score', fontsize=14)
-    plt.xlabel('DNN Score', fontsize=12)
-    plt.ylabel('Arbitrary Unit', fontsize=12)
+    if title:
+        plt.title(title, fontsize=14)
+    if xlabel: 
+        plt.xlabel(xlabel=xlabel, fontsize=12)
+    plt.ylabel(ylabel=ylabel, fontsize=12)
     plt.yscale('log')
     plt.grid(True, linestyle='--', alpha=0.3)
     plt.legend()
+
+    if xticks:
+        plt.xticks(xticks)
     
     # Adjust x-axis to fit the score range [0, 1]
-    plt.xlim(-0.05, 1.05)
+    xmin, xmax = xrange
+    plt.xlim(xmin, xmax)
     plt.tight_layout()
-    plt.savefig(os.path.join(plotdir, 'precision_at_k.pdf'), bbox_inches='tight')
+    out_path = os.path.join(plotdir, f'{plot_name}.pdf')
+    plt.savefig(out_path, bbox_inches='tight')
     plt.clf()
     plt.close()
