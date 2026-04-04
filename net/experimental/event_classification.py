@@ -17,13 +17,15 @@ import os
 import re
 import yaml
 import argparse
-
-from typing import List
-from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
-from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, threshold_cleaning, make_dataset, quantile_cleaning
-from sklearn.utils import class_weight
-from LayerUtils import ResidualBlock
 import gc
+import time
+from sklearn.utils import class_weight
+import shutil
+
+from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
+from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values, make_dataset
+from LayerUtils import ResidualBlock
+
 
 tf.random.set_seed(42)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
@@ -32,6 +34,7 @@ os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
 np.random.seed(42)
 
 def main():
+    training_start = time.perf_counter()
     mm = MemoryMonitor()
     mm.print_memory_usage(msg="Training DNN for event classification")
 
@@ -76,25 +79,8 @@ def main():
                         list_of_branches=branches_to_load,
                         convert_to_numpy=True)
     
-    cleaning_cfg = cfg["data_cleaning"]
     mm.print_memory_usage(msg=f"Before cleaning: {X_train.shape}")
-    cleaning_type = cleaning_cfg["type"]
-    high = cleaning_cfg["high"]
-    low = cleaning_cfg["low"]
-    if cleaning_type == "threshold":
-        clean_mask_train, X_train = threshold_cleaning(
-            data=X_train,
-            pos_thrsh=low,
-            neg_thrsh=high
-        )
-    elif cleaning_type == "quantile":
-        clean_mask_train, X_train = quantile_cleaning(
-            data=X_train,
-            q_low=low,
-            q_high=high
-        )
-    else:
-        raise RuntimeError(f"Unsupported data cleaning type {cleaning_type}.")
+    clean_mask_train, X_train = clean_extreme_values(data=X_train)
     mm.print_memory_usage(msg=f"After cleaning: {X_train.shape}")
 
     y_train = load_file(tree_name="weight_tree", 
@@ -259,18 +245,20 @@ def main():
     mm.print_memory_usage(msg="After making datasets")
 
     callbacks = [
-        tf.keras.callbacks.EarlyStopping(patience=5, 
+        tf.keras.callbacks.EarlyStopping(patience=20, 
                                          restore_best_weights=True),
         # tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
         tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
                                            monitor="val_Precision",
                                            mode="max",
-                                           save_best_only=True)
+                                           save_best_only=True,
+                                           initial_value_threshold=0.25)
     ]
 
     # fit model
     epochs = hyperparameters['epochs']
     print("Training the model ...")
+    start = time.perf_counter()
     history = model.fit(train_ds, 
                         validation_data=val_ds,
                         class_weight=class_weight_dict,
@@ -278,13 +266,17 @@ def main():
                         steps_per_epoch=steps_per_epoch,
                         epochs=epochs,
                         callbacks=callbacks)
+    end = time.perf_counter()
+    ftting_duration = (end - start) / 60
     print("... Done!")
+    print(f"Fitting duration: {ftting_duration:.2f} minutes")
     
     PlotMetric(history, model.name, "loss", plotting_dir=model_dir)
     for m in metrics:
         PlotMetric(history, model.name, m.name, plotting_dir=model_dir)
 
     model.save(os.path.join(model_dir, f"{model.name}.keras"))
+    shutil.copy(cfg_path, model_dir)
 
     mm.print_memory_usage(msg=f"Before memory clean-up.")
     del X_train
@@ -344,6 +336,9 @@ def main():
 
     # free resources (just in case)
     tf.keras.backend.clear_session()
+    training_end = time.perf_counter()
+    training_duration = (training_end - training_start)/60
+    print(f"Trainig duration: {training_duration:.2f} minutes")
 
 if __name__ == "__main__":
     main()

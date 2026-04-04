@@ -1,12 +1,12 @@
 model_name: 'test'
 training_directory: '/home/artem/Desktop/CMS/models/classifiers'
-input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2023BPix/Dataset'
+input_directory: '/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset'
 
 data_cleaning:
-  # type: threshold
-  type: quantile
-  low: 0.01
-  high: 0.99
+  type: threshold
+  # type: quantile
+  low: -1000
+  high: 2500
 
 hyperparameters:
   training_parity: 0
@@ -16,11 +16,11 @@ hyperparameters:
   num_hidden_layers: 3
   dropout: 0.2
   batch_size: 8192
-  epochs: 20
+  epochs: 100
 
-class_weights: False
+class_weights: True
 minority_class_oversampling:
-  apply_oversampling: True
+  apply_oversampling: False
   sig_sampling_proba: 0.05
   bkg_sampling_proba: 0.95
   rerandomize_sampling_order: True
@@ -39,6 +39,7 @@ optimizer:
   class_name: Adam
   config:
     learning_rate: 0.0003
+    clipnorm: 1.0
 
 base_branches:
   - 'other_jet1_mass'
