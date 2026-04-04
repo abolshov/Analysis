@@ -312,7 +312,7 @@ def PlotQuantileBinnedDistr(*,
     plt.grid(True, linestyle='--', alpha=0.3)
     plt.legend()
 
-    if xticks:
+    if xticks is not None:
         plt.xticks(xticks)
     
     # Adjust x-axis to fit the score range [0, 1]
