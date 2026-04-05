@@ -63,11 +63,12 @@ class Transformer(nn.Module):
         # Global pooling and regression
         self.regressor = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
+            # nn.LayerNorm(hidden_dim),
+            # nn.BatchBorm1d()
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
+            # nn.LayerNorm(hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, output_dim)
