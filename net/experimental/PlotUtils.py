@@ -63,11 +63,16 @@ def PlotHist(bins=np.linspace(0, 250, 100), **kwargs):
     plt.grid(True)
 
     text_y = 0.8
-    if 'peak' in kwargs.keys() and kwargs['peak']:
-        plt.figtext(0.75, text_y, f"peak: {PredPeak(kwargs['data']):.2f}")
-        text_y -= 0.05
-    if 'width' in kwargs.keys() and kwargs['width']:
-        plt.figtext(0.75, text_y, f"width: {PredWidth(kwargs['data']):.2f}")
+    if 'peak' in kwargs.keys():
+        if isinstance(kwargs['peak'], bool) and kwargs['peak']:
+            plt.figtext(0.75, text_y, f"width: {PredPeak(kwargs['data']):.2f}")
+        elif isinstance(kwargs['peak'], float):
+            plt.figtext(0.75, text_y, f"peak: {kwargs['width']:.2f}")
+    if 'width' in kwargs.keys():
+        if isinstance(kwargs['width'], bool) and kwargs['width']:
+            plt.figtext(0.75, text_y, f"width: {PredWidth(kwargs['data']):.2f}")
+        elif isinstance(kwargs['width'], float):
+            plt.figtext(0.75, text_y, f"width: {kwargs['width']:.2f}")
         text_y -= 0.05
     if 'count' in kwargs.keys() and kwargs['count']:
         plt.figtext(0.75, text_y, f"count: {len(kwargs['data'])}")
