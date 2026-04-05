@@ -5,21 +5,21 @@ import awkward as ak
 import numpy as np
 import vector
 import matplotlib.pyplot as plt
-
-from sklearn.preprocessing import StandardScaler
+import json
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from torch.optim.lr_scheduler import OneCycleLR
 
 from MiscUtils import MemoryMonitor
 
 from typing import Tuple, Dict, List
 import numpy.typing as npt
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Optional
 
 @dataclass
@@ -84,12 +84,11 @@ class Transformer(nn.Module):
         x = self.transformer(x)  # Shape: [batch_size, num_part, hidden_dim]
         
         # Global pooling (mean over particles)
-        x = x.mean(dim=1)  # Shape: [batch_size, hidden_dim]
+        x = torch.mean(x, dim=1)  # Shape: [batch_size, hidden_dim]
         
         # regression head
-        x = self.regressor(x).squeeze()  # Shape: [batch_size, output_dim]
-        x = torch.unsqueeze(x, 1)
-        return x
+        x = self.regressor(x) # Shape: [batch_size, output_dim]
+        return x.unsqueeze(1)
     
 class DeepHMEDataset(Dataset):
     def __init__(self,
@@ -246,6 +245,7 @@ def prepare_input_vectors(*,
     # Labels: X = Hbb + HVV
     X_p4 = make_p4_from_branches(branches, 'genHbb') + make_p4_from_branches(branches, 'genHVV')
     labels[:, 0, :] = extract_cartesian(X_p4)
+    # labels[:] = extract_cartesian(X_p4)
     
     if normalize:
         n_events, n_particles, n_components = features.shape
@@ -351,7 +351,7 @@ def main():
     num_fatjets = 1
     batch_size = 128
     num_workers = 2
-    num_epochs = 10
+    num_epochs = 20
 
     train_file_path = "/home/artem/Desktop/CMS/data/DeepHME/big_file_DL_M700.root"
     train_loader, train_norm = get_loader(
@@ -381,24 +381,28 @@ def main():
     )
     mm.print_memory_usage(msg=f"After creating validation loader with {len(val_loader)} batches")
 
-    model = Transformer().to(device)
-    criterion = nn.MSELoss()
+    model = Transformer(
+        hidden_dim=128,
+        num_layers=4,
+        num_heads=8
+    ).to(device)
+    criterion = nn.MSELoss().to(device)
     optimizer = optim.AdamW(model.parameters(), 
                             lr=0.001,
-                            weight_decay=0.01)
-
-    # num_steps = len(train_loader)*num_epochs
-    # cosine = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
-    # n_warmup_steps = 2000
-    # warmup = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda step: min((step + 1)/n_warmup_steps, 1.0))
-    # scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, 
-    #                                                   schedulers=[warmup, cosine], 
-    #                                                   milestones=[n_warmup_steps])
+                            weight_decay=1e-4)
 
     history = {
         'loss': [],
         'val_loss': []
     }
+
+    scheduler = OneCycleLR(
+        optimizer, 
+        max_lr=1e-3, 
+        steps_per_epoch=len(train_loader), 
+        epochs=num_epochs, 
+        pct_start=0.1
+    )
 
     # Training loop
     for epoch in range(num_epochs):
@@ -412,8 +416,11 @@ def main():
             outputs = model(features)
             loss = criterion(outputs, labels)
             loss.backward()
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
             optimizer.step()
-            # scheduler.step()
+            scheduler.step()
             train_loss += loss.item()
         
         # Validation
@@ -446,6 +453,9 @@ def main():
                           plotting_dir=model_dir)    
 
     torch.save(model, os.path.join(model_dir, "transformer.pth"))
+    with open(os.path.join(model_dir, "normalization.json"), "w") as f:
+        json_data = asdict(train_norm)
+        json.dump({name: arr.tolist() for name, arr in json_data.items()}, f, indent=4)
 
 if __name__ == "__main__":
     main()
