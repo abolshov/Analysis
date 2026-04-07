@@ -1,4 +1,4 @@
-model_name: 'autoencoder_v3'
+model_name: 'autoencoder_v4'
 training_directory: '/home/artem/Desktop/CMS/models/anomaly_detection/'
 input_directory: "/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset"
 
@@ -9,10 +9,21 @@ hyperparameters:
   input_noise_std: 0.0
   encoder_activation: swish
   encoder_dropout: 0.0
+  encoder_layer_dimensions:
+    - 64
+    - 48
+    - 32
+    - 16
   decoder_activation: swish
   decoder_dropout: 0.0
+  decoder_layer_dimensions:
+    - 16
+    - 32
+    - 48
+    - 64
   bottleneck_noise_std: 0.1
   bottleneck_activation: swish 
+  bottleneck_dimension: 8
   output_activation: sigmoid
 
 loss:

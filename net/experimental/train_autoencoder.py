@@ -143,6 +143,9 @@ def main():
     bottleneck_activation = hyperparameters["bottleneck_activation"]
     bottleneck_noise_std = hyperparameters["bottleneck_noise_std"]
     add_norm_layer = hyperparameters["add_norm_layer"]
+    encoder_layer_dimensions = hyperparameters["encoder_layer_dimensions"]
+    decoder_layer_dimensions = hyperparameters["decoder_layer_dimensions"]
+    bottleneck_dimension = hyperparameters["bottleneck_dimension"]
 
     # encoder part
     inputs = tf.keras.Input(shape=(X_bkg_train.shape[1],))
@@ -151,21 +154,20 @@ def main():
         x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(x)
     if input_noise_std > 0.0:
         x = tf.keras.layers.GaussianNoise(input_noise_std)(x)
-    # [64, 48, 24, 12] ? 
-    for dim in [64, 32, 16]:
+    for dim in encoder_layer_dimensions:
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Dense(dim, activation=encoder_activation)(x)
         if encoder_dropout > 0.0:
             x = tf.keras.layers.Dropout(encoder_dropout)(x)
 
     # bottleneck part
-    x = tf.keras.layers.Dense(8, activation=bottleneck_activation)(x)
+    x = tf.keras.layers.Dense(bottleneck_dimension, activation=bottleneck_activation)(x)
     x = tf.keras.layers.BatchNormalization()(x)
     if bottleneck_noise_std > 0.0:
         x = tf.keras.layers.GaussianNoise(bottleneck_noise_std)(x)
 
     # decoder part
-    for dim in [16, 32, 64]:
+    for dim in decoder_layer_dimensions:
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Dense(dim, activation=decoder_activation)(x)
         if decoder_dropout > 0.0:
