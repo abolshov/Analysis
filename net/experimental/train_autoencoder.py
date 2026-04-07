@@ -14,6 +14,8 @@ import os
 import re
 import yaml
 import argparse
+import time
+import shutil
 
 from MiscUtils import MemoryMonitor, load_file, map_input_files, threshold_cleaning, quantile_cleaning
 from PlotUtils import PlotMetric
@@ -23,6 +25,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
 
 def main():
+    training_start = time.perf_counter()
     mm = MemoryMonitor()
     mm.print_memory_usage(msg="Training autoencoder")
 
@@ -51,17 +54,18 @@ def main():
         event_file_pattern=event_file_pattern
     )
 
+    data_cfg = cfg["data"]
     hyperparameters = cfg['hyperparameters']
 
-    train_parity = hyperparameters['training_parity']
+    train_parity = data_cfg['training_parity']
     train_event_file_path, train_weight_file_path = parity_file_map[train_parity]
     print(f"Data file for trainig: {train_event_file_path}")
     print(f"Weight file for trainig: {train_weight_file_path}")
 
-    use_extra_variables = hyperparameters['use_extra_branches']
-    branches_to_load = cfg['base_branches']
+    use_extra_variables = data_cfg['use_extra_branches']
+    branches_to_load = data_cfg['base_branches']
     if use_extra_variables:
-        branches_to_load.extend(cfg['extra_branches'])
+        branches_to_load.extend(data_cfg['extra_branches'])
 
     X_train = load_file(
         tree_name="Events", 
@@ -70,7 +74,7 @@ def main():
         convert_to_numpy=True
     )
     
-    cleaning_cfg = cfg["data_cleaning"]
+    cleaning_cfg = data_cfg["cleaning"]
     cleaning_type = cleaning_cfg["type"]
     high = cleaning_cfg["high"]
     low = cleaning_cfg["low"]
@@ -117,17 +121,19 @@ def main():
     train_mean = np.mean(X_bkg_train, axis=0)
     train_variance = np.var(X_bkg_train, axis=0)
 
-    # train_mins = np.min(X_bkg_train, axis=0)
-    # train_maxs = np.max(X_bkg_train, axis=0)
+    min_max_scaling = data_cfg["min_max_scaling"]
+    train_mins = np.min(X_bkg_train, axis=0)
+    train_maxs = np.max(X_bkg_train, axis=0)
 
-    # is_bad_feature = np.isclose(train_maxs, train_mins)
-    # num_bad_features = np.sum(is_bad_feature)
-    # if num_bad_features > 0:
-    #     bad_feature_idxs = np.flatnonzero(is_bad_feature)
-    #     bad_feature_names = [branches_to_load[idx] for idx in bad_feature_idxs]
-    #     raise RuntimeError(f"Have {num_bad_features} features with coinciding min and max: {bad_feature_names}")
+    is_bad_feature = np.isclose(train_maxs, train_mins)
+    num_bad_features = np.sum(is_bad_feature)
+    if num_bad_features > 0:
+        bad_feature_idxs = np.flatnonzero(is_bad_feature)
+        bad_feature_names = [branches_to_load[idx] for idx in bad_feature_idxs]
+        raise RuntimeError(f"Have {num_bad_features} features with coinciding min and max: {bad_feature_names}")
 
-    # X_bkg_train = (X_bkg_train - train_mins)/(train_maxs - train_mins)
+    if min_max_scaling:
+        X_bkg_train = (X_bkg_train - train_mins)/(train_maxs - train_mins)
 
     encoder_activation = hyperparameters["encoder_activation"]
     decoder_activation = hyperparameters["decoder_activation"]
@@ -136,13 +142,15 @@ def main():
     decoder_dropout = hyperparameters["decoder_dropout"]
     bottleneck_activation = hyperparameters["bottleneck_activation"]
     bottleneck_noise_std = hyperparameters["bottleneck_noise_std"]
+    add_norm_layer = hyperparameters["add_norm_layer"]
 
     # encoder part
     inputs = tf.keras.Input(shape=(X_bkg_train.shape[1],))
     x = tf.keras.layers.Identity()(inputs)
+    if add_norm_layer:
+        x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(x)
     if input_noise_std > 0.0:
         x = tf.keras.layers.GaussianNoise(input_noise_std)(x)
-    x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(x)
     # [64, 48, 24, 12] ? 
     for dim in [64, 32, 16]:
         x = tf.keras.layers.BatchNormalization()(x)
@@ -187,7 +195,7 @@ def main():
 
     print(anomaly_detector.summary())
 
-    val_parity = hyperparameters['validation_parity']
+    val_parity = data_cfg['validation_parity']
     val_event_file_path, val_weight_file_path = parity_file_map[val_parity]
     X_val = load_file(
         tree_name="Events", 
@@ -199,8 +207,8 @@ def main():
     if cleaning_type == "threshold":
         val_mask, X_val = threshold_cleaning(
             data=X_val,
-            pos_thrsh=low,
-            neg_thrsh=high
+            pos_thrsh=high,
+            neg_thrsh=low
         )
     elif cleaning_type == "quantile":
         val_mask, X_val = quantile_cleaning(
@@ -224,19 +232,22 @@ def main():
     bkg_mask_val = bkg_mask_val.reshape(-1)
     X_val = X_val[bkg_mask_val]
 
-    # val_mins = np.min(X_val, axis=0)
-    # val_maxs = np.max(X_val, axis=0)
-    # X_val = (X_val - val_mins)/(val_maxs - val_mins)
+    val_mins = np.min(X_val, axis=0)
+    val_maxs = np.max(X_val, axis=0)
 
-    X_val = (X_val - train_mean)/np.sqrt(train_variance)
+    if min_max_scaling:
+        X_val = (X_val - val_mins)/(val_maxs - val_mins)
+
+    # X_val = (X_val - train_mean)/np.sqrt(train_variance)
 
     callbacks = [
         tf.keras.callbacks.EarlyStopping(patience=20, restore_best_weights=True),
-        # tf.keras.callbacks.ReduceLROnPlateau(patience=20)
+        tf.keras.callbacks.ReduceLROnPlateau(patience=20)
     ]
 
     epochs = hyperparameters["epochs"]
     batch_size = hyperparameters["batch_size"]
+    fitting_start = time.perf_counter()
     train_history = anomaly_detector.fit(
         X_bkg_train,
         X_bkg_train,
@@ -247,10 +258,19 @@ def main():
         verbose=0,
         shuffle=True
     )
+    fitting_end = time.perf_counter()
+    fitting_duration = (fitting_end - fitting_start)/60
+    print(f"Fitting took {fitting_duration:.2f} min")
 
     model_dir = os.path.join(cfg["training_directory"], anomaly_detector.name)
+    os.makedirs(model_dir, exist_ok=True)
     PlotMetric(train_history, anomaly_detector.name, "loss", plotting_dir=model_dir)
     anomaly_detector.save(os.path.join(model_dir, f"{anomaly_detector.name}.keras"))
+    shutil.copy(cfg_path, model_dir)
+
+    training_end = time.perf_counter()
+    training_duration = (training_end - training_start) / 60
+    print(f"Training took {training_duration:.2f} min")
 
 if __name__ == "__main__":
     main()
