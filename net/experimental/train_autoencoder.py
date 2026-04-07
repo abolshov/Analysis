@@ -45,9 +45,11 @@ def main():
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
     event_file_pattern = re.compile(r"nParity(\d)_Merged.root")
     train_file_dir = cfg["input_directory"]
-    parity_file_map = map_input_files(directory=train_file_dir,
-                                      weight_file_pattern=weight_file_pattern,
-                                      event_file_pattern=event_file_pattern)
+    parity_file_map = map_input_files(
+        directory=train_file_dir,
+        weight_file_pattern=weight_file_pattern,
+        event_file_pattern=event_file_pattern
+    )
 
     hyperparameters = cfg['hyperparameters']
 
@@ -61,10 +63,12 @@ def main():
     if use_extra_variables:
         branches_to_load.extend(cfg['extra_branches'])
 
-    X_train = load_file(tree_name="Events", 
-                        file_path=train_event_file_path, 
-                        list_of_branches=branches_to_load,
-                        convert_to_numpy=True)
+    X_train = load_file(
+        tree_name="Events", 
+        file_path=train_event_file_path, 
+        list_of_branches=branches_to_load,
+        convert_to_numpy=True
+    )
     
     cleaning_cfg = cfg["data_cleaning"]
     cleaning_type = cleaning_cfg["type"]
@@ -73,8 +77,8 @@ def main():
     if cleaning_type == "threshold":
         train_mask, X_train = threshold_cleaning(
             data=X_train,
-            pos_thrsh=low,
-            neg_thrsh=high
+            pos_thrsh=high,
+            neg_thrsh=low
         )
     elif cleaning_type == "quantile":
         train_mask, X_train = quantile_cleaning(
@@ -85,10 +89,14 @@ def main():
     else:
         raise RuntimeError(f"Unsupported data cleaning type {cleaning_type}.")
     
-    y_train = load_file(tree_name="weight_tree", 
-                        file_path=train_weight_file_path, 
-                        list_of_branches=["class_target"],
-                        convert_to_numpy=True)
+    mm.print_memory_usage(msg=f"Cleaned dataset contains {len(X_train)} events")
+
+    y_train = load_file(
+        tree_name="weight_tree", 
+        file_path=train_weight_file_path, 
+        list_of_branches=["class_target"],
+        convert_to_numpy=True
+    )
     y_train = y_train[train_mask]
     
     y_train = 1 - y_train
@@ -104,51 +112,69 @@ def main():
     # X_sig_train = X_train[sig_mask]
 
     input_dim = X_bkg_train.shape[-1]
-    input_shape = X_bkg_train.shape[1:]
 
     # precompute mean and variance
-    # train_mean = np.mean(X_bkg_train, axis=0)
-    # train_variance = np.var(X_bkg_train, axis=0)
-    train_mins = np.min(X_bkg_train, axis=0)
-    train_maxs = np.max(X_bkg_train, axis=0)
+    train_mean = np.mean(X_bkg_train, axis=0)
+    train_variance = np.var(X_bkg_train, axis=0)
 
-    is_bad_feature = np.isclose(train_maxs, train_mins)
-    num_bad_features = np.sum(is_bad_feature)
-    if num_bad_features > 0:
-        bad_feature_idxs = np.flatnonzero(is_bad_feature)
-        bad_feature_names = [branches_to_load[idx] for idx in bad_feature_idxs]
-        raise RuntimeError(f"Have {num_bad_features} features with coinciding min and max: {bad_feature_names}")
+    # train_mins = np.min(X_bkg_train, axis=0)
+    # train_maxs = np.max(X_bkg_train, axis=0)
 
-    X_bkg_train = (X_bkg_train - train_mins)/(train_maxs - train_mins)
+    # is_bad_feature = np.isclose(train_maxs, train_mins)
+    # num_bad_features = np.sum(is_bad_feature)
+    # if num_bad_features > 0:
+    #     bad_feature_idxs = np.flatnonzero(is_bad_feature)
+    #     bad_feature_names = [branches_to_load[idx] for idx in bad_feature_idxs]
+    #     raise RuntimeError(f"Have {num_bad_features} features with coinciding min and max: {bad_feature_names}")
+
+    # X_bkg_train = (X_bkg_train - train_mins)/(train_maxs - train_mins)
+
+    encoder_activation = hyperparameters["encoder_activation"]
+    decoder_activation = hyperparameters["decoder_activation"]
+    input_noise_std = hyperparameters["input_noise_std"]
+    encoder_dropout = hyperparameters["encoder_dropout"]
+    decoder_dropout = hyperparameters["decoder_dropout"]
+    bottleneck_activation = hyperparameters["bottleneck_activation"]
+    bottleneck_noise_std = hyperparameters["bottleneck_noise_std"]
 
     # encoder part
     inputs = tf.keras.Input(shape=(X_bkg_train.shape[1],))
     x = tf.keras.layers.Identity()(inputs)
-    x = tf.keras.layers.GaussianNoise(0.1)(x)
+    if input_noise_std > 0.0:
+        x = tf.keras.layers.GaussianNoise(input_noise_std)(x)
+    x = tf.keras.layers.Normalization(mean=train_mean, variance=train_variance)(x)
     # [64, 48, 24, 12] ? 
     for dim in [64, 32, 16]:
         x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.Dense(dim, activation='swish')(x)
-        # x = tf.keras.layers.Dropout(0.1)(x)
+        x = tf.keras.layers.Dense(dim, activation=encoder_activation)(x)
+        if encoder_dropout > 0.0:
+            x = tf.keras.layers.Dropout(encoder_dropout)(x)
 
     # bottleneck part
-    x = tf.keras.layers.Dropout(0.1)(x)
-    x = tf.keras.layers.GaussianNoise(0.1)(x)
-    x = tf.keras.layers.Dense(8, activation='swish')(x)
+    x = tf.keras.layers.Dense(8, activation=bottleneck_activation)(x)
     x = tf.keras.layers.BatchNormalization()(x)
+    if bottleneck_noise_std > 0.0:
+        x = tf.keras.layers.GaussianNoise(bottleneck_noise_std)(x)
 
     # decoder part
     for dim in [16, 32, 64]:
         x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.Dense(dim, activation='swish')(x)
-        # x = tf.keras.layers.Dropout(0.1)(x)
+        x = tf.keras.layers.Dense(dim, activation=decoder_activation)(x)
+        if decoder_dropout > 0.0:
+            x = tf.keras.layers.Dropout(decoder_dropout)(x)
 
-    outputs = tf.keras.layers.Dense(input_dim, activation='sigmoid')(x)
+    outputs = tf.keras.layers.Dense(input_dim)(x)
+    output_activation_name = hyperparameters["output_activation"]
+    if output_activation_name:
+        output_activation_fn = tf.keras.activations.get(output_activation_name)
+        outputs = output_activation_fn(outputs)
 
     model_name = cfg['model_name']
-    anomaly_detector = tf.keras.models.Model(inputs=inputs, 
-                                             outputs=outputs, 
-                                             name=model_name)
+    anomaly_detector = tf.keras.models.Model(
+        inputs=inputs, 
+        outputs=outputs, 
+        name=model_name
+    )
     
     loss_cfg = cfg["loss"]
     loss_instance = tf.keras.losses.get(loss_cfg)
@@ -163,10 +189,12 @@ def main():
 
     val_parity = hyperparameters['validation_parity']
     val_event_file_path, val_weight_file_path = parity_file_map[val_parity]
-    X_val = load_file(tree_name="Events", 
-                      file_path=val_event_file_path, 
-                      list_of_branches=branches_to_load,
-                      convert_to_numpy=True)
+    X_val = load_file(
+        tree_name="Events", 
+        file_path=val_event_file_path, 
+        list_of_branches=branches_to_load,
+        convert_to_numpy=True
+    )
     
     if cleaning_type == "threshold":
         val_mask, X_val = threshold_cleaning(
@@ -183,10 +211,12 @@ def main():
     else:
         raise RuntimeError(f"Unsupported data cleaning type {cleaning_type}.")
 
-    y_val = load_file(tree_name="weight_tree", 
-                      file_path=val_weight_file_path, 
-                      list_of_branches=["class_target"],
-                      convert_to_numpy=True)
+    y_val = load_file(
+        tree_name="weight_tree", 
+        file_path=val_weight_file_path, 
+        list_of_branches=["class_target"],
+        convert_to_numpy=True
+    )
     y_val = y_val[val_mask]
     mm.print_memory_usage(msg="After loading validation set")
 
@@ -194,13 +224,15 @@ def main():
     bkg_mask_val = bkg_mask_val.reshape(-1)
     X_val = X_val[bkg_mask_val]
 
-    val_mins = np.min(X_val, axis=0)
-    val_maxs = np.max(X_val, axis=0)
-    X_val = (X_val - val_mins)/(val_maxs - val_mins)
+    # val_mins = np.min(X_val, axis=0)
+    # val_maxs = np.max(X_val, axis=0)
+    # X_val = (X_val - val_mins)/(val_maxs - val_mins)
+
+    X_val = (X_val - train_mean)/np.sqrt(train_variance)
 
     callbacks = [
         tf.keras.callbacks.EarlyStopping(patience=20, restore_best_weights=True),
-        tf.keras.callbacks.ReduceLROnPlateau(patience=20)
+        # tf.keras.callbacks.ReduceLROnPlateau(patience=20)
     ]
 
     epochs = hyperparameters["epochs"]

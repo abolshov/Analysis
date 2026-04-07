@@ -1,19 +1,27 @@
-model_name: 'autoencoder'
+model_name: 'autoencoder_v2'
 training_directory: '/home/artem/Desktop/CMS/models/anomaly_detection/'
 input_directory: "/home/artem/Desktop/CMS/data/DNN/SL/resolved/Run3_2022/Dataset"
 
 data_cleaning:
-  type: quantile
-  low: 0.01
-  high: 0.99
+  type: threshold
+  low: -1000
+  high: 2500
 
 hyperparameters:
   training_parity: 0
   validation_parity: 1
   test_parity: 2
   use_extra_branches: True
-  batch_size: 1024
+  batch_size: 4096
   epochs: 200
+  output_activation: 0.0
+  encoder_activation: swish
+  encoder_dropout: 0.0
+  decoder_activation: swish
+  decoder_dropout: 0.0
+  bottleneck_noise_std: 0.1
+  bottleneck_activation: swish 
+  input_noise_std: 0.1
 
 loss:
   class_name: MeanSquaredError
