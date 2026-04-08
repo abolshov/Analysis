@@ -19,7 +19,7 @@ from sklearn.utils import class_weight
 import shutil
 
 from PlotUtils import PlotMetric, PlotConfMatrix, PlotROC, PlotPRC
-from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, clean_extreme_values, make_dataset
+from MiscUtils import MemoryMonitor, load_file, nearest_pow2, map_input_files, quantile_cleaning, threshold_cleaning, make_dataset
 from LayerUtils import ResidualBlock
 
 
@@ -79,8 +79,26 @@ def main():
         convert_to_numpy=True
     )
     
+    # clean data
     mm.print_memory_usage(msg=f"Before cleaning: {X_train.shape}")
-    clean_mask_train, X_train = clean_extreme_values(data=X_train)
+    cleaning_cfg = data_cfg["cleaning"]
+    cleaning_type = cleaning_cfg["type"]
+    high = cleaning_cfg["high"]
+    low = cleaning_cfg["low"]
+    if cleaning_type == "threshold":
+        clean_mask_train, X_train = threshold_cleaning(
+            data=X_train,
+            pos_thrsh=high,
+            neg_thrsh=low
+        )
+    elif cleaning_type == "quantile":
+        clean_mask_train, X_train = quantile_cleaning(
+            data=X_train,
+            q_low=low,
+            q_high=high
+        )
+    else:
+        raise RuntimeError(f"Unsupported data cleaning type {cleaning_type}.")
     mm.print_memory_usage(msg=f"After cleaning: {X_train.shape}")
 
     y_train = load_file(
