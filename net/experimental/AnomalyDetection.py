@@ -6,8 +6,8 @@ ActivationFunction = Callable[[tf.Tensor], tf.Tensor]
 import numpy as np
 from numpy.typing import NDArray
 
-@tf.keras.utils.register_keras_serializable('AnomalyDetector')
-class Autoencoder(tf.keras.models.Model):
+@tf.keras.utils.register_keras_serializable('DenseAutoencoder')
+class DenseAutoencoder(tf.keras.models.Model):
     def __init__(self, 
                  *,
                  encoder_dims: List[int],
@@ -16,34 +16,22 @@ class Autoencoder(tf.keras.models.Model):
                  output_activation: str | ActivationFunction,
                  mean: NDArray[np.floating] | tf.Tensor = None,
                  variance: NDArray[np.floating] | tf.Tensor = None,
+                 noise_std: float = 0,
                  **kwargs) -> None:
         
-        super(Autoencoder, self).__init__(**kwargs)
+        super(DenseAutoencoder, self).__init__(**kwargs)
+        self.encoder_dims = encoder_dims
+        self.decoder_dims = decoder_dims
+        self.hidden_activation = hidden_activation
+        self.output_activation = output_activation
+        self.mean = mean
+        self.variance = variance
+        self.noise_std = noise_std
 
-        self.hidden_activation = tf.keras.activations.get(hidden_activation)
-        self.output_activation = tf.keras.activations.get(output_activation)
+        self.gaussian_noise = tf.keras.layers.GaussianNoise(noise_std)
 
-        self.encoder = tf.keras.Sequential()
-        self.decoder = tf.keras.Sequential()
 
-        use_norm = mean and variance
-        if use_norm:
-            self.decoder.add(tf.keras.layers.Normalization(mean=mean, variance=variance))
-            
-        self.encoder.add(
-            [
-                tf.keras.layers.Dense(dim, activation=hidden_activation) for dim in encoder_dims
-            ]
-        )
-
-        self.decoder = tf.keras.Sequential(
-            [
-                tf.keras.layers.Dense(dim, activation=hidden_activation) for dim in decoder_dims[:-1]
-            ]
-        )
-        self.decoder.add(tf.keras.layers.Dense(decoder_dims[-1], activation=output_activation))
-        if use_norm:
-            self.decoder.add(tf.keras.layers.Normalization(mean=mean, variance=variance, invert=True))
+        
 
     def call(self, x):
         encoded = self.encoder(x)
