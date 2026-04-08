@@ -9,15 +9,11 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-import uproot
-import pathlib
-import awkward as ak
 import numpy as np
 import os
 import re
 import yaml
 import argparse
-import gc
 import time
 from sklearn.utils import class_weight
 import shutil
@@ -54,39 +50,45 @@ def main():
     with open (cfg_path, 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
 
+    data_cfg = cfg["data"]
+    hyperparameters = cfg["hyperparameters"]
+
     weight_file_pattern = re.compile(r"nParity(\d)_Merged_weight.root")
     event_file_pattern = re.compile(r"nParity(\d)_Merged.root")
     train_file_dir = cfg["input_directory"]
-    parity_file_map = map_input_files(directory=train_file_dir,
-                                      weight_file_pattern=weight_file_pattern,
-                                      event_file_pattern=event_file_pattern)
+    parity_file_map = map_input_files(
+        directory=train_file_dir,
+        weight_file_pattern=weight_file_pattern,
+        event_file_pattern=event_file_pattern
+    )
 
-    hyperparameters = cfg['hyperparameters']
-
-    train_parity = hyperparameters['training_parity']
+    train_parity = data_cfg['training_parity']
     train_event_file_path, train_weight_file_path = parity_file_map[train_parity]
     print(f"Data file for trainig: {train_event_file_path}")
     print(f"Weight file for trainig: {train_weight_file_path}")
 
-    use_extra_variables = hyperparameters['use_extra_branches']
-
-    branches_to_load = cfg['base_branches']
+    use_extra_variables = data_cfg['use_extra_branches']
+    branches_to_load = data_cfg['base_branches']
     if use_extra_variables:
-        branches_to_load.extend(cfg['extra_branches'])
+        branches_to_load.extend(data_cfg['extra_branches'])
 
-    X_train = load_file(tree_name="Events", 
-                        file_path=train_event_file_path, 
-                        list_of_branches=branches_to_load,
-                        convert_to_numpy=True)
+    X_train = load_file(
+        tree_name="Events", 
+        file_path=train_event_file_path, 
+        list_of_branches=branches_to_load,
+        convert_to_numpy=True
+    )
     
     mm.print_memory_usage(msg=f"Before cleaning: {X_train.shape}")
     clean_mask_train, X_train = clean_extreme_values(data=X_train)
     mm.print_memory_usage(msg=f"After cleaning: {X_train.shape}")
 
-    y_train = load_file(tree_name="weight_tree", 
-                        file_path=train_weight_file_path, 
-                        list_of_branches=["class_target"],
-                        convert_to_numpy=True)
+    y_train = load_file(
+        tree_name="weight_tree", 
+        file_path=train_weight_file_path, 
+        list_of_branches=["class_target"],
+        convert_to_numpy=True
+    )
     y_train = y_train[clean_mask_train]
     y_train = y_train.reshape(-1)
 
@@ -95,7 +97,7 @@ def main():
         # swap classes: 1=>signal, 0=>background
         y_train = 1 - y_train
     
-    apply_class_weights = cfg['class_weights']
+    apply_class_weights = hyperparameters['class_weights']
     if apply_class_weights:
         class_weights = class_weight.compute_class_weight(
             'balanced',
@@ -114,17 +116,21 @@ def main():
     X_train = X_train[indices]
     y_train = y_train[indices]
 
-    val_parity = hyperparameters['validation_parity']
+    val_parity = data_cfg['validation_parity']
     val_event_file_path, val_weight_file_path = parity_file_map[val_parity]
-    X_val = load_file(tree_name="Events", 
-                      file_path=val_event_file_path, 
-                      list_of_branches=branches_to_load,
-                      convert_to_numpy=True)
+    X_val = load_file(
+        tree_name="Events", 
+        file_path=val_event_file_path, 
+        list_of_branches=branches_to_load,
+        convert_to_numpy=True
+    )
     
-    y_val = load_file(tree_name="weight_tree", 
-                     file_path=val_weight_file_path, 
-                     list_of_branches=["class_target"],
-                     convert_to_numpy=True)
+    y_val = load_file(
+        tree_name="weight_tree", 
+        file_path=val_weight_file_path, 
+        list_of_branches=["class_target"],
+        convert_to_numpy=True
+    )
     y_val = y_val.reshape(-1)
 
     if not multiclass:
@@ -152,7 +158,7 @@ def main():
         x = tf.keras.layers.Dropout(dropout)(x)
 
     # output layer
-    output_bias = cfg['output_bias']
+    output_bias = hyperparameters['output_bias']
     if output_bias is None:
         bias_initializer = "zeros"
     elif isinstance(output_bias, str) and output_bias == 'exact':
@@ -169,18 +175,24 @@ def main():
 
     x = tf.keras.layers.Dense(1, bias_initializer=bias_initializer)(x)
     
-    output_activation = tf.keras.activations.get(cfg['output_activation'])
+    output_activation = tf.keras.activations.get(hyperparameters['output_activation'])
     outputs = output_activation(x)
 
     model_name = cfg['model_name']
-    model = tf.keras.models.Model(inputs=inputs, 
-                                  outputs=outputs, 
-                                  name=model_name)
+    model = tf.keras.models.Model(
+        inputs=inputs, 
+        outputs=outputs, 
+        name=model_name
+    )
     
     model_dir = os.path.join(cfg['training_directory'], model.name)
     os.makedirs(model_dir, exist_ok=True)
     print(model.summary())
-    tf.keras.utils.plot_model(model, os.path.join(model_dir, f"summary_{model.name}.pdf"), show_shapes=True)
+    tf.keras.utils.plot_model(
+        model, 
+        os.path.join(model_dir, f"summary_{model.name}.pdf"), 
+        show_shapes=True
+    )
 
     metrics = [
         tf.keras.metrics.TruePositives(name='TruePositives'),
@@ -205,7 +217,7 @@ def main():
     )
 
     batch_size = hyperparameters["batch_size"]
-    oversampling_cfg = cfg["minority_class_oversampling"]
+    oversampling_cfg = hyperparameters["minority_class_oversampling"]
     minority_class_oversampling = oversampling_cfg["apply_oversampling"]
     # in case of oversampling need steps_per_epoch
     steps_per_epoch = None
@@ -217,122 +229,127 @@ def main():
         X_train_bkg = X_train[~train_signal_mask]
         y_train_sig = y_train[train_signal_mask]
         y_train_bkg = y_train[~train_signal_mask]
-        sig_ds = make_dataset(features=X_train_sig, 
-                              labels=y_train_sig,
-                              repeat_count=-1,
-                              shuffle=True)
-        bkg_ds = make_dataset(features=X_train_bkg, 
-                              labels=y_train_bkg,
-                              repeat_count=-1,
-                              shuffle=True)
+        sig_ds = make_dataset(
+            features=X_train_sig, 
+            labels=y_train_sig,
+            repeat_count=-1,
+            shuffle=True
+        )
+        bkg_ds = make_dataset(
+            features=X_train_bkg, 
+            labels=y_train_bkg,
+            repeat_count=-1,
+            shuffle=True
+        )
         sig_sampling_proba = oversampling_cfg["sig_sampling_proba"]
         bkg_sampling_proba = oversampling_cfg["bkg_sampling_proba"]
         rerandomize_sampling_order = oversampling_cfg["rerandomize_sampling_order"]
-        train_ds = tf.data.Dataset.sample_from_datasets([sig_ds, bkg_ds], 
-                                                        weights=[sig_sampling_proba, bkg_sampling_proba],
-                                                        seed=42,
-                                                        rerandomize_each_iteration=rerandomize_sampling_order)
+        train_ds = tf.data.Dataset.sample_from_datasets(
+            [sig_ds, bkg_ds], 
+            weights=[sig_sampling_proba, bkg_sampling_proba],
+            seed=42,
+            rerandomize_each_iteration=rerandomize_sampling_order
+        )
         train_ds = train_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
         steps_per_epoch = int(np.ceil(2.0*len(y_train_bkg)/batch_size))
         print(f"Will apply minority class oversampling with {steps_per_epoch} steps per epoch")
     else:
-        train_ds = make_dataset(features=X_train, 
-                                labels=y_train,
-                                batch_size=batch_size,
-                                shuffle=True)
+        train_ds = make_dataset(
+            features=X_train, 
+            labels=y_train,
+            batch_size=batch_size,
+            shuffle=True
+        )
     # validation data will be as is
-    val_ds = make_dataset(features=X_val, labels=y_val, batch_size=batch_size)
+    val_ds = make_dataset(
+        features=X_val, 
+        labels=y_val, 
+        batch_size=batch_size
+    )
     mm.print_memory_usage(msg="After making datasets")
 
     callbacks = [
-        tf.keras.callbacks.EarlyStopping(patience=20, 
-                                         restore_best_weights=True),
+        tf.keras.callbacks.EarlyStopping(
+            patience=20, 
+            restore_best_weights=True
+        ),
         # tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", patience=10, mode='min')
-        tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
-                                           monitor="val_Precision",
-                                           mode="max",
-                                           save_best_only=True,
-                                           initial_value_threshold=0.25)
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(model_dir, f"best_{model.name}.keras"),
+            monitor="val_Precision",
+            mode="max",
+            save_best_only=True,
+            initial_value_threshold=0.25
+        )
     ]
 
     # fit model
     epochs = hyperparameters['epochs']
     print("Training the model ...")
     start = time.perf_counter()
-    history = model.fit(train_ds, 
-                        validation_data=val_ds,
-                        class_weight=class_weight_dict,
-                        verbose=0,
-                        steps_per_epoch=steps_per_epoch,
-                        epochs=epochs,
-                        callbacks=callbacks)
+    history = model.fit(
+        train_ds, 
+        validation_data=val_ds,
+        class_weight=class_weight_dict,
+        verbose=0,
+        steps_per_epoch=steps_per_epoch,
+        epochs=epochs,
+        callbacks=callbacks
+    )
     end = time.perf_counter()
     ftting_duration = (end - start) / 60
     print("... Done!")
     print(f"Fitting duration: {ftting_duration:.2f} minutes")
+
+    print("Train set results:")
+    loss = history[0]
+    print(f"\tLoss: {loss:.4f}")
+    for i, m in enumerate(metrics):
+        print(f"\t{m.name}: {history[i + 1]:.4f}")
     
     PlotMetric(history, model.name, "loss", plotting_dir=model_dir)
     for m in metrics:
         PlotMetric(history, model.name, m.name, plotting_dir=model_dir)
 
+    val_pred = model.predict(X_val, batch_size=batch_size)
+    threshold = hyperparameters['classification_threshold']
+    PlotConfMatrix(
+        labels=y_val,
+        predictions=val_pred,
+        threshold=threshold,
+        plotdir=model_dir
+    )
+
+    PlotROC(
+        labels=y_val,
+        predictions=val_pred,
+        plotdir=model_dir,
+        xlim=[-0.5, 100.5],
+        ylim=[-0.5, 100.5]
+    )
+    
+    PlotPRC(
+        labels=y_val,
+        predictions=val_pred,
+        plotdir=model_dir
+    )
+
     model.save(os.path.join(model_dir, f"{model.name}.keras"))
     shutil.copy(cfg_path, model_dir)
-
-    mm.print_memory_usage(msg=f"Before memory clean-up.")
-    del X_train
-    del y_train
-    del X_val
-    del y_val
-    coll = gc.collect()
-    mm.print_memory_usage(msg=f"After invoking garbage collector, collected {coll}.")
-
-    print("Loading test set")
-    test_parity = hyperparameters['test_parity']
-    test_event_file_path, test_weight_file_path = parity_file_map[test_parity]
-    X_test = load_file(tree_name="Events", 
-                       file_path=test_event_file_path, 
-                       list_of_branches=branches_to_load,
-                       convert_to_numpy=True)
     
-    weights_test = load_file(tree_name="weight_tree", 
-                             file_path=test_weight_file_path, 
-                             list_of_branches=["class_weight", "class_target"],
-                             convert_to_numpy=False)
+    print("Evaluate model on validation set set ...")
+    val_history = model.evaluate(
+        X_val,
+        y_val, 
+        batch_size=batch_size,
+        verbose=0
+    )
 
-    y_test = weights_test["class_target"].to_numpy()
-    if not multiclass:
-        y_test = 1 - y_test
-    
-    mm.print_memory_usage(msg=f"Loaded {X_test.shape[1]} variables for {X_test.shape[0]} events for test set")
-
-    test_pred = model.predict(X_test, batch_size=batch_size)
-    
-    threshold = cfg['classification_threshold']
-    PlotConfMatrix(labels=y_test,
-                   predictions=test_pred,
-                   threshold=threshold,
-                   plotdir=model_dir)
-
-    PlotROC(labels=y_test,
-            predictions=test_pred,
-            plotdir=model_dir,
-            xlim=[-0.5, 100.5],
-            ylim=[-0.5, 100.5])
-    
-    PlotPRC(labels=y_test,
-            predictions=test_pred,
-            plotdir=model_dir)
-
-    print("Evaluate model on test set ...")
-    test_history = model.evaluate(X_test,
-                                  y_test, 
-                                  batch_size=batch_size,
-                                  verbose=0)
-    print("Test set results:")
-    loss = test_history[0]
+    print("Validation set results:")
+    loss = val_history[0]
     print(f"\tLoss: {loss:.4f}")
     for i, m in enumerate(metrics):
-        print(f"\t{m.name}: {test_history[i + 1]:.4f}")
+        print(f"\t{m.name}: {val_history[i + 1]:.4f}")
 
     # free resources (just in case)
     tf.keras.backend.clear_session()
