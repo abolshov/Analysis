@@ -72,6 +72,11 @@ def main():
     if use_extra_variables:
         branches_to_load.extend(data_cfg['extra_branches'])
 
+    is_parametric = cfg["parametric"]
+    if is_parametric:
+        print("Training parametric model")
+        branches_to_load.append("X_mass")
+
     X_train = load_file(
         tree_name="Events", 
         file_path=train_event_file_path, 
@@ -155,6 +160,35 @@ def main():
         y_val = 1 - y_val
 
     mm.print_memory_usage(msg=f"Loaded {X_val.shape[1]} variables for {X_val.shape[0]} events for validation set")
+
+    # if model is parametric, assign random masses to background
+    if is_parametric:
+        X_mass_train = X_train[:, -1]
+        X_mass_val = X_val[:, -1]
+        
+        masspoints = np.unique(X_mass_train[X_mass_train > 0.0])
+        if not multiclass:
+            X_mass_train = np.where(
+                y_train == 0, 
+                np.random.choice(masspoints, size=X_mass_train.shape), 
+                X_mass_train
+            )
+            X_mass_val = np.where(
+                y_val == 0, 
+                np.random.choice(masspoints, size=X_mass_val.shape), 
+                X_mass_val
+            )
+        else:
+            X_mass_train = np.where(
+                y_train != 0, 
+                np.random.choice(masspoints, size=X_mass_train.shape), 
+                X_mass_train
+            )
+            X_mass_val = np.where(
+                y_val != 0, 
+                np.random.choice(masspoints, size=X_mass_val.shape), 
+                X_mass_val
+            )
 
     # precompute mean and variance
     train_mean = np.mean(X_train, axis=0)

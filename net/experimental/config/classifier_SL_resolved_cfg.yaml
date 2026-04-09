@@ -136,6 +136,7 @@ hyperparameters:
   classification_threshold: 0.5
 
 multiclass: False
+parametric: False
 
 loss:
   class_name: BinaryFocalCrossentropy
